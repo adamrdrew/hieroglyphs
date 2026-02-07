@@ -1,0 +1,86 @@
+phase:
+  id: "0005"
+  slug: sidebar-project-list
+  title: Sidebar and Project List
+  status: complete
+
+steps:
+  - id: S001
+    title: Create HieroglyphsVM
+    implemented: true
+    reviewed: true
+    notes: "Created HieroglyphsVM with @Observable @MainActor annotations, workspace state management, and error handling via console logging"
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S002
+    title: Write ViewModel Tests
+    implemented: true
+    reviewed: true
+    notes: "Created comprehensive tests for all HieroglyphsVM public methods with mock WorkspaceService. All 8 tests pass."
+    touched:
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+
+  - id: S003
+    title: Integrate ViewModel into App
+    implemented: true
+    reviewed: true
+    notes: "Created WorkspaceService and HieroglyphsVM instances in App.swift, injected via .environment(), and called loadWorkspace() on appear"
+    touched:
+      - Sources/Hieroglyphs/App.swift
+
+  - id: S004
+    title: Create SidebarProjectEntry View
+    implemented: true
+    reviewed: true
+    notes: "Created SidebarProjectEntry with project title, folder icon, and card count summary. Loads cards on appear and formats counts by status."
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/SidebarProjectEntry.swift
+
+  - id: S005
+    title: Create Sidebar View
+    implemented: true
+    reviewed: true
+    notes: "Created Sidebar with List selection binding, project iteration, New Project toolbar button, and sheet presentation. Added Hashable to Project."
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift
+      - Sources/Hieroglyphs/Models/Project.swift
+
+  - id: S006
+    title: Create NewProjectSheet View
+    implemented: true
+    reviewed: true
+    notes: "Created NewProjectSheet form with title, description, and tags fields. Save button disabled when title empty. Tags parsed from comma-separated input."
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/NewProjectSheet.swift
+
+  - id: S007
+    title: Define WorkspaceService Environment Key
+    implemented: true
+    reviewed: true
+    notes: "Created WorkspaceServiceKey environment key with nonisolated(unsafe) for concurrency safety. Injected in App.swift."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceServiceEnvironmentKey.swift
+      - Sources/Hieroglyphs/App.swift
+
+  - id: S008
+    title: Integrate Sidebar into MainWindow
+    implemented: true
+    reviewed: true
+    notes: "Replaced placeholder Text with Sidebar() in MainWindow NavigationSplitView"
+    touched:
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+
+  - id: S009
+    title: Test End-to-End Project Display
+    implemented: true
+    reviewed: true
+    notes: "Created test workspace with 2 projects and 3 cards. App launches successfully, loads workspace, and displays projects without errors."
+    touched: []
+
+  - id: S010
+    title: Run Full Test Suite
+    implemented: true
+    reviewed: true
+    notes: "All 86 tests pass with 0 failures. Build completes with no errors or warnings."
+    touched: []

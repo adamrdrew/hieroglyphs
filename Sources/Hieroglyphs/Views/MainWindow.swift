@@ -5,7 +5,7 @@ struct MainWindow: View {
 
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $preferredCompactColumn) {
-            Text("Sidebar")
+            Sidebar()
         } content: {
             Text("List")
         } detail: {

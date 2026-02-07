@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents a project with metadata and timestamps.
-struct Project: Identifiable, Codable, Equatable {
+struct Project: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
     let title: String
     let description: String
