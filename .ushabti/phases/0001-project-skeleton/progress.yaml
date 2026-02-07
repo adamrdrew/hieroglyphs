@@ -1,0 +1,72 @@
+phase:
+  id: "0001"
+  slug: project-skeleton
+  title: Project Skeleton
+  status: complete
+
+steps:
+  - id: S001
+    title: Create directory structure
+    implemented: true
+    reviewed: true
+    notes: "Created Sources/Hieroglyphs/{Models,Services,Views,Utilities}, Tests/HieroglyphsTests, Scripts, Resources directories"
+    touched:
+      - Sources/Hieroglyphs/
+      - Tests/HieroglyphsTests/
+      - Scripts/
+      - Resources/
+
+  - id: S002
+    title: Write Package.swift
+    implemented: true
+    reviewed: true
+    notes: "Created Package.swift with macOS 26 platform, CodeEditorView and swift-markdown-ui dependencies. Required swift-tools-version 6.2 for macOS 26 support."
+    touched:
+      - Package.swift
+
+  - id: S003
+    title: Write App.swift
+    implemented: true
+    reviewed: true
+    notes: "Created App.swift with @main entry point, Window scene (not WindowGroup) for single-window macOS behavior"
+    touched:
+      - Sources/Hieroglyphs/App.swift
+
+  - id: S004
+    title: Write MainWindow.swift
+    implemented: true
+    reviewed: true
+    notes: "Created MainWindow.swift with three-column NavigationSplitView pattern from TakeNote, using preferredCompactColumn binding with @State"
+    touched:
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+
+  - id: S005
+    title: Write Info.plist
+    implemented: true
+    reviewed: true
+    notes: "Created Resources/Info.plist with required metadata: CFBundleName, CFBundleIdentifier, CFBundleVersion, CFBundleShortVersionString, LSMinimumSystemVersion"
+    touched:
+      - Resources/Info.plist
+
+  - id: S006
+    title: Write build script
+    implemented: true
+    reviewed: true
+    notes: "Created Scripts/build-app.sh with shebang, comments, and swift build -c release command. Made executable with chmod +x."
+    touched:
+      - Scripts/build-app.sh
+
+  - id: S007
+    title: Write CLAUDE.md
+    implemented: true
+    reviewed: true
+    notes: "Created CLAUDE.md at repository root with comprehensive collaboration documentation including project overview, Ushabti workflow, laws, style, file structure, development patterns, and reminders for AI assistants"
+    touched:
+      - CLAUDE.md
+
+  - id: S008
+    title: Verify build and launch
+    implemented: true
+    reviewed: true
+    notes: "Verified swift build completes successfully. Verified swift run launches app without errors or crashes. Executable created at .build/debug/Hieroglyphs."
+    touched: []
