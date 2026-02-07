@@ -347,6 +347,134 @@ final class HieroglyphsVMTests: XCTestCase {
 
         XCTAssertFalse(mockService.updateCardWasCalled)
     }
+
+    // MARK: - File Watching Tests
+
+    @MainActor
+    func testStartWatchingCalledOnLoadWorkspace() {
+        let mockService = MockWorkspaceService()
+        let mockWatcher = MockFileWatcher()
+        mockService.shouldThrowOnLoadConfig = false
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockService,
+            fileWatcher: mockWatcher
+        )
+        viewModel.loadWorkspace()
+
+        XCTAssertTrue(mockWatcher.startWatchingCalled)
+        XCTAssertEqual(mockWatcher.watchedPath, "/mock/workspace")
+    }
+
+    @MainActor
+    func testStartWatchingNotCalledOnLoadWorkspaceFailure() {
+        let mockService = MockWorkspaceService()
+        let mockWatcher = MockFileWatcher()
+        mockService.shouldThrowOnLoadConfig = true
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockService,
+            fileWatcher: mockWatcher
+        )
+        viewModel.loadWorkspace()
+
+        XCTAssertFalse(mockWatcher.startWatchingCalled)
+    }
+
+    @MainActor
+    func testStopWatching() {
+        let mockService = MockWorkspaceService()
+        let mockWatcher = MockFileWatcher()
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockService,
+            fileWatcher: mockWatcher
+        )
+        viewModel.loadWorkspace()
+
+        XCTAssertTrue(mockWatcher.startWatchingCalled)
+
+        viewModel.stopWatching()
+
+        XCTAssertTrue(mockWatcher.stopWatchingCalled)
+    }
+
+    @MainActor
+    func testFileChangeTriggersProjectReload() {
+        let mockService = MockWorkspaceService()
+        let mockWatcher = MockFileWatcher()
+        mockService.shouldThrowOnLoadConfig = false
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockService,
+            fileWatcher: mockWatcher
+        )
+        viewModel.loadWorkspace()
+
+        let initialProjectCount = viewModel.projects.count
+
+        let projectURL = URL(
+            fileURLWithPath: "/mock/workspace/test-project/project.md"
+        )
+        mockWatcher.simulateChange(url: projectURL)
+
+        XCTAssertEqual(viewModel.projects.count, initialProjectCount)
+    }
+
+    @MainActor
+    func testFileChangeTriggersCardReload() {
+        let mockService = MockWorkspaceService()
+        let mockWatcher = MockFileWatcher()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnLoadCards = false
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockService,
+            fileWatcher: mockWatcher
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectProject(viewModel.projects.first)
+        viewModel.loadCards()
+
+        let initialCardCount = viewModel.cards.count
+
+        guard let selectedProject = viewModel.selectedProject else {
+            XCTFail("No project selected")
+            return
+        }
+
+        let cardURL = URL(
+            fileURLWithPath: "/mock/workspace/\(selectedProject.slug)/cards/test-card/card.md"
+        )
+        mockWatcher.simulateChange(url: cardURL)
+
+        XCTAssertEqual(viewModel.cards.count, initialCardCount)
+    }
+
+    @MainActor
+    func testFileChangeOutsideSelectedProjectIgnored() {
+        let mockService = MockWorkspaceService()
+        let mockWatcher = MockFileWatcher()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnLoadCards = false
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockService,
+            fileWatcher: mockWatcher
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectProject(viewModel.projects.first)
+        viewModel.loadCards()
+
+        let initialCardCount = viewModel.cards.count
+
+        let cardURL = URL(
+            fileURLWithPath: "/mock/workspace/different-project/cards/test-card/card.md"
+        )
+        mockWatcher.simulateChange(url: cardURL)
+
+        XCTAssertEqual(viewModel.cards.count, initialCardCount)
+    }
 }
 
 // MARK: - Mock Workspace Service
@@ -515,5 +643,29 @@ final class MockWorkspaceService: WorkspaceProviding {
 
     func deleteCard(slug: String, projectPath: String) throws {
         // Not used in these tests
+    }
+}
+
+// MARK: - Mock File Watcher
+
+final class MockFileWatcher: FileWatching {
+    var startWatchingCalled = false
+    var stopWatchingCalled = false
+    var watchedPath: String?
+    var onChange: ((URL) -> Void)?
+
+    func startWatching(path: String, onChange: @escaping (URL) -> Void) {
+        startWatchingCalled = true
+        watchedPath = path
+        self.onChange = onChange
+    }
+
+    func stopWatching() {
+        stopWatchingCalled = true
+        onChange = nil
+    }
+
+    func simulateChange(url: URL) {
+        onChange?(url)
     }
 }

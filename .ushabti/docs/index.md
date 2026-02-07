@@ -16,5 +16,6 @@ A macOS-native markdown-based project management tool built with SwiftUI. Manage
 - [Frontmatter Parsing](frontmatter-parsing.md) — YAML frontmatter parsing, serialization, and slug generation
 - [ViewModel Layer](viewmodel.md) — HieroglyphsVM coordination, state management, and service delegation
 - [View Layer and UI](views-ui.md) — Three-column NavigationSplitView, Sidebar, CardList, and CardDetail with markdown editing
+- [File Watching System](file-watching.md) — FSEvents-based monitoring for external changes and automatic UI refresh
 - [Testing Strategy](testing.md) — Test organization, coverage requirements, and running tests
 - [Filesystem Structure](filesystem-structure.md) — On-disk layout, file formats, and naming conventions

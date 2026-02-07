@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:hieroglyphs}",
+            "name": "Debug Hieroglyphs",
+            "target": "Hieroglyphs",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Hieroglyphs"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:hieroglyphs}",
+            "name": "Release Hieroglyphs",
+            "target": "Hieroglyphs",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Hieroglyphs"
+        }
+    ]
+}

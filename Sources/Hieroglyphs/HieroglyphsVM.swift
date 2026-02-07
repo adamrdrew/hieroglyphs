@@ -24,9 +24,11 @@ final class HieroglyphsVM {
     var sortOrder: SortOrder = .forward
 
     private let workspaceService: WorkspaceProviding
+    private let fileWatcher: FileWatching?
 
-    init(workspaceService: WorkspaceProviding) {
+    init(workspaceService: WorkspaceProviding, fileWatcher: FileWatching? = nil) {
         self.workspaceService = workspaceService
+        self.fileWatcher = fileWatcher
     }
 
     /// Loads workspace configuration and projects.
@@ -43,6 +45,8 @@ final class HieroglyphsVM {
                 from: config.workspacePath
             )
             self.projects = loadedProjects
+
+            startWatching()
         } catch {
             print("Failed to load workspace: \(error)")
             self.workspacePath = nil
@@ -180,6 +184,53 @@ final class HieroglyphsVM {
             loadCards()
         } catch {
             print("Failed to update card: \(error)")
+        }
+    }
+
+    /// Starts watching workspace for external file changes.
+    ///
+    /// Called automatically after successful workspace load. Monitors
+    /// workspace directory for changes and triggers appropriate reloads.
+    func startWatching() {
+        guard let workspacePath else { return }
+
+        fileWatcher?.startWatching(path: workspacePath) { [weak self] url in
+            self?.handleFileChange(url: url)
+        }
+    }
+
+    /// Stops watching workspace for external file changes.
+    ///
+    /// Called on deinit to clean up file monitoring resources.
+    func stopWatching() {
+        fileWatcher?.stopWatching()
+    }
+
+    private func handleFileChange(url: URL) {
+        guard workspacePath != nil else { return }
+
+        let path = url.path
+
+        if path.contains("/project.md") {
+            loadProjects()
+        } else if path.contains("/cards/") || path.contains("/card.md") {
+            if let selectedProject,
+               path.contains("/\(selectedProject.slug)/") {
+                loadCards()
+            }
+        }
+    }
+
+    private func loadProjects() {
+        guard let workspacePath else { return }
+
+        do {
+            let loadedProjects = try workspaceService.loadProjects(
+                from: workspacePath
+            )
+            self.projects = loadedProjects
+        } catch {
+            print("Failed to reload projects: \(error)")
         }
     }
 }

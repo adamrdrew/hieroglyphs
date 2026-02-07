@@ -4,11 +4,14 @@ import SwiftUI
 struct HieroglyphsApp: App {
     @State private var viewModel: HieroglyphsVM
     private let workspaceService: WorkspaceProviding
+    private let fileWatcher: FileWatching
 
     init() {
         let service = WorkspaceService()
+        let watcher = FileWatcherService()
         self.workspaceService = service
-        let vm = HieroglyphsVM(workspaceService: service)
+        self.fileWatcher = watcher
+        let vm = HieroglyphsVM(workspaceService: service, fileWatcher: watcher)
         _viewModel = State(initialValue: vm)
     }
 
@@ -17,6 +20,7 @@ struct HieroglyphsApp: App {
             MainWindow()
                 .environment(viewModel)
                 .environment(\.workspaceService, workspaceService)
+                .environment(\.fileWatcher, fileWatcher)
                 .onAppear {
                     viewModel.loadWorkspace()
                 }

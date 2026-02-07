@@ -29,12 +29,13 @@ The ViewModel supports L01 (Filesystem as Source of Truth by delegating to servi
 - `sortBy: CardSortOption` — Sort criteria (created, updated, priority, status, title)
 - `sortOrder: SortOrder` — Sort direction (forward = ascending, reverse = descending)
 
-**Service Dependency:**
+**Service Dependencies:**
 - `workspaceService: WorkspaceProviding` — Injected service for I/O operations
+- `fileWatcher: FileWatching?` — Optional injected service for file system monitoring
 
 **Initialization:**
 ```swift
-init(workspaceService: WorkspaceProviding)
+init(workspaceService: WorkspaceProviding, fileWatcher: FileWatching? = nil)
 ```
 
 **Notes:**
@@ -56,7 +57,8 @@ init(workspaceService: WorkspaceProviding)
 2. Extract `workspacePath` from config
 3. Call `workspaceService.loadProjects(from: workspacePath)` to load all projects
 4. Update `self.workspacePath` and `self.projects`
-5. If any step throws, catch error, log to console, set `workspacePath` to `nil` and `projects` to `[]`
+5. Call `startWatching()` to begin monitoring workspace for external changes
+6. If any step throws, catch error, log to console, set `workspacePath` to `nil` and `projects` to `[]`
 
 **Error Handling:**
 
@@ -298,6 +300,61 @@ func saveCard() {
 - If workspace path or selected project is nil, operation fails silently (logs error)
 - WorkspaceService preserves unknown frontmatter fields per L02
 
+### startWatching()
+
+**Signature:** `func startWatching()`
+
+**Purpose:** Start monitoring workspace for external file changes.
+
+**Behavior:**
+
+1. Guard check `workspacePath` is not nil (returns early if nil)
+2. Call `fileWatcher?.startWatching(path:onChange:)` with workspace path
+3. onChange closure captures weak self and calls `handleFileChange(url:)` for each change
+
+**Usage:**
+
+Called automatically after successful `loadWorkspace()`:
+
+```swift
+func loadWorkspace() {
+    do {
+        // ... load config and projects ...
+        startWatching()
+    } catch {
+        // ... error handling ...
+    }
+}
+```
+
+**Notes:**
+- Only starts if workspace loaded successfully
+- Safe to call multiple times (service stops previous watching before starting new)
+- FileWatcher is optional; if nil (e.g., in tests), method does nothing
+
+### stopWatching()
+
+**Signature:** `func stopWatching()`
+
+**Purpose:** Stop monitoring workspace for external file changes.
+
+**Behavior:**
+
+1. Call `fileWatcher?.stopWatching()` to clean up resources
+
+**Usage:**
+
+Called manually by client code or tests:
+
+```swift
+viewModel.stopWatching()
+```
+
+**Notes:**
+- Safe to call even if not currently watching
+- ViewModel does not call this in deinit due to Swift concurrency restrictions
+- ViewModel is app-lifetime, so cleanup happens naturally on app termination
+
 ## Lifecycle and Initialization
 
 **App.swift:**
@@ -307,11 +364,14 @@ func saveCard() {
 struct HieroglyphsApp: App {
     @State private var viewModel: HieroglyphsVM
     private let workspaceService: WorkspaceProviding
+    private let fileWatcher: FileWatching
 
     init() {
         let service = WorkspaceService()
+        let watcher = FileWatcherService()
         self.workspaceService = service
-        let vm = HieroglyphsVM(workspaceService: service)
+        self.fileWatcher = watcher
+        let vm = HieroglyphsVM(workspaceService: service, fileWatcher: watcher)
         _viewModel = State(initialValue: vm)
     }
 
@@ -320,6 +380,7 @@ struct HieroglyphsApp: App {
             MainWindow()
                 .environment(viewModel)
                 .environment(\.workspaceService, workspaceService)
+                .environment(\.fileWatcher, fileWatcher)
                 .onAppear {
                     viewModel.loadWorkspace()
                 }
@@ -330,9 +391,10 @@ struct HieroglyphsApp: App {
 
 **Dependency Injection:**
 1. `WorkspaceService` created as concrete instance
-2. `HieroglyphsVM` initialized with `workspaceService` dependency
-3. ViewModel injected via `.environment(viewModel)`
-4. Service also injected via `.environment(\.workspaceService, workspaceService)` for views that need direct service access (e.g., `SidebarProjectEntry` for loading cards)
+2. `FileWatcherService` created as concrete instance
+3. `HieroglyphsVM` initialized with both `workspaceService` and `fileWatcher` dependencies
+4. ViewModel injected via `.environment(viewModel)`
+5. Services also injected via environment for views that need direct access
 
 **Notes:**
 - ViewModel is created once at app launch and shared across all views
@@ -418,6 +480,25 @@ struct SidebarProjectEntry: View {
 7. ViewModel updates `cards` property
 8. SwiftUI observes change and updates CardList view
 9. NewCardSheet dismisses
+
+**On External File Change:**
+
+1. External tool (text editor, LLM, terminal) modifies a file in workspace
+2. FSEventStream detects change and calls FileWatcherService onChange callback
+3. FileWatcherService calls `viewModel.handleFileChange(url:)` with changed file URL
+4. ViewModel examines path to determine reload action:
+   - If path contains `/project.md`: calls `loadProjects()` to reload project list
+   - If path contains `/cards/` or `/card.md` AND matches selected project: calls `loadCards()` to reload card list
+   - Otherwise: ignores change
+5. Reload methods call WorkspaceService to read from disk
+6. ViewModel updates `projects` or `cards` property
+7. SwiftUI observes change and updates UI automatically
+
+**Example External Changes:**
+- Edit card.md in VS Code → UI updates within ~500ms
+- Create card via terminal → new card appears in UI
+- Delete card directory via Finder → card disappears from UI
+- Edit project.md in text editor → project list refreshes
 
 ## Testing
 

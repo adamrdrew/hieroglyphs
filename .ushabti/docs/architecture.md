@@ -45,10 +45,13 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 - `WorkspaceProviding`: Protocol defining the service contract
 - `WorkspaceService`: Concrete implementation reading/writing files via FileManager and Yams
 - `WorkspaceServiceEnvironmentKey`: SwiftUI environment key for dependency injection
+- `FileWatching`: Protocol defining file system monitoring contract
+- `FileWatcherService`: Concrete implementation using FSEventStream to monitor workspace
+- `FileWatcherServiceEnvironmentKey`: SwiftUI environment key for FileWatcher injection
 
 **Dependencies:** Foundation, Yams, FrontmatterParser, SlugGenerator
 
-**Notes:** Services are stateless. They read from disk on every call and write atomically. No caching. This supports L01 (filesystem as truth) and L05 (external changes are first-class).
+**Notes:** Services are stateless. They read from disk on every call and write atomically. No caching. This supports L01 (filesystem as truth) and L05 (external changes are first-class). FileWatcherService monitors workspace for external changes and triggers ViewModel reloads.
 
 ### Utilities Layer
 
@@ -68,14 +71,14 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 
 **Location:** `Sources/Hieroglyphs/HieroglyphsVM.swift`
 
-**Responsibility:** Coordinate workspace state, project list, and UI selection. Delegate all I/O to WorkspaceService.
+**Responsibility:** Coordinate workspace state, project list, and UI selection. Delegate all I/O to WorkspaceService. Coordinate file watching lifecycle.
 
 **Components:**
 - `HieroglyphsVM`: Single `@Observable` `@MainActor` class holding workspace state, project/card lists, selection state, and filter/sort state
 
-**Dependencies:** SwiftUI, Observation, WorkspaceProviding
+**Dependencies:** SwiftUI, Observation, WorkspaceProviding, FileWatching
 
-**Notes:** ViewModel is a thin coordination layer. It does not perform I/O directly—it delegates to WorkspaceService. It holds transient UI state (selection) and cached data loaded from services.
+**Notes:** ViewModel is a thin coordination layer. It does not perform I/O directly—it delegates to WorkspaceService. It holds transient UI state (selection) and cached data loaded from services. ViewModel starts file watching after workspace loads and handles file change events by triggering appropriate reloads.
 
 ### Views Layer
 
@@ -147,15 +150,14 @@ Tests live in `Tests/HieroglyphsTests/` and cover all public APIs per L11 (Test 
 Hieroglyphs uses macOS-specific capabilities per L06 (Platform Leverage):
 
 - **FileManager:** For directory scanning, file I/O, and Trash operations
-- **FSEvents:** (Planned) For detecting external file changes
+- **FSEvents:** For detecting external file changes via FSEventStream
 - **Extended Attributes:** (Planned) For one-way tag projection from frontmatter
 - **Spotlight (NSMetadataQuery):** (Planned) For search
 
 ## Future Architecture Extensions
 
-- **File Watching:** FSEvents-based monitoring to detect external edits and refresh UI
 - **Tag Reconciliation:** One-way projection of frontmatter tags to extended attributes
 - **Spotlight Search:** NSMetadataQuery integration for fast search across workspace
-- **Card Detail View:** Implementing detail column with CodeEditorView and Markdown preview (Phase 7)
-- **Card Editing:** Update card workflow and UI (Phase 7)
 - **Filter/Sort Persistence:** Persist filter and sort state to UserDefaults
+- **Debounced Reloads:** Add debouncing to file watcher to reduce reload frequency on rapid changes
+- **Granular Updates:** Diff file changes and update only affected items instead of reloading lists
