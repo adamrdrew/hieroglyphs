@@ -10,14 +10,16 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/mchakravarty/CodeEditorView", from: "0.15.4"),
-        .package(url: "https://github.com/gonzalezreal/swift-markdown-ui", from: "2.4.1")
+        .package(url: "https://github.com/gonzalezreal/swift-markdown-ui", from: "2.4.1"),
+        .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.0")
     ],
     targets: [
         .executableTarget(
             name: "Hieroglyphs",
             dependencies: [
                 .product(name: "CodeEditorView", package: "CodeEditorView"),
-                .product(name: "MarkdownUI", package: "swift-markdown-ui")
+                .product(name: "MarkdownUI", package: "swift-markdown-ui"),
+                .product(name: "Yams", package: "Yams")
             ]
         ),
         .testTarget(

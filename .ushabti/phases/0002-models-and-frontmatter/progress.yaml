@@ -1,0 +1,141 @@
+phase:
+  id: 0002
+  slug: models-and-frontmatter
+  title: Models and Frontmatter Parser
+  status: complete
+
+steps:
+  - id: S001
+    title: Add Yams dependency to Package.swift
+    implemented: true
+    reviewed: true
+    notes: "Added Yams 5.4.0 dependency to Package.swift. Build succeeded."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Package.swift
+
+  - id: S002
+    title: Define CardStatus enum
+    implemented: true
+    reviewed: true
+    notes: "Created CardStatus enum with 5 cases, String rawValue, Codable and CaseIterable conformance."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Models/CardStatus.swift
+
+  - id: S003
+    title: Define CardType enum
+    implemented: true
+    reviewed: true
+    notes: "Created CardType enum with 4 cases, String rawValue, Codable and CaseIterable conformance."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Models/CardType.swift
+
+  - id: S004
+    title: Define Priority enum
+    implemented: true
+    reviewed: true
+    notes: "Created Priority enum with 4 cases, String rawValue, Codable and CaseIterable conformance."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Models/Priority.swift
+
+  - id: S005
+    title: Define Project model
+    implemented: true
+    reviewed: true
+    notes: "Created Project struct with all required properties. Conforms to Identifiable, Codable, and Equatable."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Models/Project.swift
+
+  - id: S006
+    title: Define Card model
+    implemented: true
+    reviewed: true
+    notes: "Created Card struct with all required properties including body. Conforms to Identifiable, Codable, and Equatable."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Models/Card.swift
+
+  - id: S007
+    title: Define WorkspaceConfig model
+    implemented: true
+    reviewed: true
+    notes: "Created WorkspaceConfig struct with workspacePath property. Conforms to Codable and Equatable."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Models/WorkspaceConfig.swift
+
+  - id: S008
+    title: Implement SlugGenerator utility
+    implemented: true
+    reviewed: true
+    notes: "Created SlugGenerator with static generateSlug method. Converts to lowercase, replaces spaces with hyphens, removes non-alphanumeric characters except hyphens, collapses consecutive hyphens, and trims."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Utilities/SlugGenerator.swift
+
+  - id: S009
+    title: Implement FrontmatterParser utility
+    implemented: true
+    reviewed: true
+    notes: "Created FrontmatterParser with parse and serialize methods using Yams. Handles missing frontmatter, empty frontmatter, and preserves unknown fields."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Utilities/FrontmatterParser.swift
+
+  - id: S010
+    title: Test SlugGenerator
+    implemented: true
+    reviewed: true
+    notes: "Created comprehensive tests for SlugGenerator covering all edge cases. All 8 tests pass. Unicode support is preserved."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/SlugGeneratorTests.swift
+
+  - id: S011
+    title: Test FrontmatterParser parse method
+    implemented: true
+    reviewed: true
+    notes: "Created 7 parse tests covering valid frontmatter, unknown fields, missing frontmatter, empty frontmatter, malformed YAML, empty string, and nested structures. All tests pass."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/FrontmatterParserTests.swift
+
+  - id: S012
+    title: Test FrontmatterParser serialize method
+    implemented: true
+    reviewed: true
+    notes: "Added 5 serialize tests including round-trip preservation of content and unknown fields. All tests pass."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/FrontmatterParserTests.swift
+
+  - id: S013
+    title: Test model enum types
+    implemented: true
+    reviewed: true
+    notes: "Created tests for all three enums (CardStatus, CardType, Priority). Tests verify all cases exist, raw values are correct, and Codable round-trips work. 9 tests pass."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/ModelTests.swift
+
+  - id: S014
+    title: Test Project model
+    implemented: true
+    reviewed: true
+    notes: "Added 4 Project model tests covering initialization, Equatable, Codable, and Identifiable conformance. All tests pass."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/ModelTests.swift
+
+  - id: S015
+    title: Test Card model
+    implemented: true
+    reviewed: true
+    notes: "Added 5 Card model tests covering initialization, Equatable, Codable, Identifiable, and markdown body storage. All tests pass."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/ModelTests.swift
+
+  - id: S016
+    title: Test WorkspaceConfig model
+    implemented: true
+    reviewed: true
+    notes: "Added 3 WorkspaceConfig tests covering initialization, Equatable, and Codable conformance. All tests pass."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/ModelTests.swift
+
+  - id: S017
+    title: Verify build and test suite
+    implemented: true
+    reviewed: true
+    notes: "swift build succeeds with no warnings or errors. swift test passes all 41 tests with 100% success."
+    touched: []
