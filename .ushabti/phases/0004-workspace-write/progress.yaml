@@ -1,0 +1,136 @@
+phase:
+  id: 0004
+  slug: workspace-write
+  title: Workspace Service (Write)
+  status: complete
+
+steps:
+  - id: S001
+    title: Extend WorkspaceProviding Protocol
+    implemented: true
+    reviewed: true
+    notes: "Added write operation method signatures for createWorkspace, initializeWorkspaceFiles, createProject, createCard, updateProject, updateCard, deleteProject, and deleteCard with comprehensive documentation."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceProviding.swift
+
+  - id: S002
+    title: Implement createWorkspace
+    implemented: true
+    reviewed: true
+    notes: "Added createWorkspace method that creates workspace directory and writes config.yaml to ~/.hieroglyphs/ using Yams YAMLEncoder."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S003
+    title: Implement initializeWorkspaceFiles
+    implemented: true
+    reviewed: true
+    notes: "Added initializeWorkspaceFiles method that creates CLAUDE.md and AGENT.md stub files with instructional content in workspace root."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S004
+    title: Implement createProject
+    implemented: true
+    reviewed: true
+    notes: "Added createProject method that generates slug, creates project directory, serializes frontmatter with metadata, and writes project.md atomically."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S005
+    title: Implement createCard
+    implemented: true
+    reviewed: true
+    notes: "Added createCard method that generates slug, creates cards directory if needed, creates card directory, serializes frontmatter with metadata and body, and writes card.md atomically."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S006
+    title: Implement updateProject
+    implemented: true
+    reviewed: true
+    notes: "Added updateProject method that reads existing project.md, parses frontmatter, merges updated fields while preserving unknown fields, updates timestamp, and writes atomically."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S007
+    title: Implement updateCard
+    implemented: true
+    reviewed: true
+    notes: "Added updateCard method that reads existing card.md, parses frontmatter, merges updated fields while preserving unknown fields, updates timestamp, and writes atomically."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S008
+    title: Implement deleteProject
+    implemented: true
+    reviewed: true
+    notes: "Added deleteProject method that verifies project exists and moves it to Trash using FileManager.trashItem."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S009
+    title: Implement deleteCard
+    implemented: true
+    reviewed: true
+    notes: "Added deleteCard method that builds card path, verifies card exists, and moves it to Trash using FileManager.trashItem."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S010
+    title: Add Date Formatting Helpers
+    implemented: true
+    reviewed: true
+    notes: "Added private formatDate and parseDate helper methods using ISO8601DateFormatter for consistent date serialization."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S011
+    title: Test createWorkspace and initializeWorkspaceFiles
+    implemented: true
+    reviewed: true
+    notes: "Added tests for createWorkspace (directory creation, config.yaml writing) and initializeWorkspaceFiles (CLAUDE.md and AGENT.md creation with content verification)."
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S012
+    title: Test createProject
+    implemented: true
+    reviewed: true
+    notes: "Added tests for createProject covering directory creation, slug generation, timestamp setting, and frontmatter serialization correctness."
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S013
+    title: Test createCard
+    implemented: true
+    reviewed: true
+    notes: "Added tests for createCard covering directory creation, cards directory auto-creation, slug generation, timestamp setting, and frontmatter+body serialization."
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S014
+    title: Test updateProject and updateCard
+    implemented: true
+    reviewed: true
+    notes: "Added comprehensive tests for updateProject and updateCard covering field updates, unknown field preservation, timestamp updates, and not-found error handling."
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S015
+    title: Test deleteProject and deleteCard
+    implemented: true
+    reviewed: true
+    notes: "Added tests for deleteProject and deleteCard covering successful deletion via Trash API and not-found error handling."
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S016
+    title: Verify Build and Test Suite
+    implemented: true
+    reviewed: true
+    notes: "Build completes with zero errors/warnings. All 78 tests pass (55 existing + 23 new write operation tests). All public write methods have comprehensive test coverage."
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+      - Sources/Hieroglyphs/Services/WorkspaceProviding.swift

@@ -556,4 +556,702 @@ final class WorkspaceServiceTests: XCTestCase {
         XCTAssertEqual(card.status, .backlog)
         XCTAssertEqual(card.priority, .medium)
     }
+
+    // MARK: - createWorkspace() Tests
+
+    func testCreateWorkspace() throws {
+        let workspacePath = fixtureRoot.appendingPathComponent("new-workspace").path
+        let configDir = fixtureRoot.appendingPathComponent(".hieroglyphs").path
+        let service = WorkspaceService(fileManager: fileManager)
+
+        try service.createWorkspace(at: workspacePath, configDirectory: configDir)
+
+        XCTAssertTrue(fileManager.fileExists(atPath: workspacePath))
+
+        let configPath = fixtureRoot
+            .appendingPathComponent(".hieroglyphs/config.yaml")
+        XCTAssertTrue(fileManager.fileExists(atPath: configPath.path))
+
+        let configContent = try String(contentsOf: configPath, encoding: .utf8)
+        XCTAssertTrue(configContent.contains(workspacePath))
+    }
+
+    func testCreateWorkspaceCreatesHieroglyphsDirectory() throws {
+        let workspacePath = fixtureRoot.appendingPathComponent("test-workspace").path
+        let configDir = fixtureRoot.appendingPathComponent(".hieroglyphs").path
+        let service = WorkspaceService(fileManager: fileManager)
+
+        try service.createWorkspace(at: workspacePath, configDirectory: configDir)
+
+        let hieroglyphsDir = fixtureRoot.appendingPathComponent(".hieroglyphs")
+        XCTAssertTrue(fileManager.fileExists(atPath: hieroglyphsDir.path))
+    }
+
+    // MARK: - initializeWorkspaceFiles() Tests
+
+    func testInitializeWorkspaceFiles() throws {
+        let workspacePath = fixtureRoot.appendingPathComponent("init-workspace")
+        try fileManager.createDirectory(
+            at: workspacePath,
+            withIntermediateDirectories: true
+        )
+
+        let service = WorkspaceService(fileManager: fileManager)
+        try service.initializeWorkspaceFiles(at: workspacePath.path)
+
+        let claudePath = workspacePath.appendingPathComponent("CLAUDE.md")
+        let agentPath = workspacePath.appendingPathComponent("AGENT.md")
+
+        XCTAssertTrue(fileManager.fileExists(atPath: claudePath.path))
+        XCTAssertTrue(fileManager.fileExists(atPath: agentPath.path))
+
+        let claudeContent = try String(contentsOf: claudePath, encoding: .utf8)
+        let agentContent = try String(contentsOf: agentPath, encoding: .utf8)
+
+        XCTAssertFalse(claudeContent.isEmpty)
+        XCTAssertFalse(agentContent.isEmpty)
+        XCTAssertTrue(claudeContent.contains("Hieroglyphs"))
+        XCTAssertTrue(agentContent.contains("frontmatter"))
+    }
+
+    // MARK: - createProject() Tests
+
+    func testCreateProject() throws {
+        try createFixtureWorkspace()
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let project = try service.createProject(
+            title: "New Project",
+            description: "A test project",
+            tags: ["test", "demo"],
+            at: workspaceURL.path
+        )
+
+        XCTAssertEqual(project.title, "New Project")
+        XCTAssertEqual(project.description, "A test project")
+        XCTAssertEqual(project.tags, ["test", "demo"])
+        XCTAssertEqual(project.slug, "new-project")
+
+        let projectPath = workspaceURL.appendingPathComponent("new-project")
+        XCTAssertTrue(fileManager.fileExists(atPath: projectPath.path))
+
+        let projectFilePath = projectPath.appendingPathComponent("project.md")
+        XCTAssertTrue(fileManager.fileExists(atPath: projectFilePath.path))
+
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+        XCTAssertTrue(content.contains("title: New Project"))
+        XCTAssertTrue(content.contains("description: A test project"))
+        XCTAssertTrue(content.contains("id: \(project.id.uuidString)"))
+        XCTAssertTrue(content.contains("slug: new-project"))
+    }
+
+    func testCreateProjectGeneratesSlug() throws {
+        try createFixtureWorkspace()
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let project = try service.createProject(
+            title: "My Test Project!!!",
+            description: "",
+            tags: [],
+            at: workspaceURL.path
+        )
+
+        XCTAssertEqual(project.slug, "my-test-project")
+
+        let projectPath = workspaceURL.appendingPathComponent("my-test-project")
+        XCTAssertTrue(fileManager.fileExists(atPath: projectPath.path))
+    }
+
+    func testCreateProjectSetsTimestamps() throws {
+        try createFixtureWorkspace()
+
+        let beforeCreate = Date()
+        let service = WorkspaceService(fileManager: fileManager)
+        let project = try service.createProject(
+            title: "Timestamped Project",
+            description: "",
+            tags: [],
+            at: workspaceURL.path
+        )
+        let afterCreate = Date()
+
+        XCTAssertGreaterThanOrEqual(project.created, beforeCreate)
+        XCTAssertLessThanOrEqual(project.created, afterCreate)
+        XCTAssertEqual(project.created, project.updated)
+    }
+
+    func testCreateProjectWritesFrontmatter() throws {
+        try createFixtureWorkspace()
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let project = try service.createProject(
+            title: "Frontmatter Test",
+            description: "Testing frontmatter",
+            tags: ["yaml", "test"],
+            at: workspaceURL.path
+        )
+
+        let projectFilePath = workspaceURL
+            .appendingPathComponent(project.slug)
+            .appendingPathComponent("project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+
+        let parsed = try FrontmatterParser.parse(content)
+        XCTAssertEqual(parsed.frontmatter["title"] as? String, "Frontmatter Test")
+        XCTAssertEqual(parsed.frontmatter["description"] as? String, "Testing frontmatter")
+        XCTAssertEqual(parsed.frontmatter["tags"] as? [String], ["yaml", "test"])
+        XCTAssertEqual(parsed.frontmatter["slug"] as? String, "frontmatter-test")
+    }
+
+    // MARK: - createCard() Tests
+
+    func testCreateCard() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "test-project",
+            id: "11111111-1111-1111-1111-111111111111",
+            title: "Test Project"
+        )
+
+        let projectPath = workspaceURL.appendingPathComponent("test-project").path
+        let service = WorkspaceService(fileManager: fileManager)
+        let card = try service.createCard(
+            title: "New Card",
+            type: .feature,
+            status: .inProgress,
+            priority: .high,
+            tags: ["urgent"],
+            body: "This is the card body.",
+            projectPath: projectPath
+        )
+
+        XCTAssertEqual(card.title, "New Card")
+        XCTAssertEqual(card.type, .feature)
+        XCTAssertEqual(card.status, .inProgress)
+        XCTAssertEqual(card.priority, .high)
+        XCTAssertEqual(card.tags, ["urgent"])
+        XCTAssertEqual(card.body, "This is the card body.")
+        XCTAssertEqual(card.slug, "new-card")
+
+        let cardPath = workspaceURL
+            .appendingPathComponent("test-project/cards/new-card")
+        XCTAssertTrue(fileManager.fileExists(atPath: cardPath.path))
+
+        let cardFilePath = cardPath.appendingPathComponent("card.md")
+        XCTAssertTrue(fileManager.fileExists(atPath: cardFilePath.path))
+
+        let content = try String(contentsOf: cardFilePath, encoding: .utf8)
+        XCTAssertTrue(content.contains("title: New Card"))
+        XCTAssertTrue(content.contains("type: feature"))
+        XCTAssertTrue(content.contains("This is the card body."))
+    }
+
+    func testCreateCardCreatesCardsDirectory() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "empty-project",
+            id: "22222222-2222-2222-2222-222222222222",
+            title: "Empty Project"
+        )
+
+        let projectPath = workspaceURL.appendingPathComponent("empty-project").path
+        let cardsPath = workspaceURL.appendingPathComponent("empty-project/cards")
+
+        XCTAssertFalse(fileManager.fileExists(atPath: cardsPath.path))
+
+        let service = WorkspaceService(fileManager: fileManager)
+        _ = try service.createCard(
+            title: "First Card",
+            type: .task,
+            status: .backlog,
+            priority: .medium,
+            tags: [],
+            body: "",
+            projectPath: projectPath
+        )
+
+        XCTAssertTrue(fileManager.fileExists(atPath: cardsPath.path))
+    }
+
+    func testCreateCardGeneratesSlug() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "test-project",
+            id: "33333333-3333-3333-3333-333333333333",
+            title: "Test Project"
+        )
+
+        let projectPath = workspaceURL.appendingPathComponent("test-project").path
+        let service = WorkspaceService(fileManager: fileManager)
+        let card = try service.createCard(
+            title: "Fix Bug #42!!!",
+            type: .bug,
+            status: .backlog,
+            priority: .medium,
+            tags: [],
+            body: "",
+            projectPath: projectPath
+        )
+
+        XCTAssertEqual(card.slug, "fix-bug-42")
+
+        let cardPath = workspaceURL
+            .appendingPathComponent("test-project/cards/fix-bug-42")
+        XCTAssertTrue(fileManager.fileExists(atPath: cardPath.path))
+    }
+
+    func testCreateCardSetsTimestamps() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "test-project",
+            id: "44444444-4444-4444-4444-444444444444",
+            title: "Test Project"
+        )
+
+        let projectPath = workspaceURL.appendingPathComponent("test-project").path
+        let beforeCreate = Date()
+        let service = WorkspaceService(fileManager: fileManager)
+        let card = try service.createCard(
+            title: "Timestamped Card",
+            type: .task,
+            status: .backlog,
+            priority: .medium,
+            tags: [],
+            body: "",
+            projectPath: projectPath
+        )
+        let afterCreate = Date()
+
+        XCTAssertGreaterThanOrEqual(card.created, beforeCreate)
+        XCTAssertLessThanOrEqual(card.created, afterCreate)
+        XCTAssertEqual(card.created, card.updated)
+    }
+
+    func testCreateCardWritesFrontmatterAndBody() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "test-project",
+            id: "55555555-5555-5555-5555-555555555555",
+            title: "Test Project"
+        )
+
+        let projectPath = workspaceURL.appendingPathComponent("test-project").path
+        let service = WorkspaceService(fileManager: fileManager)
+        _ = try service.createCard(
+            title: "Full Card",
+            type: .feature,
+            status: .done,
+            priority: .low,
+            tags: ["complete"],
+            body: "Card body content.",
+            projectPath: projectPath
+        )
+
+        let cardFilePath = workspaceURL
+            .appendingPathComponent("test-project/cards/full-card/card.md")
+        let content = try String(contentsOf: cardFilePath, encoding: .utf8)
+
+        let parsed = try FrontmatterParser.parse(content)
+        XCTAssertEqual(parsed.frontmatter["title"] as? String, "Full Card")
+        XCTAssertEqual(parsed.frontmatter["type"] as? String, "feature")
+        XCTAssertEqual(parsed.frontmatter["status"] as? String, "done")
+        XCTAssertEqual(parsed.frontmatter["priority"] as? String, "low")
+        XCTAssertEqual(parsed.frontmatter["tags"] as? [String], ["complete"])
+        XCTAssertEqual(parsed.body.trimmingCharacters(in: .whitespacesAndNewlines), "Card body content.")
+    }
+
+    // MARK: - updateProject() Tests
+
+    func testUpdateProject() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "update-test",
+            id: "66666666-6666-6666-6666-666666666666",
+            title: "Original Title",
+            description: "Original description",
+            tags: ["old"]
+        )
+
+        let service = WorkspaceService(fileManager: fileManager)
+
+        let updatedProject = Project(
+            id: UUID(uuidString: "66666666-6666-6666-6666-666666666666")!,
+            title: "Updated Title",
+            description: "Updated description",
+            tags: ["new", "updated"],
+            created: Date(),
+            updated: Date(),
+            slug: "update-test"
+        )
+
+        try service.updateProject(updatedProject, at: workspaceURL.path)
+
+        let projectFilePath = workspaceURL
+            .appendingPathComponent("update-test/project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+
+        XCTAssertTrue(content.contains("title: Updated Title"))
+        XCTAssertTrue(content.contains("description: Updated description"))
+        XCTAssertTrue(content.contains("new"))
+        XCTAssertTrue(content.contains("updated"))
+    }
+
+    func testUpdateProjectPreservesUnknownFields() throws {
+        try createFixtureWorkspace()
+
+        let projectDir = workspaceURL.appendingPathComponent("preserve-test")
+        try fileManager.createDirectory(at: projectDir, withIntermediateDirectories: true)
+
+        let originalContent = """
+        ---
+        id: 77777777-7777-7777-7777-777777777777
+        title: Original
+        description: Test
+        tags: []
+        created: 2026-01-01T10:00:00Z
+        updated: 2026-01-01T10:00:00Z
+        slug: preserve-test
+        custom_field: custom_value
+        another_field: 123
+        ---
+        """
+        try originalContent.write(
+            to: projectDir.appendingPathComponent("project.md"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let updatedProject = Project(
+            id: UUID(uuidString: "77777777-7777-7777-7777-777777777777")!,
+            title: "Updated",
+            description: "Changed",
+            tags: ["new"],
+            created: Date(),
+            updated: Date(),
+            slug: "preserve-test"
+        )
+
+        try service.updateProject(updatedProject, at: workspaceURL.path)
+
+        let projectFilePath = projectDir.appendingPathComponent("project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+        let parsed = try FrontmatterParser.parse(content)
+
+        XCTAssertEqual(parsed.frontmatter["title"] as? String, "Updated")
+        XCTAssertEqual(parsed.frontmatter["description"] as? String, "Changed")
+        XCTAssertEqual(parsed.frontmatter["custom_field"] as? String, "custom_value")
+        XCTAssertEqual(parsed.frontmatter["another_field"] as? Int, 123)
+    }
+
+    func testUpdateProjectUpdatesTimestamp() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "timestamp-test",
+            id: "88888888-8888-8888-8888-888888888888",
+            title: "Test",
+            created: "2026-01-01T10:00:00Z",
+            updated: "2026-01-01T10:00:00Z"
+        )
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let project = Project(
+            id: UUID(uuidString: "88888888-8888-8888-8888-888888888888")!,
+            title: "Test",
+            description: "",
+            tags: [],
+            created: ISO8601DateFormatter().date(from: "2026-01-01T10:00:00Z")!,
+            updated: Date(),
+            slug: "timestamp-test"
+        )
+
+        try service.updateProject(project, at: workspaceURL.path)
+
+        let projectFilePath = workspaceURL
+            .appendingPathComponent("timestamp-test/project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+        let parsed = try FrontmatterParser.parse(content)
+
+        let createdString = parsed.frontmatter["created"] as? String
+        let updatedString = parsed.frontmatter["updated"] as? String
+        XCTAssertNotNil(createdString)
+        XCTAssertNotNil(updatedString)
+
+        XCTAssertEqual(createdString, "2026-01-01T10:00:00Z")
+        XCTAssertNotEqual(updatedString, "2026-01-01T10:00:00Z")
+
+        let formatter = ISO8601DateFormatter()
+        let updatedDate = formatter.date(from: updatedString!)
+        XCTAssertNotNil(updatedDate)
+    }
+
+    func testUpdateProjectNotFound() throws {
+        try createFixtureWorkspace()
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let project = Project(
+            id: UUID(),
+            title: "Nonexistent",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "nonexistent"
+        )
+
+        XCTAssertThrowsError(try service.updateProject(project, at: workspaceURL.path)) { error in
+            guard let workspaceError = error as? WorkspaceService.WorkspaceError else {
+                XCTFail("Expected WorkspaceError")
+                return
+            }
+            if case .projectNotFound = workspaceError {
+                // Expected
+            } else {
+                XCTFail("Expected projectNotFound error")
+            }
+        }
+    }
+
+    // MARK: - updateCard() Tests
+
+    func testUpdateCard() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "test-project",
+            id: "99999999-9999-9999-9999-999999999999",
+            title: "Test Project"
+        )
+        try createCard(
+            projectSlug: "test-project",
+            cardSlug: "update-card",
+            id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            title: "Original Card",
+            type: "task",
+            status: "backlog",
+            priority: "medium",
+            body: "Original body."
+        )
+
+        let projectPath = workspaceURL.appendingPathComponent("test-project").path
+        let service = WorkspaceService(fileManager: fileManager)
+
+        let updatedCard = Card(
+            id: UUID(uuidString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")!,
+            title: "Updated Card",
+            type: .bug,
+            status: .done,
+            priority: .high,
+            tags: ["updated"],
+            created: Date(),
+            updated: Date(),
+            slug: "update-card",
+            body: "Updated body."
+        )
+
+        try service.updateCard(updatedCard, projectPath: projectPath)
+
+        let cardFilePath = workspaceURL
+            .appendingPathComponent("test-project/cards/update-card/card.md")
+        let content = try String(contentsOf: cardFilePath, encoding: .utf8)
+
+        XCTAssertTrue(content.contains("title: Updated Card"))
+        XCTAssertTrue(content.contains("type: bug"))
+        XCTAssertTrue(content.contains("status: done"))
+        XCTAssertTrue(content.contains("priority: high"))
+        XCTAssertTrue(content.contains("Updated body."))
+    }
+
+    func testUpdateCardPreservesUnknownFields() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "test-project",
+            id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            title: "Test Project"
+        )
+
+        let cardDir = workspaceURL
+            .appendingPathComponent("test-project/cards/preserve-card")
+        try fileManager.createDirectory(at: cardDir, withIntermediateDirectories: true)
+
+        let originalContent = """
+        ---
+        id: cccccccc-cccc-cccc-cccc-cccccccccccc
+        title: Original
+        type: task
+        status: backlog
+        priority: medium
+        tags: []
+        created: 2026-01-01T10:00:00Z
+        updated: 2026-01-01T10:00:00Z
+        slug: preserve-card
+        custom_field: custom_value
+        extra_data: 456
+        ---
+
+        Original body.
+        """
+        try originalContent.write(
+            to: cardDir.appendingPathComponent("card.md"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let projectPath = workspaceURL.appendingPathComponent("test-project").path
+        let service = WorkspaceService(fileManager: fileManager)
+
+        let updatedCard = Card(
+            id: UUID(uuidString: "cccccccc-cccc-cccc-cccc-cccccccccccc")!,
+            title: "Updated",
+            type: .feature,
+            status: .inProgress,
+            priority: .low,
+            tags: ["new"],
+            created: Date(),
+            updated: Date(),
+            slug: "preserve-card",
+            body: "Updated body."
+        )
+
+        try service.updateCard(updatedCard, projectPath: projectPath)
+
+        let cardFilePath = cardDir.appendingPathComponent("card.md")
+        let content = try String(contentsOf: cardFilePath, encoding: .utf8)
+        let parsed = try FrontmatterParser.parse(content)
+
+        XCTAssertEqual(parsed.frontmatter["title"] as? String, "Updated")
+        XCTAssertEqual(parsed.frontmatter["type"] as? String, "feature")
+        XCTAssertEqual(parsed.frontmatter["custom_field"] as? String, "custom_value")
+        XCTAssertEqual(parsed.frontmatter["extra_data"] as? Int, 456)
+        XCTAssertEqual(
+            parsed.body.trimmingCharacters(in: .whitespacesAndNewlines),
+            "Updated body."
+        )
+    }
+
+    func testUpdateCardNotFound() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "test-project",
+            id: "dddddddd-dddd-dddd-dddd-dddddddddddd",
+            title: "Test Project"
+        )
+
+        let projectPath = workspaceURL.appendingPathComponent("test-project").path
+        let service = WorkspaceService(fileManager: fileManager)
+
+        let card = Card(
+            id: UUID(),
+            title: "Nonexistent",
+            type: .task,
+            status: .backlog,
+            priority: .medium,
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "nonexistent",
+            body: ""
+        )
+
+        XCTAssertThrowsError(try service.updateCard(card, projectPath: projectPath)) { error in
+            guard let workspaceError = error as? WorkspaceService.WorkspaceError else {
+                XCTFail("Expected WorkspaceError")
+                return
+            }
+            if case .cardNotFound = workspaceError {
+                // Expected
+            } else {
+                XCTFail("Expected cardNotFound error")
+            }
+        }
+    }
+
+    // MARK: - deleteProject() Tests
+
+    func testDeleteProject() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "delete-me",
+            id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+            title: "Delete Me"
+        )
+
+        let projectPath = workspaceURL.appendingPathComponent("delete-me").path
+        XCTAssertTrue(fileManager.fileExists(atPath: projectPath))
+
+        let service = WorkspaceService(fileManager: fileManager)
+        try service.deleteProject(at: projectPath)
+
+        XCTAssertFalse(fileManager.fileExists(atPath: projectPath))
+    }
+
+    func testDeleteProjectNotFound() throws {
+        try createFixtureWorkspace()
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let nonexistentPath = workspaceURL.appendingPathComponent("nonexistent").path
+
+        XCTAssertThrowsError(try service.deleteProject(at: nonexistentPath)) { error in
+            guard let workspaceError = error as? WorkspaceService.WorkspaceError else {
+                XCTFail("Expected WorkspaceError")
+                return
+            }
+            if case .projectNotFound = workspaceError {
+                // Expected
+            } else {
+                XCTFail("Expected projectNotFound error")
+            }
+        }
+    }
+
+    // MARK: - deleteCard() Tests
+
+    func testDeleteCard() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "test-project",
+            id: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+            title: "Test Project"
+        )
+        try createCard(
+            projectSlug: "test-project",
+            cardSlug: "delete-me",
+            id: "00000000-0000-0000-0000-000000000000",
+            title: "Delete Me"
+        )
+
+        let projectPath = workspaceURL.appendingPathComponent("test-project").path
+        let cardPath = workspaceURL
+            .appendingPathComponent("test-project/cards/delete-me").path
+
+        XCTAssertTrue(fileManager.fileExists(atPath: cardPath))
+
+        let service = WorkspaceService(fileManager: fileManager)
+        try service.deleteCard(slug: "delete-me", projectPath: projectPath)
+
+        XCTAssertFalse(fileManager.fileExists(atPath: cardPath))
+    }
+
+    func testDeleteCardNotFound() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "test-project",
+            id: "11111111-1111-1111-1111-111111111111",
+            title: "Test Project"
+        )
+
+        let projectPath = workspaceURL.appendingPathComponent("test-project").path
+        let service = WorkspaceService(fileManager: fileManager)
+
+        XCTAssertThrowsError(try service.deleteCard(slug: "nonexistent", projectPath: projectPath)) { error in
+            guard let workspaceError = error as? WorkspaceService.WorkspaceError else {
+                XCTFail("Expected WorkspaceError")
+                return
+            }
+            if case .cardNotFound = workspaceError {
+                // Expected
+            } else {
+                XCTFail("Expected cardNotFound error")
+            }
+        }
+    }
 }

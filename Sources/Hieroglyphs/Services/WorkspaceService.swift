@@ -13,15 +13,30 @@ final class WorkspaceService: WorkspaceProviding {
         case configInvalid
         case invalidDirectory
         case yamlParsingFailed(Error)
+        case directoryCreationFailed(Error)
+        case fileWriteFailed(Error)
+        case projectNotFound
+        case cardNotFound
     }
 
     private let fileManager: FileManager
+    private let dateFormatter = ISO8601DateFormatter()
 
     /// Initialize with optional FileManager dependency.
     ///
     /// - Parameter fileManager: FileManager instance (defaults to .default)
     init(fileManager: FileManager = .default) {
         self.fileManager = fileManager
+    }
+
+    // MARK: - Date Formatting Helpers
+
+    private func formatDate(_ date: Date) -> String {
+        return dateFormatter.string(from: date)
+    }
+
+    private func parseDate(_ string: String) -> Date? {
+        return dateFormatter.date(from: string)
     }
 
     func loadWorkspaceConfig(from configPath: String? = nil) throws -> WorkspaceConfig {
@@ -252,5 +267,345 @@ final class WorkspaceService: WorkspaceProviding {
             slug: slug,
             body: body
         )
+    }
+
+    // MARK: - Write Operations
+
+    func createWorkspace(at path: String, configDirectory: String? = nil) throws {
+        let workspaceURL = URL(fileURLWithPath: path)
+
+        do {
+            try fileManager.createDirectory(
+                at: workspaceURL,
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
+        } catch {
+            throw WorkspaceError.directoryCreationFailed(error)
+        }
+
+        let hieroglyphsDirectory: URL
+        if let configDirectory = configDirectory {
+            hieroglyphsDirectory = URL(fileURLWithPath: configDirectory)
+        } else {
+            hieroglyphsDirectory = fileManager.homeDirectoryForCurrentUser
+                .appendingPathComponent(".hieroglyphs")
+        }
+
+        do {
+            try fileManager.createDirectory(
+                at: hieroglyphsDirectory,
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
+        } catch {
+            throw WorkspaceError.directoryCreationFailed(error)
+        }
+
+        let configURL = hieroglyphsDirectory.appendingPathComponent("config.yaml")
+        let config = WorkspaceConfig(workspacePath: path)
+
+        do {
+            let encoder = YAMLEncoder()
+            let yamlString = try encoder.encode(config)
+            try yamlString.write(to: configURL, atomically: true, encoding: .utf8)
+        } catch {
+            throw WorkspaceError.fileWriteFailed(error)
+        }
+    }
+
+    func initializeWorkspaceFiles(at workspacePath: String) throws {
+        let workspaceURL = URL(fileURLWithPath: workspacePath)
+
+        let claudeContent = """
+# CLAUDE.md
+
+This workspace is managed by Hieroglyphs, a markdown-based project management tool.
+
+## For AI Assistants
+
+- All project data lives in plain text markdown files with YAML frontmatter
+- Projects are in top-level directories with `project.md` files
+- Cards are in `cards/` subdirectories with `card.md` files
+- Edit files directly — changes are detected automatically
+- Preserve unknown frontmatter fields when updating files
+
+## Workspace Structure
+
+```
+workspace/
+  project-name/
+    project.md        # Project metadata with frontmatter
+    cards/
+      card-slug/
+        card.md       # Card metadata and content
+```
+"""
+
+        let agentContent = """
+# AGENT.md
+
+This workspace contains Hieroglyphs projects and cards.
+
+## Agent Instructions
+
+When working with this workspace:
+
+1. Read project.md files to understand project structure
+2. Read card.md files to understand tasks and content
+3. Update frontmatter fields to change metadata
+4. Add markdown content below frontmatter for card bodies
+5. Always preserve unknown frontmatter fields
+6. Use ISO8601 format for dates (YYYY-MM-DDTHH:MM:SSZ)
+
+## Frontmatter Fields
+
+**Projects:** id, title, description, tags, created, updated, slug
+
+**Cards:** id, title, type, status, priority, tags, created, updated, slug
+"""
+
+        let claudeURL = workspaceURL.appendingPathComponent("CLAUDE.md")
+        let agentURL = workspaceURL.appendingPathComponent("AGENT.md")
+
+        do {
+            try claudeContent.write(to: claudeURL, atomically: true, encoding: .utf8)
+            try agentContent.write(to: agentURL, atomically: true, encoding: .utf8)
+        } catch {
+            throw WorkspaceError.fileWriteFailed(error)
+        }
+    }
+
+    func createProject(
+        title: String,
+        description: String,
+        tags: [String],
+        at workspacePath: String
+    ) throws -> Project {
+        let slug = SlugGenerator.generateSlug(from: title)
+        let workspaceURL = URL(fileURLWithPath: workspacePath)
+        let projectURL = workspaceURL.appendingPathComponent(slug)
+
+        do {
+            try fileManager.createDirectory(
+                at: projectURL,
+                withIntermediateDirectories: false,
+                attributes: nil
+            )
+        } catch {
+            throw WorkspaceError.directoryCreationFailed(error)
+        }
+
+        let id = UUID()
+        let now = Date()
+        let created = now
+        let updated = now
+
+        let frontmatter: [String: Any] = [
+            "id": id.uuidString,
+            "title": title,
+            "description": description,
+            "tags": tags,
+            "created": formatDate(created),
+            "updated": formatDate(updated),
+            "slug": slug
+        ]
+
+        let markdown = try FrontmatterParser.serialize(
+            frontmatter: frontmatter,
+            body: ""
+        )
+
+        let projectFileURL = projectURL.appendingPathComponent("project.md")
+
+        do {
+            try markdown.write(to: projectFileURL, atomically: true, encoding: .utf8)
+        } catch {
+            throw WorkspaceError.fileWriteFailed(error)
+        }
+
+        return Project(
+            id: id,
+            title: title,
+            description: description,
+            tags: tags,
+            created: created,
+            updated: updated,
+            slug: slug
+        )
+    }
+
+    func createCard(
+        title: String,
+        type: CardType,
+        status: CardStatus,
+        priority: Priority,
+        tags: [String],
+        body: String,
+        projectPath: String
+    ) throws -> Card {
+        let slug = SlugGenerator.generateSlug(from: title)
+        let projectURL = URL(fileURLWithPath: projectPath)
+        let cardsURL = projectURL.appendingPathComponent("cards")
+
+        if !fileManager.fileExists(atPath: cardsURL.path) {
+            do {
+                try fileManager.createDirectory(
+                    at: cardsURL,
+                    withIntermediateDirectories: false,
+                    attributes: nil
+                )
+            } catch {
+                throw WorkspaceError.directoryCreationFailed(error)
+            }
+        }
+
+        let cardURL = cardsURL.appendingPathComponent(slug)
+
+        do {
+            try fileManager.createDirectory(
+                at: cardURL,
+                withIntermediateDirectories: false,
+                attributes: nil
+            )
+        } catch {
+            throw WorkspaceError.directoryCreationFailed(error)
+        }
+
+        let id = UUID()
+        let now = Date()
+        let created = now
+        let updated = now
+
+        let frontmatter: [String: Any] = [
+            "id": id.uuidString,
+            "title": title,
+            "type": type.rawValue,
+            "status": status.rawValue,
+            "priority": priority.rawValue,
+            "tags": tags,
+            "created": formatDate(created),
+            "updated": formatDate(updated),
+            "slug": slug
+        ]
+
+        let markdown = try FrontmatterParser.serialize(
+            frontmatter: frontmatter,
+            body: body
+        )
+
+        let cardFileURL = cardURL.appendingPathComponent("card.md")
+
+        do {
+            try markdown.write(to: cardFileURL, atomically: true, encoding: .utf8)
+        } catch {
+            throw WorkspaceError.fileWriteFailed(error)
+        }
+
+        return Card(
+            id: id,
+            title: title,
+            type: type,
+            status: status,
+            priority: priority,
+            tags: tags,
+            created: created,
+            updated: updated,
+            slug: slug,
+            body: body
+        )
+    }
+
+    func updateProject(_ project: Project, at workspacePath: String) throws {
+        let workspaceURL = URL(fileURLWithPath: workspacePath)
+        let projectURL = workspaceURL.appendingPathComponent(project.slug)
+        let projectFileURL = projectURL.appendingPathComponent("project.md")
+
+        guard fileManager.fileExists(atPath: projectFileURL.path) else {
+            throw WorkspaceError.projectNotFound
+        }
+
+        let existingMarkdown = try String(contentsOf: projectFileURL, encoding: .utf8)
+        let parsed = try FrontmatterParser.parse(existingMarkdown)
+        var frontmatter = parsed.frontmatter
+
+        frontmatter["id"] = project.id.uuidString
+        frontmatter["title"] = project.title
+        frontmatter["description"] = project.description
+        frontmatter["tags"] = project.tags
+        frontmatter["created"] = formatDate(project.created)
+        frontmatter["updated"] = formatDate(Date())
+        frontmatter["slug"] = project.slug
+
+        let markdown = try FrontmatterParser.serialize(
+            frontmatter: frontmatter,
+            body: parsed.body
+        )
+
+        do {
+            try markdown.write(to: projectFileURL, atomically: true, encoding: .utf8)
+        } catch {
+            throw WorkspaceError.fileWriteFailed(error)
+        }
+    }
+
+    func updateCard(_ card: Card, projectPath: String) throws {
+        let projectURL = URL(fileURLWithPath: projectPath)
+        let cardsURL = projectURL.appendingPathComponent("cards")
+        let cardURL = cardsURL.appendingPathComponent(card.slug)
+        let cardFileURL = cardURL.appendingPathComponent("card.md")
+
+        guard fileManager.fileExists(atPath: cardFileURL.path) else {
+            throw WorkspaceError.cardNotFound
+        }
+
+        let existingMarkdown = try String(contentsOf: cardFileURL, encoding: .utf8)
+        let parsed = try FrontmatterParser.parse(existingMarkdown)
+        var frontmatter = parsed.frontmatter
+
+        frontmatter["id"] = card.id.uuidString
+        frontmatter["title"] = card.title
+        frontmatter["type"] = card.type.rawValue
+        frontmatter["status"] = card.status.rawValue
+        frontmatter["priority"] = card.priority.rawValue
+        frontmatter["tags"] = card.tags
+        frontmatter["created"] = formatDate(card.created)
+        frontmatter["updated"] = formatDate(Date())
+        frontmatter["slug"] = card.slug
+
+        let markdown = try FrontmatterParser.serialize(
+            frontmatter: frontmatter,
+            body: card.body
+        )
+
+        do {
+            try markdown.write(to: cardFileURL, atomically: true, encoding: .utf8)
+        } catch {
+            throw WorkspaceError.fileWriteFailed(error)
+        }
+    }
+
+    func deleteProject(at projectPath: String) throws {
+        let projectURL = URL(fileURLWithPath: projectPath)
+
+        guard fileManager.fileExists(atPath: projectURL.path) else {
+            throw WorkspaceError.projectNotFound
+        }
+
+        var resultingURL: NSURL?
+        try fileManager.trashItem(at: projectURL, resultingItemURL: &resultingURL)
+    }
+
+    func deleteCard(slug: String, projectPath: String) throws {
+        let projectURL = URL(fileURLWithPath: projectPath)
+        let cardsURL = projectURL.appendingPathComponent("cards")
+        let cardURL = cardsURL.appendingPathComponent(slug)
+
+        guard fileManager.fileExists(atPath: cardURL.path) else {
+            throw WorkspaceError.cardNotFound
+        }
+
+        var resultingURL: NSURL?
+        try fileManager.trashItem(at: cardURL, resultingItemURL: &resultingURL)
     }
 }
