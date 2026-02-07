@@ -159,4 +159,27 @@ final class HieroglyphsVM {
             print("Failed to create card: \(error)")
         }
     }
+
+    /// Updates an existing card and reloads the card list.
+    ///
+    /// - Parameter card: The card to update
+    func updateCard(_ card: Card) {
+        guard let selectedProject else {
+            print("Cannot update card: no project selected")
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot update card: workspace path is nil")
+            return
+        }
+
+        do {
+            let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+            try workspaceService.updateCard(card, projectPath: projectPath)
+            loadCards()
+        } catch {
+            print("Failed to update card: \(error)")
+        }
+    }
 }

@@ -9,7 +9,7 @@ struct MainWindow: View {
         } content: {
             CardList()
         } detail: {
-            Text("Detail")
+            CardDetail()
         }
     }
 }

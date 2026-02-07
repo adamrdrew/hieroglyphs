@@ -257,6 +257,96 @@ final class HieroglyphsVMTests: XCTestCase {
 
         XCTAssertEqual(viewModel.cards.count, initialCount)
     }
+
+    // MARK: - updateCard() Tests
+
+    @MainActor
+    func testUpdateCardSuccess() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnLoadProjects = false
+        mockService.shouldThrowOnLoadCards = false
+        mockService.shouldThrowOnUpdateCard = false
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+        viewModel.selectProject(viewModel.projects.first)
+
+        viewModel.loadCards()
+        XCTAssertFalse(viewModel.cards.isEmpty)
+
+        let cardToUpdate = viewModel.cards[0]
+        let updatedCard = Card(
+            id: cardToUpdate.id,
+            title: "Updated Title",
+            type: cardToUpdate.type,
+            status: cardToUpdate.status,
+            priority: cardToUpdate.priority,
+            tags: cardToUpdate.tags,
+            created: cardToUpdate.created,
+            updated: Date(),
+            slug: cardToUpdate.slug,
+            body: cardToUpdate.body
+        )
+
+        viewModel.updateCard(updatedCard)
+
+        XCTAssertTrue(mockService.updateCardWasCalled)
+        XCTAssertEqual(mockService.lastUpdatedCard?.title, "Updated Title")
+    }
+
+    @MainActor
+    func testUpdateCardWithNilWorkspacePath() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        XCTAssertNil(viewModel.workspacePath)
+
+        let card = Card(
+            id: UUID(),
+            title: "Test Card",
+            type: .task,
+            status: .todo,
+            priority: .medium,
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-card",
+            body: ""
+        )
+
+        viewModel.updateCard(card)
+
+        XCTAssertFalse(mockService.updateCardWasCalled)
+    }
+
+    @MainActor
+    func testUpdateCardWithNilSelectedProject() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnLoadConfig = false
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+
+        XCTAssertNotNil(viewModel.workspacePath)
+        XCTAssertNil(viewModel.selectedProject)
+
+        let card = Card(
+            id: UUID(),
+            title: "Test Card",
+            type: .task,
+            status: .todo,
+            priority: .medium,
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-card",
+            body: ""
+        )
+
+        viewModel.updateCard(card)
+
+        XCTAssertFalse(mockService.updateCardWasCalled)
+    }
 }
 
 // MARK: - Mock Workspace Service
@@ -267,6 +357,10 @@ final class MockWorkspaceService: WorkspaceProviding {
     var shouldThrowOnLoadCards = false
     var shouldThrowOnCreateProject = false
     var shouldThrowOnCreateCard = false
+    var shouldThrowOnUpdateCard = false
+
+    var updateCardWasCalled = false
+    var lastUpdatedCard: Card?
 
     private var mockProjects: [Project] = []
     private var mockCards: [Card] = []
@@ -407,7 +501,12 @@ final class MockWorkspaceService: WorkspaceProviding {
     }
 
     func updateCard(_ card: Card, projectPath: String) throws {
-        // Not used in these tests
+        if shouldThrowOnUpdateCard {
+            throw WorkspaceService.WorkspaceError.cardNotFound
+        }
+
+        updateCardWasCalled = true
+        lastUpdatedCard = card
     }
 
     func deleteProject(at projectPath: String) throws {

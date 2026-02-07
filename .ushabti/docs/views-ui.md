@@ -704,14 +704,259 @@ if viewModel.projects.isEmpty {
 }
 ```
 
+## CardDetail
+
+**File:** `Sources/Hieroglyphs/Views/CardDetail/CardDetail.swift`
+
+**Purpose:** Display and edit selected card metadata and markdown body in the detail column.
+
+**Structure:**
+
+```swift
+struct CardDetail: View {
+    @Environment(HieroglyphsVM.self) private var viewModel
+    @State private var editableCard: Card?
+
+    var body: some View {
+        Group {
+            if let editableCard {
+                VStack(spacing: 0) {
+                    CardMetadataEditor(card: editableCardBinding, onUpdate: saveCard)
+                        .frame(height: 300)
+                    Divider()
+                    CardBodyEditor(content: bodyBinding, onUpdate: saveCard)
+                }
+                .navigationTitle(editableCard.title)
+            } else {
+                ContentUnavailableView(
+                    "No Card Selected",
+                    systemImage: "note.text",
+                    description: Text("Select a card from the list to view and edit it.")
+                )
+            }
+        }
+    }
+}
+```
+
+**Key Features:**
+
+1. **Empty State:** Shows `ContentUnavailableView` when `selectedCard` is nil
+2. **Two-Section Layout:** CardMetadataEditor (fixed 300pt height) at top, CardBodyEditor (fills remaining space) below
+3. **Local Edit State:** `editableCard` syncs with `viewModel.selectedCard` but allows local edits before saving
+4. **Auto-Save:** All field changes call `viewModel.updateCard()` immediately via `onUpdate` callback
+5. **Navigation Title:** Shows card title in detail column navigation bar
+
+**Behavior:**
+
+- When user selects a card in CardList, `editableCard` is set from `viewModel.selectedCard`
+- User edits metadata fields or markdown body
+- Each edit triggers `saveCard()` which calls `viewModel.updateCard(editableCard)`
+- ViewModel writes card to disk via WorkspaceService and reloads card list
+- Changes persist immediately (no explicit Save button required)
+
+**Notes:**
+
+- Immediate writes on every field change (no debouncing in v1; future optimization may add batching)
+- Empty state follows TakeNote patterns (ContentUnavailableView with icon and description)
+- Navigation title updates when card title is edited
+
+## CardMetadataEditor
+
+**File:** `Sources/Hieroglyphs/Views/CardDetail/CardMetadataEditor.swift`
+
+**Purpose:** Display and edit card frontmatter fields (title, type, status, priority, tags).
+
+**Structure:**
+
+```swift
+struct CardMetadataEditor: View {
+    @Binding var card: Card
+    let onUpdate: () -> Void
+    @State private var newTag = ""
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Title", text: titleBinding)
+            }
+            Section("Details") {
+                Picker("Type", selection: typeBinding) { /* ... */ }.pickerStyle(.menu)
+                Picker("Status", selection: statusBinding) { /* ... */ }.pickerStyle(.menu)
+                Picker("Priority", selection: priorityBinding) { /* ... */ }.pickerStyle(.menu)
+            }
+            Section("Tags") {
+                FlowLayout { ForEach(card.tags) { TagChipView(...) } }
+                HStack { TextField("Add tag", ...) + Button(...) }
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+```
+
+**Key Features:**
+
+1. **Title Field:** Plain TextField bound to card title
+2. **Type Picker:** Menu picker with all CardType cases (task, bug, feature, note)
+3. **Status Picker:** Menu picker with all CardStatus cases (backlog, todo, in-progress, done, archived)
+4. **Priority Picker:** Menu picker with all Priority cases (low, medium, high, critical)
+5. **Tag Chips:** FlowLayout displays tags as TagChipView chips with delete buttons
+6. **Add Tag:** TextField with submit-on-Enter and Plus button to add new tags
+7. **Label Formatting:** Enum raw values formatted for display (hyphens → spaces, capitalized)
+
+**Field Bindings:**
+
+Each field uses a custom Binding that:
+1. Gets the current card property value
+2. Sets by creating a new Card with the updated property
+3. Calls `onUpdate()` callback after each change
+
+**Tag Editing:**
+
+- `addTag()`: Validates input, checks for duplicates, appends to card.tags array
+- `removeTag()`: Filters tag from card.tags array
+- Both operations create new Card instance and call `onUpdate()`
+
+**FlowLayout:**
+
+Custom Layout implementation that wraps tag chips horizontally and creates new rows as needed. Follows SwiftUI Layout protocol.
+
+**Notes:**
+
+- Card is immutable (struct), so all edits create new Card instances
+- `onUpdate()` called after every field change to trigger immediate save
+- Tags support Enter key and button click for adding
+- Duplicate tag check prevents adding same tag twice
+
+## CardBodyEditor
+
+**File:** `Sources/Hieroglyphs/Views/CardDetail/CardBodyEditor.swift`
+
+**Purpose:** Edit card markdown body using click-to-edit pattern from TakeNote.
+
+**Structure:**
+
+```swift
+struct CardBodyEditor: View {
+    @Binding var content: String
+    let onUpdate: () -> Void
+    @State private var showPreview = true
+    @State private var position = CodeEditor.Position()
+    @State private var messages: Set<TextLocated<Message>> = []
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                if showPreview {
+                    previewMode  // ScrollView with Markdown()
+                } else {
+                    editMode     // CodeEditor with .markdown() language
+                }
+            }
+        }
+    }
+}
+```
+
+**Key Features:**
+
+1. **Preview Mode (Default):**
+   - ScrollView with `Markdown()` rendered view
+   - Tap anywhere to enter edit mode
+   - Uses swift-markdown-ui for rendering
+
+2. **Edit Mode:**
+   - CodeEditor with markdown syntax highlighting
+   - Uses MarkdownConfiguration.markdown() from TakeNote
+   - Escape key returns to preview mode (`.onExitCommand`)
+   - No minimap, text wrapping enabled
+
+3. **Syntax Highlighting:**
+   - Headings, emphasis, code blocks, lists, links highlighted
+   - Uses LanguageConfiguration.markdown() static method
+   - Configuration copied from TakeNote
+
+4. **Auto-Save:**
+   - `contentBinding` calls `onUpdate()` when text changes
+   - Changes write to disk immediately via ViewModel
+
+**Preview Mode Details:**
+
+- ScrollView for long content support
+- Padding for comfortable reading
+- Full-width alignment (`.leading`)
+- Tap gesture toggles `showPreview` state
+
+**Edit Mode Details:**
+
+- CodeEditor requires `position` and `messages` bindings (unused but required by API)
+- Layout configured via environment value (no minimap, wrap text)
+- Escape key (macOS-only via `.onExitCommand`) returns to preview
+
+**Notes:**
+
+- Pattern copied directly from TakeNote's NoteEditor (lines 224-296)
+- Preview/edit toggle is local state (not persisted)
+- GeometryReader ensures proper sizing within parent VStack
+- Uses environment value for CodeEditor layout configuration (non-deprecated API)
+
+## TagChipView
+
+**File:** `Sources/Hieroglyphs/Views/Shared/TagChipView.swift`
+
+**Purpose:** Display a single tag as a chip with delete button.
+
+**Structure:**
+
+```swift
+struct TagChipView: View {
+    let tag: String
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(tag).font(.caption)
+            Button { onDelete() } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(.secondary.opacity(0.2))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+```
+
+**Key Features:**
+
+1. **Pill Shape:** Rounded rectangle with 8pt corner radius
+2. **Secondary Color:** Background uses `.secondary.opacity(0.2)` for subtle appearance
+3. **Delete Button:** SF Symbol `xmark.circle.fill` with secondary color
+4. **Compact Layout:** Caption font, minimal spacing (4pt horizontal, 8pt/4pt padding)
+5. **Plain Button Style:** No hover effects, clean appearance
+
+**Usage:**
+
+Used in `CardMetadataEditor` within a `FlowLayout` to display all card tags. Each chip is independently deletable via `onDelete` callback.
+
+**Notes:**
+
+- Small, focused component following Sandi Metz principles
+- Reusable across any tag display context
+- Visual style matches TakeNote patterns (rounded, secondary color)
+
 ## Future View Components
 
 **Planned components not yet implemented:**
 
-1. **CardDetail (Detail Column):** Card editor with CodeEditorView and Markdown preview (Phase 7)
-2. **ProjectSettingsSheet:** Form for editing project metadata
-3. **WorkspaceOnboardingView:** Onboarding flow for creating initial workspace
-4. **Filter/Sort Toolbar Integration:** Integrate CardFilterBar and CardSortPopover into CardList toolbar
+1. **ProjectSettingsSheet:** Form for editing project metadata
+2. **WorkspaceOnboardingView:** Onboarding flow for creating initial workspace
+3. **Filter/Sort Toolbar Integration:** Integrate CardFilterBar and CardSortPopover into CardList toolbar
 
 ## View Testing Strategy
 

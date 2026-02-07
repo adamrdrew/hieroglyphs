@@ -252,6 +252,52 @@ viewModel.createCard(
 - Reloads entire card list after creation (inefficient but simple; future optimization may add new card to list directly)
 - If workspace path or selected project is nil, operation fails silently (logs error)
 
+### updateCard(_:)
+
+**Signature:** `func updateCard(_ card: Card)`
+
+**Purpose:** Update an existing card and reload the card list.
+
+**Parameters:**
+- `card` — The card to update (with modified fields)
+
+**Behavior:**
+
+1. Guard check `selectedProject` is not nil (log error and return if nil)
+2. Guard check `workspacePath` is not nil (log error and return if nil)
+3. Construct project path from workspace path and selected project slug
+4. Call `workspaceService.updateCard(card, projectPath: projectPath)` to write changes to disk
+5. Call `loadCards()` to reload card list (reflects updated card)
+6. If any step throws, catch error and log to console
+
+**Error Handling:**
+
+Errors are logged to console via `print()`. Card is not updated on error. Card list is not reloaded.
+
+**Example error output:**
+```
+Cannot update card: no project selected
+Cannot update card: workspace path is nil
+Failed to update card: cardNotFound
+```
+
+**Usage:**
+
+Called from `CardDetail` on every field change:
+
+```swift
+func saveCard() {
+    guard let editableCard else { return }
+    viewModel.updateCard(editableCard)
+}
+```
+
+**Notes:**
+- Immediate writes on every field change (no debouncing in v1)
+- Reloads entire card list after update (inefficient but simple; future optimization may update card in place)
+- If workspace path or selected project is nil, operation fails silently (logs error)
+- WorkspaceService preserves unknown frontmatter fields per L02
+
 ## Lifecycle and Initialization
 
 **App.swift:**
@@ -415,10 +461,14 @@ class MockWorkspaceService: WorkspaceProviding {
 10. **createCard success:** Mock succeeds, verify ViewModel reloads cards
 11. **createCard with nil selectedProject:** Verify operation fails gracefully
 12. **createCard error:** Mock throws error, verify cards is not updated
+13. **updateCard success:** Mock service succeeds, verify ViewModel calls service and reloads cards
+14. **updateCard with nil workspacePath:** Verify operation fails gracefully
+15. **updateCard with nil selectedProject:** Verify operation fails gracefully
 
 **Notes:**
 - Tests verify coordination logic, not I/O (I/O tested in WorkspaceServiceTests)
 - Tests use `@MainActor` to match ViewModel's main-thread isolation
+- MockWorkspaceService tracks updateCard calls and last updated card for verification
 
 ## Future Enhancements
 
@@ -429,9 +479,9 @@ class MockWorkspaceService: WorkspaceProviding {
 3. **Slug collision detection:** Check for existing projects/cards with same slug before creating
 4. **Project editing:** Add `updateProject(_:)` method to ViewModel
 5. **Project deletion:** Add `deleteProject(_:)` method to ViewModel
-6. **Card editing:** Add `updateCard(_:)` method to ViewModel (Phase 7)
-7. **Card deletion:** Add `deleteCard(_:)` method to ViewModel
-8. **File watching:** Add `reloadWorkspace()` method triggered by FSEvents
-9. **Selection persistence:** Persist selectedProject and selectedCard to UserDefaults and restore on launch
-10. **Optimistic updates:** Add new project/card to list immediately without reloading (with rollback on error)
-11. **Filter persistence:** Persist filter/sort state to UserDefaults
+6. **Card deletion:** Add `deleteCard(_:)` method to ViewModel
+7. **File watching:** Add `reloadWorkspace()` method triggered by FSEvents
+8. **Selection persistence:** Persist selectedProject and selectedCard to UserDefaults and restore on launch
+9. **Optimistic updates:** Add new project/card to list immediately without reloading (with rollback on error)
+10. **Filter persistence:** Persist filter/sort state to UserDefaults
+11. **Debounced updates:** Add debouncing for updateCard() to reduce write frequency

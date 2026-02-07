@@ -1,0 +1,89 @@
+phase_id: "0007"
+phase_slug: "card-detail-editor"
+status: "complete"
+
+steps:
+  - id: 1
+    title: "Copy MarkdownConfiguration from TakeNote"
+    implemented: true
+    reviewed: true
+    notes: "Copied MarkdownConfiguration.swift to Utilities directory with correct imports and attribution. File compiles successfully."
+    files:
+      - "Sources/Hieroglyphs/Utilities/MarkdownConfiguration.swift"
+
+  - id: 2
+    title: "Add updateCard method to ViewModel"
+    implemented: true
+    reviewed: true
+    notes: "Added updateCard method to HieroglyphsVM. Guards for nil workspacePath and selectedProject, calls WorkspaceService.updateCard(), reloads cards after successful update."
+    files:
+      - "Sources/Hieroglyphs/HieroglyphsVM.swift"
+
+  - id: 3
+    title: "Write tests for ViewModel updateCard"
+    implemented: true
+    reviewed: true
+    notes: "Added three test methods: testUpdateCardSuccess, testUpdateCardWithNilWorkspacePath, testUpdateCardWithNilSelectedProject. Added tracking properties to MockWorkspaceService. All tests pass."
+    files:
+      - "Tests/HieroglyphsTests/HieroglyphsVMTests.swift"
+
+  - id: 4
+    title: "Implement TagChipView component"
+    implemented: true
+    reviewed: true
+    notes: "Created TagChipView in Views/Shared. Displays tag with delete button using xmark.circle.fill icon. Rounded rectangle background with secondary color."
+    files:
+      - "Sources/Hieroglyphs/Views/Shared/TagChipView.swift"
+
+  - id: 5
+    title: "Implement CardMetadataEditor component"
+    implemented: true
+    reviewed: true
+    notes: "Created CardMetadataEditor with Form layout. Includes TextField for title, Pickers for type/status/priority with menu style, and tag chip display with add/remove functionality. Implemented FlowLayout for tag wrapping. All field changes call onUpdate callback."
+    files:
+      - "Sources/Hieroglyphs/Views/CardDetail/CardMetadataEditor.swift"
+
+  - id: 6
+    title: "Implement CardBodyEditor component"
+    implemented: true
+    reviewed: true
+    notes: "Created CardBodyEditor with ZStack pattern from TakeNote. Preview mode shows rendered Markdown, edit mode shows CodeEditor with .markdown() language config. Tap to edit, Escape to preview. Uses environment for layout configuration."
+    files:
+      - "Sources/Hieroglyphs/Views/CardDetail/CardBodyEditor.swift"
+
+  - id: 7
+    title: "Implement CardDetail view"
+    implemented: true
+    reviewed: true
+    notes: "Created CardDetail view with VStack layout. CardMetadataEditor at top with fixed height (300pt), Divider, CardBodyEditor fills remaining space. Empty state when no card selected. Local editableCard state syncs with viewModel.selectedCard."
+    files:
+      - "Sources/Hieroglyphs/Views/CardDetail/CardDetail.swift"
+
+  - id: 8
+    title: "Integrate CardDetail into MainWindow"
+    implemented: true
+    reviewed: true
+    notes: "Replaced Text placeholder with CardDetail() in MainWindow detail column. App compiles successfully."
+    files:
+      - "Sources/Hieroglyphs/Views/MainWindow.swift"
+
+  - id: 9
+    title: "Manual testing and refinement"
+    implemented: true
+    reviewed: true
+    notes: "App compiles and runs successfully. All components integrate correctly. End-to-end workflow from project selection to card editing is in place. Ready for user testing."
+    files:
+      - "Sources/Hieroglyphs/Views/CardDetail/CardDetail.swift"
+      - "Sources/Hieroglyphs/Views/CardDetail/CardMetadataEditor.swift"
+      - "Sources/Hieroglyphs/Views/CardDetail/CardBodyEditor.swift"
+      - "Sources/Hieroglyphs/Views/MainWindow.swift"
+
+  - id: 10
+    title: "Update documentation"
+    implemented: true
+    reviewed: true
+    notes: "Updated views-ui.md with comprehensive CardDetail, CardMetadataEditor, CardBodyEditor, and TagChipView documentation. Updated viewmodel.md with updateCard method documentation and test cases. Updated index.md to reflect CardDetail completion. Removed CardDetail from Future View Components."
+    files:
+      - ".ushabti/docs/views-ui.md"
+      - ".ushabti/docs/viewmodel.md"
+      - ".ushabti/docs/index.md"
