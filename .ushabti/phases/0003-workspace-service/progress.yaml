@@ -1,0 +1,136 @@
+phase:
+  id: "0003"
+  slug: workspace-service
+  title: "Workspace Service (Read)"
+  status: complete
+
+steps:
+  - id: S001
+    title: "Define WorkspaceProviding Protocol"
+    implemented: true
+    reviewed: true
+    notes: "Protocol defined with three methods and documentation"
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceProviding.swift
+
+  - id: S002
+    title: "Create WorkspaceService Implementation Scaffold"
+    implemented: true
+    reviewed: true
+    notes: "Scaffold created with FileManager dependency and stubbed methods"
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S003
+    title: "Implement loadWorkspaceConfig()"
+    implemented: true
+    reviewed: true
+    notes: "Reads and parses config from ~/.hieroglyphs/config.yaml using YAMLDecoder"
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S004
+    title: "Implement loadProjects() - Directory Scanning"
+    implemented: true
+    reviewed: true
+    notes: "Scans workspace for directories containing project.md"
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S005
+    title: "Implement loadProjects() - File Parsing"
+    implemented: true
+    reviewed: true
+    notes: "Parses project.md using FrontmatterParser, maps to Project model, handles dates and slug extraction"
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S006
+    title: "Implement loadCards() - Directory Scanning"
+    implemented: true
+    reviewed: true
+    notes: "Scans cards/ subdirectory for directories containing card.md"
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S007
+    title: "Implement loadCards() - File Parsing"
+    implemented: true
+    reviewed: true
+    notes: "Parses card.md using FrontmatterParser, maps to Card model with enums, dates, and body"
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S008
+    title: "Add Error Handling and Logging"
+    implemented: true
+    reviewed: true
+    notes: "Error types defined, logging added for parse failures, service handles malformed input gracefully"
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S009
+    title: "Create Test Fixture Workspace Structure"
+    implemented: true
+    reviewed: true
+    notes: "Test helpers created for building fixture workspaces on disk"
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S010
+    title: "Test loadWorkspaceConfig()"
+    implemented: true
+    reviewed: true
+    notes: "Tests for config loading success and missing file error"
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+      - Sources/Hieroglyphs/Services/WorkspaceProviding.swift
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S011
+    title: "Test loadProjects() - Discovery"
+    implemented: true
+    reviewed: true
+    notes: "Tests for project discovery with multiple projects and empty workspace"
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S012
+    title: "Test loadProjects() - Parsing"
+    implemented: true
+    reviewed: true
+    notes: "Tests for project parsing with all fields and malformed file handling"
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S013
+    title: "Test loadCards() - Discovery"
+    implemented: true
+    reviewed: true
+    notes: "Tests for card discovery with multiple cards and missing cards directory"
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S014
+    title: "Test loadCards() - Parsing"
+    implemented: true
+    reviewed: true
+    notes: "Tests for card parsing with all fields including enums, body, and malformed handling"
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S015
+    title: "Test Error Handling and Edge Cases"
+    implemented: true
+    reviewed: true
+    notes: "Tests for invalid directories, invalid YAML, missing fields, and invalid enum values"
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S016
+    title: "Verify All Tests Pass"
+    implemented: true
+    reviewed: true
+    notes: "All 55 tests pass, build completes with zero errors and zero warnings"
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
