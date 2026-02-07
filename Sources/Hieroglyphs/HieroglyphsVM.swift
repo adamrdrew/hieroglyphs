@@ -25,10 +25,16 @@ final class HieroglyphsVM {
 
     private let workspaceService: WorkspaceProviding
     private let fileWatcher: FileWatching?
+    private let tagReconciler: TagReconciling?
 
-    init(workspaceService: WorkspaceProviding, fileWatcher: FileWatching? = nil) {
+    init(
+        workspaceService: WorkspaceProviding,
+        fileWatcher: FileWatching? = nil,
+        tagReconciler: TagReconciling? = nil
+    ) {
         self.workspaceService = workspaceService
         self.fileWatcher = fileWatcher
+        self.tagReconciler = tagReconciler
     }
 
     /// Loads workspace configuration and projects.
@@ -213,11 +219,13 @@ final class HieroglyphsVM {
 
         if path.contains("/project.md") {
             loadProjects()
+            reconcileProjectTags(at: path)
         } else if path.contains("/cards/") || path.contains("/card.md") {
             if let selectedProject,
                path.contains("/\(selectedProject.slug)/") {
                 loadCards()
             }
+            reconcileCardTags(at: path)
         }
     }
 
@@ -232,5 +240,72 @@ final class HieroglyphsVM {
         } catch {
             print("Failed to reload projects: \(error)")
         }
+    }
+
+    private func reconcileProjectTags(at path: String) {
+        guard let tagReconciler else { return }
+
+        do {
+            let project = try extractProjectFromPath(path)
+            tagReconciler.reconcileTags(for: project.tags, at: path)
+        } catch {
+            print("Failed to reconcile project tags: \(error)")
+        }
+    }
+
+    private func reconcileCardTags(at path: String) {
+        guard let tagReconciler else { return }
+
+        do {
+            let card = try extractCardFromPath(path)
+            tagReconciler.reconcileTags(for: card.tags, at: path)
+        } catch {
+            print("Failed to reconcile card tags: \(error)")
+        }
+    }
+
+    private func extractProjectFromPath(_ path: String) throws -> Project {
+        guard let workspacePath else {
+            throw NSError(
+                domain: "HieroglyphsVM",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Workspace path is nil"]
+            )
+        }
+
+        let allProjects = try workspaceService.loadProjects(from: workspacePath)
+        guard let project = allProjects.first(where: { path.contains("/\($0.slug)/") }) else {
+            throw NSError(
+                domain: "HieroglyphsVM",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Project not found for path"]
+            )
+        }
+
+        return project
+    }
+
+    private func extractCardFromPath(_ path: String) throws -> Card {
+        guard let workspacePath else {
+            throw NSError(
+                domain: "HieroglyphsVM",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Workspace path is nil"]
+            )
+        }
+
+        let project = try extractProjectFromPath(path)
+        let projectPath = "\(workspacePath)/\(project.slug)"
+        let allCards = try workspaceService.loadCards(from: projectPath, for: project)
+
+        guard let card = allCards.first(where: { path.contains("/\($0.slug)/") }) else {
+            throw NSError(
+                domain: "HieroglyphsVM",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "Card not found for path"]
+            )
+        }
+
+        return card
     }
 }

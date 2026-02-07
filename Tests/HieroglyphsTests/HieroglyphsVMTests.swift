@@ -475,6 +475,89 @@ final class HieroglyphsVMTests: XCTestCase {
 
         XCTAssertEqual(viewModel.cards.count, initialCardCount)
     }
+
+    // MARK: - Tag Reconciliation Tests
+
+    @MainActor
+    func testProjectChangeTriggersTagReconciliation() {
+        let mockService = MockWorkspaceService()
+        let mockWatcher = MockFileWatcher()
+        let mockReconciler = MockTagReconciler()
+        mockService.shouldThrowOnLoadConfig = false
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockService,
+            fileWatcher: mockWatcher,
+            tagReconciler: mockReconciler
+        )
+        viewModel.loadWorkspace()
+
+        let projectURL = URL(
+            fileURLWithPath: "/mock/workspace/mock-project-1/project.md"
+        )
+        mockWatcher.simulateChange(url: projectURL)
+
+        XCTAssertTrue(mockReconciler.reconcileTagsCalled)
+        XCTAssertEqual(
+            mockReconciler.lastPath,
+            "/mock/workspace/mock-project-1/project.md"
+        )
+    }
+
+    @MainActor
+    func testCardChangeTriggersTagReconciliation() {
+        let mockService = MockWorkspaceService()
+        let mockWatcher = MockFileWatcher()
+        let mockReconciler = MockTagReconciler()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnLoadCards = false
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockService,
+            fileWatcher: mockWatcher,
+            tagReconciler: mockReconciler
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectProject(viewModel.projects.first)
+        viewModel.loadCards()
+
+        guard let selectedProject = viewModel.selectedProject else {
+            XCTFail("No project selected")
+            return
+        }
+
+        let cardURL = URL(
+            fileURLWithPath: "/mock/workspace/\(selectedProject.slug)/cards/mock-card-1/card.md"
+        )
+        mockWatcher.simulateChange(url: cardURL)
+
+        XCTAssertTrue(mockReconciler.reconcileTagsCalled)
+        XCTAssertTrue(
+            mockReconciler.lastPath?.contains("card.md") ?? false
+        )
+    }
+
+    @MainActor
+    func testTagReconciliationNotCalledWhenReconcilerNil() {
+        let mockService = MockWorkspaceService()
+        let mockWatcher = MockFileWatcher()
+        mockService.shouldThrowOnLoadConfig = false
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockService,
+            fileWatcher: mockWatcher,
+            tagReconciler: nil
+        )
+        viewModel.loadWorkspace()
+
+        let projectURL = URL(
+            fileURLWithPath: "/mock/workspace/mock-project-1/project.md"
+        )
+        mockWatcher.simulateChange(url: projectURL)
+
+        // Should not crash when reconciler is nil
+        XCTAssertEqual(viewModel.projects.count, 2)
+    }
 }
 
 // MARK: - Mock Workspace Service
@@ -667,5 +750,19 @@ final class MockFileWatcher: FileWatching {
 
     func simulateChange(url: URL) {
         onChange?(url)
+    }
+}
+
+// MARK: - Mock Tag Reconciler
+
+final class MockTagReconciler: TagReconciling {
+    var reconcileTagsCalled = false
+    var lastTags: [String]?
+    var lastPath: String?
+
+    func reconcileTags(for tags: [String], at path: String) {
+        reconcileTagsCalled = true
+        lastTags = tags
+        lastPath = path
     }
 }

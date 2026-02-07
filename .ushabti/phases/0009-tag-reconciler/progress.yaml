@@ -1,0 +1,77 @@
+phase:
+  id: 0009
+  slug: tag-reconciler
+  title: Tag Reconciler
+  status: complete
+
+steps:
+  - id: S001
+    title: Define TagReconciling Protocol
+    implemented: true
+    reviewed: true
+    notes: "Protocol defined following FileWatching and WorkspaceProviding patterns"
+    touched:
+      - Sources/Hieroglyphs/Services/TagReconciling.swift
+
+  - id: S002
+    title: Implement TagReconcilerService
+    implemented: true
+    reviewed: true
+    notes: "Service implemented with plist generation, XML escaping, and xattr command execution. Methods kept small per style guide."
+    touched:
+      - Sources/Hieroglyphs/Services/TagReconcilerService.swift
+
+  - id: S003
+    title: Create Environment Key
+    implemented: true
+    reviewed: true
+    notes: "Environment key created following same pattern as WorkspaceServiceEnvironmentKey and FileWatcherServiceEnvironmentKey"
+    touched:
+      - Sources/Hieroglyphs/Services/TagReconcilerServiceEnvironmentKey.swift
+
+  - id: S004
+    title: Integrate with FileWatcherService
+    implemented: true
+    reviewed: true
+    notes: "HieroglyphsVM updated to inject tagReconciler, trigger reconciliation on file changes, and extract project/card from paths for tag lookup"
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S005
+    title: Inject Service in App
+    implemented: true
+    reviewed: true
+    notes: "TagReconcilerService instantiated in App.swift and injected via environment, following same pattern as workspace and file watcher services"
+    touched:
+      - Sources/Hieroglyphs/App.swift
+
+  - id: S006
+    title: Write TagReconcilerService Tests
+    implemented: true
+    reviewed: true
+    notes: "Comprehensive tests cover non-empty tags, empty tags, plist validity, and XML escaping. Tests use temporary files and verify extended attributes via xattr."
+    touched:
+      - Tests/HieroglyphsTests/TagReconcilerServiceTests.swift
+
+  - id: S007
+    title: Write Integration Tests
+    implemented: true
+    reviewed: true
+    notes: "Integration tests added to HieroglyphsVMTests covering project and card tag reconciliation triggers, with MockTagReconciler for verification"
+    touched:
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+
+  - id: S008
+    title: Manual Verification
+    implemented: true
+    reviewed: true
+    notes: "Verified tags written correctly to extended attributes via xattr, visible in mdls output. Tags 'work, planning' successfully applied to project.md and 'urgent, bug' to card.md. Spotlight indexes tags correctly."
+    touched: []
+
+  - id: S009
+    title: Update Documentation
+    implemented: true
+    reviewed: true
+    notes: "Comprehensive documentation created covering protocol, service, integration, testing, L08 constraint enforcement, and future enhancements"
+    touched:
+      - .ushabti/docs/tag-reconciliation.md
