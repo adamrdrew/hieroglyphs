@@ -29,6 +29,7 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 - `Card`: Represents a work item with type, status, priority, tags, and markdown body
 - `WorkspaceConfig`: Holds workspace directory path
 - `CardStatus`, `CardType`, `Priority`: Enums defining structured metadata options
+- `CardSortOption`: Enum defining sort criteria for card lists (created, updated, priority, status, title)
 
 **Dependencies:** Foundation only (for UUID, Date, Codable protocols)
 
@@ -70,7 +71,7 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 **Responsibility:** Coordinate workspace state, project list, and UI selection. Delegate all I/O to WorkspaceService.
 
 **Components:**
-- `HieroglyphsVM`: Single `@Observable` `@MainActor` class holding workspace path, projects, and selected project
+- `HieroglyphsVM`: Single `@Observable` `@MainActor` class holding workspace state, project/card lists, selection state, and filter/sort state
 
 **Dependencies:** SwiftUI, Observation, WorkspaceProviding
 
@@ -88,6 +89,12 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
   - `Sidebar`: List of projects with toolbar
   - `SidebarProjectEntry`: Individual project row with title and card count summary
   - `NewProjectSheet`: Form for creating new projects
+- `CardList/`: Card list UI with search, filter, sort, and creation sheets
+  - `CardList`: List of cards with search, filter, sort, and toolbar
+  - `CardListEntry`: Individual card row with type icon, status, and priority indicator
+  - `CardFilterBar`: Multi-select filter UI for status, type, and priority
+  - `CardSortPopover`: Sort UI for criteria and order
+  - `NewCardSheet`: Form for creating new cards
 
 **Dependencies:** SwiftUI, HieroglyphsVM, WorkspaceProviding
 
@@ -149,4 +156,6 @@ Hieroglyphs uses macOS-specific capabilities per L06 (Platform Leverage):
 - **File Watching:** FSEvents-based monitoring to detect external edits and refresh UI
 - **Tag Reconciliation:** One-way projection of frontmatter tags to extended attributes
 - **Spotlight Search:** NSMetadataQuery integration for fast search across workspace
-- **Card List and Detail Views:** Implementing middle and detail columns of NavigationSplitView
+- **Card Detail View:** Implementing detail column with CodeEditorView and Markdown preview (Phase 7)
+- **Card Editing:** Update card workflow and UI (Phase 7)
+- **Filter/Sort Persistence:** Persist filter and sort state to UserDefaults

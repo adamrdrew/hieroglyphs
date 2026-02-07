@@ -7,7 +7,7 @@ struct MainWindow: View {
         NavigationSplitView(preferredCompactColumn: $preferredCompactColumn) {
             Sidebar()
         } content: {
-            Text("List")
+            CardList()
         } detail: {
             Text("Detail")
         }

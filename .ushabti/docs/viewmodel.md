@@ -20,6 +20,14 @@ The ViewModel supports L01 (Filesystem as Source of Truth by delegating to servi
 - `workspacePath: String?` — Absolute path to workspace directory (nil if not loaded)
 - `projects: [Project]` — Array of loaded projects (empty if not loaded or no projects exist)
 - `selectedProject: Project?` — Currently selected project in sidebar (nil if none selected)
+- `cards: [Card]` — Array of loaded cards for selected project (empty if not loaded or no cards exist)
+- `selectedCard: Card?` — Currently selected card in card list (nil if none selected)
+- `searchText: String` — Search query for filtering cards by title
+- `filterStatus: Set<CardStatus>` — Active status filters (empty set = show all)
+- `filterType: Set<CardType>` — Active type filters (empty set = show all)
+- `filterPriority: Set<Priority>` — Active priority filters (empty set = show all)
+- `sortBy: CardSortOption` — Sort criteria (created, updated, priority, status, title)
+- `sortOrder: SortOrder` — Sort direction (forward = ascending, reverse = descending)
 
 **Service Dependency:**
 - `workspaceService: WorkspaceProviding` — Injected service for I/O operations
@@ -150,6 +158,100 @@ SwiftUI automatically calls `selectProject(_:)` when user clicks a project row.
 - Selection state is ephemeral (not persisted across app launches)
 - Future phases may persist selection to UserDefaults
 
+### loadCards()
+
+**Signature:** `func loadCards()`
+
+**Purpose:** Load cards for the currently selected project.
+
+**Behavior:**
+
+1. Guard check `selectedProject` is not nil (sets cards to empty array and returns if nil)
+2. Guard check `workspacePath` is not nil (logs error, sets cards to empty array, and returns if nil)
+3. Construct project path from workspace path and selected project slug
+4. Call `workspaceService.loadCards(from:for:)` to load all cards
+5. Update `self.cards` with loaded cards
+6. If any step throws, catch error, log to console, and set `cards` to empty array
+
+**Error Handling:**
+
+Errors are logged to console via `print()`. Cards array is set to empty on error.
+
+**Example error output:**
+```
+Cannot load cards: workspace path is nil
+Failed to load cards: invalidDirectory
+```
+
+**Usage:**
+
+Called automatically when selected project changes via `.onChange` modifier in `CardList`:
+
+```swift
+.onChange(of: viewModel.selectedProject) { _, _ in
+    viewModel.loadCards()
+}
+```
+
+**Notes:**
+- Reloads all cards from disk on every call (no caching)
+- Empty array when no project selected or on error
+- Future optimization may add caching or incremental loading
+
+### createCard(title:type:status:priority:tags:body:)
+
+**Signature:** `func createCard(title:type:status:priority:tags:body:)`
+
+**Purpose:** Create a new card and reload the card list.
+
+**Parameters:**
+- `title` — Card title (must be non-empty; validated by UI)
+- `type` — Card type (task, bug, feature, note)
+- `status` — Card status (backlog, todo, in-progress, done, archived)
+- `priority` — Card priority (low, medium, high, critical)
+- `tags` — Array of tag strings (may be empty)
+- `body` — Markdown body content (may be empty)
+
+**Behavior:**
+
+1. Guard check `selectedProject` is not nil (log error and return if nil)
+2. Guard check `workspacePath` is not nil (log error and return if nil)
+3. Construct project path from workspace path and selected project slug
+4. Call `workspaceService.createCard(...)` to write card to disk
+5. Call `loadCards()` to reload card list (includes newly created card)
+6. If any step throws, catch error and log to console
+
+**Error Handling:**
+
+Errors are logged to console via `print()`. Card is not created on error. Card list is not updated.
+
+**Example error output:**
+```
+Cannot create card: no project selected
+Cannot create card: workspace path is nil
+Failed to create card: directoryCreationFailed(...)
+```
+
+**Usage:**
+
+Called from `NewCardSheet` on save:
+
+```swift
+viewModel.createCard(
+    title: title,
+    type: type,
+    status: status,
+    priority: priority,
+    tags: parsedTags,
+    body: cardBody
+)
+```
+
+**Notes:**
+- Does NOT check for slug collisions (future enhancement)
+- Reloads entire card list after creation (inefficient but simple; future optimization may add new card to list directly)
+- If workspace path or selected project is nil, operation fails silently (logs error)
+
 ## Lifecycle and Initialization
 
 **App.swift:**
@@ -254,7 +356,22 @@ struct SidebarProjectEntry: View {
 
 1. User clicks a project row in Sidebar
 2. SwiftUI binding updates `viewModel.selectedProject` via `selectProject(_:)`
-3. SwiftUI observes change and updates UI (future: loads cards in middle column)
+3. SwiftUI observes change and triggers `.onChange` in CardList
+4. CardList calls `viewModel.loadCards()` to load cards for selected project
+5. ViewModel updates `cards` property
+6. SwiftUI observes change and updates CardList view
+
+**On Card Creation:**
+
+1. User clicks "New Card" button in CardList
+2. NewCardSheet appears
+3. User enters title, type, status, priority, tags, body and clicks Save
+4. NewCardSheet calls `viewModel.createCard(...)`
+5. ViewModel calls `workspaceService.createCard(...)` to write card to disk
+6. ViewModel calls `loadCards()` to reload card list
+7. ViewModel updates `cards` property
+8. SwiftUI observes change and updates CardList view
+9. NewCardSheet dismisses
 
 ## Testing
 
@@ -292,6 +409,12 @@ class MockWorkspaceService: WorkspaceProviding {
 4. **createProject success:** Mock succeeds, verify ViewModel reloads projects
 5. **createProject with nil workspacePath:** Verify operation fails gracefully
 6. **selectProject:** Verify selectedProject updates correctly
+7. **loadCards success:** Mock service returns cards, verify ViewModel updates cards
+8. **loadCards with nil selectedProject:** Verify cards is empty
+9. **loadCards error:** Mock throws error, verify cards is empty
+10. **createCard success:** Mock succeeds, verify ViewModel reloads cards
+11. **createCard with nil selectedProject:** Verify operation fails gracefully
+12. **createCard error:** Mock throws error, verify cards is not updated
 
 **Notes:**
 - Tests verify coordination logic, not I/O (I/O tested in WorkspaceServiceTests)
@@ -303,10 +426,12 @@ class MockWorkspaceService: WorkspaceProviding {
 
 1. **Workspace creation UI:** If config does not exist, show onboarding flow to create workspace
 2. **Error UI:** Display user-facing error messages instead of console logging
-3. **Slug collision detection:** Check for existing projects with same slug before creating
+3. **Slug collision detection:** Check for existing projects/cards with same slug before creating
 4. **Project editing:** Add `updateProject(_:)` method to ViewModel
 5. **Project deletion:** Add `deleteProject(_:)` method to ViewModel
-6. **Card list management:** Add `selectedCard` property and `loadCards()` method
-7. **File watching:** Add `reloadWorkspace()` method triggered by FSEvents
-8. **Selection persistence:** Persist selectedProject to UserDefaults and restore on launch
-9. **Optimistic updates:** Add new project to list immediately without reloading (with rollback on error)
+6. **Card editing:** Add `updateCard(_:)` method to ViewModel (Phase 7)
+7. **Card deletion:** Add `deleteCard(_:)` method to ViewModel
+8. **File watching:** Add `reloadWorkspace()` method triggered by FSEvents
+9. **Selection persistence:** Persist selectedProject and selectedCard to UserDefaults and restore on launch
+10. **Optimistic updates:** Add new project/card to list immediately without reloading (with rollback on error)
+11. **Filter persistence:** Persist filter/sort state to UserDefaults

@@ -13,6 +13,16 @@ final class HieroglyphsVM {
     var projects: [Project] = []
     var selectedProject: Project?
 
+    var cards: [Card] = []
+    var selectedCard: Card?
+
+    var searchText: String = ""
+    var filterStatus: Set<CardStatus> = []
+    var filterType: Set<CardType> = []
+    var filterPriority: Set<Priority> = []
+    var sortBy: CardSortOption = .updated
+    var sortOrder: SortOrder = .forward
+
     private let workspaceService: WorkspaceProviding
 
     init(workspaceService: WorkspaceProviding) {
@@ -74,5 +84,79 @@ final class HieroglyphsVM {
     /// - Parameter project: The project to select
     func selectProject(_ project: Project?) {
         self.selectedProject = project
+    }
+
+    /// Loads cards for the currently selected project.
+    ///
+    /// Reads all cards from the selected project's cards/ directory and updates
+    /// the cards property. On error, logs to console and leaves cards empty.
+    func loadCards() {
+        guard let selectedProject else {
+            self.cards = []
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot load cards: workspace path is nil")
+            self.cards = []
+            return
+        }
+
+        do {
+            let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+            let loadedCards = try workspaceService.loadCards(
+                from: projectPath,
+                for: selectedProject
+            )
+            self.cards = loadedCards
+        } catch {
+            print("Failed to load cards: \(error)")
+            self.cards = []
+        }
+    }
+
+    /// Creates a new card and reloads the card list.
+    ///
+    /// - Parameters:
+    ///   - title: Card title
+    ///   - type: Card type
+    ///   - status: Card status
+    ///   - priority: Card priority
+    ///   - tags: Card tags
+    ///   - body: Markdown body content
+    func createCard(
+        title: String,
+        type: CardType,
+        status: CardStatus,
+        priority: Priority,
+        tags: [String],
+        body: String
+    ) {
+        guard let selectedProject else {
+            print("Cannot create card: no project selected")
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot create card: workspace path is nil")
+            return
+        }
+
+        do {
+            let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+            _ = try workspaceService.createCard(
+                title: title,
+                type: type,
+                status: status,
+                priority: priority,
+                tags: tags,
+                body: body,
+                projectPath: projectPath
+            )
+
+            loadCards()
+        } catch {
+            print("Failed to create card: \(error)")
+        }
     }
 }

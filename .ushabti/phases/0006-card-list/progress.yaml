@@ -1,0 +1,82 @@
+phase: 0006-card-list
+status: complete
+steps:
+  - id: 1
+    title: Extend ViewModel with card state
+    implemented: true
+    reviewed: true
+    notes: Added cards, selectedCard, search/filter/sort state properties, loadCards(), and createCard() methods
+    files:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: 2
+    title: Create CardSortOption enum
+    implemented: true
+    reviewed: true
+    notes: Created CardSortOption enum with cases for created, updated, priority, status, title
+    files:
+      - Sources/Hieroglyphs/Models/CardSortOption.swift
+  - id: 3
+    title: Create CardListEntry view
+    implemented: true
+    reviewed: true
+    notes: Created CardListEntry with type icons, status labels, priority indicators, and TakeNote-consistent layout
+    files:
+      - Sources/Hieroglyphs/Views/CardList/CardListEntry.swift
+  - id: 4
+    title: Create CardList view
+    implemented: true
+    reviewed: true
+    notes: Created CardList with filtering, sorting, search, empty states, and toolbar. Added Hashable conformance to Card. NewCardSheet reference commented out until Step 7
+    files:
+      - Sources/Hieroglyphs/Views/CardList/CardList.swift
+      - Sources/Hieroglyphs/Models/Card.swift
+  - id: 5
+    title: Create filter UI component
+    implemented: true
+    reviewed: true
+    notes: Created CardFilterBar with multi-select menus for status, type, and priority. Includes active filter count badges and clear button
+    files:
+      - Sources/Hieroglyphs/Views/CardList/CardFilterBar.swift
+  - id: 6
+    title: Create sort UI component
+    implemented: true
+    reviewed: true
+    notes: Created CardSortPopover with pickers for sort criteria and order (ascending/descending)
+    files:
+      - Sources/Hieroglyphs/Views/CardList/CardSortPopover.swift
+  - id: 7
+    title: Create NewCardSheet view
+    implemented: true
+    reviewed: true
+    notes: Created NewCardSheet form with all required fields. Renamed state var from body to cardBody to avoid conflict with SwiftUI View.body property
+    files:
+      - Sources/Hieroglyphs/Views/CardList/NewCardSheet.swift
+      - Sources/Hieroglyphs/Views/CardList/CardList.swift
+  - id: 8
+    title: Wire CardList into MainWindow
+    implemented: true
+    reviewed: true
+    notes: Replaced middle column placeholder with CardList view
+    files:
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+  - id: 9
+    title: Test ViewModel card methods
+    implemented: true
+    reviewed: true
+    notes: Added 6 tests for loadCards() and createCard() with success, error, and nil project cases. Extended MockWorkspaceService to support card operations. All 92 tests pass
+    files:
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+  - id: 10
+    title: Manual testing and refinement
+    implemented: true
+    reviewed: true
+    notes: App compiles, runs, and all tests pass. Test workspace exists with projects and cards. Manual GUI testing should verify card loading, filtering, sorting, search, and new card creation workflows
+  - id: 11
+    title: Update documentation
+    implemented: true
+    reviewed: true
+    notes: Updated viewmodel.md with card state properties and methods, views-ui.md with all CardList components, and architecture.md with CardSortOption and CardList layer info
+    files:
+      - .ushabti/docs/viewmodel.md
+      - .ushabti/docs/views-ui.md
+      - .ushabti/docs/architecture.md

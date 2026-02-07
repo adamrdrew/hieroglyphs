@@ -130,6 +130,133 @@ final class HieroglyphsVMTests: XCTestCase {
         viewModel.selectProject(nil)
         XCTAssertNil(viewModel.selectedProject)
     }
+
+    // MARK: - loadCards() Tests
+
+    @MainActor
+    func testLoadCardsSuccess() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnLoadProjects = false
+        mockService.shouldThrowOnLoadCards = false
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+        viewModel.selectProject(viewModel.projects.first)
+
+        viewModel.loadCards()
+
+        XCTAssertEqual(viewModel.cards.count, 2)
+        XCTAssertEqual(viewModel.cards[0].title, "Mock Card 1")
+        XCTAssertEqual(viewModel.cards[1].title, "Mock Card 2")
+    }
+
+    @MainActor
+    func testLoadCardsWithNilSelectedProject() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+
+        XCTAssertNil(viewModel.selectedProject)
+
+        viewModel.loadCards()
+
+        XCTAssertTrue(viewModel.cards.isEmpty)
+    }
+
+    @MainActor
+    func testLoadCardsError() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnLoadProjects = false
+        mockService.shouldThrowOnLoadCards = true
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+        viewModel.selectProject(viewModel.projects.first)
+
+        viewModel.loadCards()
+
+        XCTAssertTrue(viewModel.cards.isEmpty)
+    }
+
+    // MARK: - createCard() Tests
+
+    @MainActor
+    func testCreateCardSuccess() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnLoadProjects = false
+        mockService.shouldThrowOnLoadCards = false
+        mockService.shouldThrowOnCreateCard = false
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+        viewModel.selectProject(viewModel.projects.first)
+
+        viewModel.loadCards()
+        let initialCount = viewModel.cards.count
+
+        viewModel.createCard(
+            title: "New Card",
+            type: .task,
+            status: .todo,
+            priority: .medium,
+            tags: ["test"],
+            body: "Test body"
+        )
+
+        XCTAssertEqual(viewModel.cards.count, initialCount + 1)
+        XCTAssertTrue(
+            viewModel.cards.contains { $0.title == "New Card" }
+        )
+    }
+
+    @MainActor
+    func testCreateCardWithNilSelectedProject() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        XCTAssertNil(viewModel.selectedProject)
+
+        viewModel.createCard(
+            title: "New Card",
+            type: .task,
+            status: .todo,
+            priority: .medium,
+            tags: [],
+            body: ""
+        )
+
+        XCTAssertTrue(viewModel.cards.isEmpty)
+    }
+
+    @MainActor
+    func testCreateCardError() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnLoadProjects = false
+        mockService.shouldThrowOnLoadCards = false
+        mockService.shouldThrowOnCreateCard = true
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+        viewModel.selectProject(viewModel.projects.first)
+
+        viewModel.loadCards()
+        let initialCount = viewModel.cards.count
+
+        viewModel.createCard(
+            title: "New Card",
+            type: .task,
+            status: .todo,
+            priority: .medium,
+            tags: [],
+            body: ""
+        )
+
+        XCTAssertEqual(viewModel.cards.count, initialCount)
+    }
 }
 
 // MARK: - Mock Workspace Service
@@ -139,8 +266,10 @@ final class MockWorkspaceService: WorkspaceProviding {
     var shouldThrowOnLoadProjects = false
     var shouldThrowOnLoadCards = false
     var shouldThrowOnCreateProject = false
+    var shouldThrowOnCreateCard = false
 
     private var mockProjects: [Project] = []
+    private var mockCards: [Card] = []
     private var createdProjectCount = 0
 
     func loadWorkspaceConfig(from configPath: String?) throws -> WorkspaceConfig {
@@ -181,7 +310,33 @@ final class MockWorkspaceService: WorkspaceProviding {
         if shouldThrowOnLoadCards {
             throw WorkspaceService.WorkspaceError.invalidDirectory
         }
-        return []
+
+        return mockCards + [
+            Card(
+                id: UUID(),
+                title: "Mock Card 1",
+                type: .task,
+                status: .todo,
+                priority: .medium,
+                tags: [],
+                created: Date(),
+                updated: Date(),
+                slug: "mock-card-1",
+                body: "Mock body 1"
+            ),
+            Card(
+                id: UUID(),
+                title: "Mock Card 2",
+                type: .bug,
+                status: .inProgress,
+                priority: .high,
+                tags: ["bug"],
+                created: Date(),
+                updated: Date(),
+                slug: "mock-card-2",
+                body: "Mock body 2"
+            )
+        ]
     }
 
     func createWorkspace(at path: String, configDirectory: String?) throws {
@@ -226,8 +381,25 @@ final class MockWorkspaceService: WorkspaceProviding {
         body: String,
         projectPath: String
     ) throws -> Card {
-        // Not used in these tests
-        fatalError("Not implemented")
+        if shouldThrowOnCreateCard {
+            throw WorkspaceService.WorkspaceError.invalidDirectory
+        }
+
+        let newCard = Card(
+            id: UUID(),
+            title: title,
+            type: type,
+            status: status,
+            priority: priority,
+            tags: tags,
+            created: Date(),
+            updated: Date(),
+            slug: title.lowercased().replacingOccurrences(of: " ", with: "-"),
+            body: body
+        )
+
+        mockCards.append(newCard)
+        return newCard
     }
 
     func updateProject(_ project: Project, at workspacePath: String) throws {

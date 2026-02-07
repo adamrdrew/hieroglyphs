@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents a card with type, status, priority, and markdown body.
-struct Card: Identifiable, Codable, Equatable {
+struct Card: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
     let title: String
     let type: CardType
