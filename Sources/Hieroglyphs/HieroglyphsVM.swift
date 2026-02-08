@@ -51,6 +51,9 @@ final class HieroglyphsVM {
     /// When true, CardList shows a loading indicator instead of empty state.
     var isLoadingCards: Bool = false
 
+    var phases: [Phase] = []
+    var selectedPhase: Phase?
+
     var searchText: String = ""
     var filterStatus: Set<CardStatus> = []
     var filterType: Set<CardType> = []
@@ -68,6 +71,7 @@ final class HieroglyphsVM {
     private let fileWatcher: FileWatching?
     private let tagReconciler: TagReconciling?
     private let searchService: SearchProviding?
+    private let phaseService: PhaseProviding?
 
     private let cardUpdateDebouncer = Debouncer(delay: 1.5)
     private var pendingCardUpdate: Card?
@@ -77,12 +81,14 @@ final class HieroglyphsVM {
         workspaceService: WorkspaceProviding,
         fileWatcher: FileWatching? = nil,
         tagReconciler: TagReconciling? = nil,
-        searchService: SearchProviding? = nil
+        searchService: SearchProviding? = nil,
+        phaseService: PhaseProviding? = nil
     ) {
         self.workspaceService = workspaceService
         self.fileWatcher = fileWatcher
         self.tagReconciler = tagReconciler
         self.searchService = searchService
+        self.phaseService = phaseService
     }
 
     /// Initializes a new workspace at the specified path.
@@ -231,6 +237,39 @@ final class HieroglyphsVM {
             print("Failed to load cards: \(error)")
             self.cards = []
             isLoadingCards = false
+        }
+    }
+
+    /// Loads phases for the currently selected project.
+    ///
+    /// Reads all phases from the selected project's sourceDirectory/.ushabti/phases/
+    /// and updates the phases property. Requires project to have a sourceDirectory
+    /// configured. On error, logs to console and leaves phases empty.
+    func loadPhases() {
+        guard let selectedProject else {
+            self.phases = []
+            return
+        }
+
+        guard let sourceDirectory = selectedProject.sourceDirectory else {
+            self.phases = []
+            return
+        }
+
+        guard let phaseService else {
+            print("Cannot load phases: phase service is nil")
+            self.phases = []
+            return
+        }
+
+        do {
+            let loadedPhases = try phaseService.loadPhases(
+                from: sourceDirectory
+            )
+            self.phases = loadedPhases
+        } catch {
+            print("Failed to load phases: \(error)")
+            self.phases = []
         }
     }
 

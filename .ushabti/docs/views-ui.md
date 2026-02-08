@@ -31,6 +31,11 @@ Sources/Hieroglyphs/Views/
 │   └── NewCardSheet.swift        # Card creation form
 ├── CardDetail/                   # CardDetail feature components
 │   ├── CardDetail.swift          # Two-section detail with empty state
+├── PhaseList/                    # PhaseList feature components
+│   ├── PhaseList.swift           # Middle column phase list with empty states
+│   └── PhaseListEntry.swift      # Individual phase row with status badge
+├── PhaseDetail/                  # PhaseDetail feature components
+│   └── PhaseDetail.swift         # Detail column phase view with intent, steps, review
 │   ├── CardMetadataEditor.swift  # Form for card metadata fields
 │   └── CardBodyEditor.swift      # Click-to-edit markdown preview/editor
 └── Shared/                       # Reusable components
@@ -121,8 +126,18 @@ struct MainWindow: View {
         } content: {
             middleColumnContent
         } detail: {
+            detailColumnContent
+        }
+    }
+
+    @ViewBuilder
+    private var detailColumnContent: some View {
+        if viewModel.selectedPhase != nil {
+            PhaseDetail()
+        } else {
             CardDetail()
         }
+    }
     }
 
     @ViewBuilder
@@ -133,7 +148,7 @@ struct MainWindow: View {
         case .plans:
             PlansPlaceholder()
         case .phases:
-            PhasesPlaceholder()
+            PhaseList()
         case .none:
             ContentUnavailableView(
                 "Select a Project",
@@ -1452,6 +1467,104 @@ struct PhasesPlaceholder: View {
 3. **Behavior Testing:** Verify selection, creation, and navigation work correctly
 
 **Future:** May add UI tests using XCTest for critical workflows (e.g., project creation, card editing).
+
+## PhaseList
+
+**File:** `Sources/Hieroglyphs/Views/PhaseList/PhaseList.swift`
+
+**Purpose:** Middle-column view displaying phases from a project's source directory.
+
+**State Management:**
+
+```swift
+@Environment(HieroglyphsVM.self) private var viewModel
+```
+
+**Structure:**
+
+PhaseList has three states:
+
+1. **No sourceDirectory configured:** Shows ContentUnavailableView with message "Configure a source directory to view Ushabti phases"
+2. **No phases found:** Shows ContentUnavailableView with message "No Ushabti phases found"
+3. **Phases exist:** List with selection binding to `viewModel.selectedPhase`
+
+**Behavior:**
+
+- Automatically loads phases when selectedProject changes (`.onChange(of: viewModel.selectedProject)`)
+- Calls `viewModel.loadPhases()` which reads from `{sourceDirectory}/.ushabti/phases/`
+- Phases sorted by number ascending (1, 2, 3...)
+- Selecting a phase updates `viewModel.selectedPhase` and shows PhaseDetail
+
+**Notes:**
+
+- Read-only view (no creation, editing, or deletion)
+- No file watching (users must re-select Phases section to refresh)
+- No search or filter (shows all phases)
+
+## PhaseListEntry
+
+**File:** `Sources/Hieroglyphs/Views/PhaseList/PhaseListEntry.swift`
+
+**Purpose:** Individual phase row showing number, title, and status indicator.
+
+**Layout:**
+
+```
+[status icon] Phase Title
+              Phase NNNN
+```
+
+**Status Icons:**
+
+- Planned: gray circle
+- Active: blue filled circle
+- Green: green checkmark
+- Yellow: yellow warning triangle
+- Red: red X mark
+
+**Notes:**
+
+- Follows CardListEntry pattern
+- Uses SF Symbols for status icons
+- Status color-coded for quick visual scanning
+
+## PhaseDetail
+
+**File:** `Sources/Hieroglyphs/Views/PhaseDetail/PhaseDetail.swift`
+
+**Purpose:** Detail-column view for displaying selected phase.
+
+**Structure:**
+
+PhaseDetail has two states:
+
+1. **No phase selected:** ContentUnavailableView with message "No Phase Selected"
+2. **Phase selected:** ScrollView with four sections:
+   - **Header:** Phase title, status badge, phase number
+   - **Intent:** Rendered markdown from phase.md `## Intent` section
+   - **Steps:** Checklist of implementation steps with completion indicators
+   - **Review:** Rendered markdown from review.md (hidden if empty)
+
+**Step Display:**
+
+Each step shows:
+- Completion icon (circle → filled circle → checkmark)
+- Step title
+- Step ID (e.g., "S001")
+- "Implemented" label (green) if implemented
+- "Reviewed" label (blue) if reviewed
+
+**Status Badge:**
+
+- Capsule-shaped badge with status icon and label
+- Color-coded background (20% opacity of status color)
+- Foreground color matches status (gray, blue, green, yellow, red)
+
+**Notes:**
+
+- Read-only view (no editing)
+- Uses MarkdownUI for rendering intent and review notes
+- Follows CardDetail pattern for empty state and ScrollView layout
 
 ## Accessibility
 

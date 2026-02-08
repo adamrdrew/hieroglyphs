@@ -46,6 +46,7 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 - `FileWatching` / `FileWatcherService`: FSEventStream monitoring for external changes
 - `TagReconciling` / `TagReconcilerService`: One-way tag projection to extended attributes via xattr
 - `SearchProviding` / `SpotlightService`: NSMetadataQuery search across content, titles, and tags
+- `PhaseProviding` / `PhaseService`: Read-only Ushabti phase data loading from `.ushabti/phases/`
 - Environment keys for each service (SwiftUI dependency injection)
 
 **Dependencies:** Foundation, Yams, FrontmatterParser, SlugGenerator
@@ -75,9 +76,9 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 **Components:**
 - `HieroglyphsVM`: Single `@Observable` `@MainActor` class holding workspace state, project/card lists, selection state, and filter/sort state
 
-**Dependencies:** SwiftUI, Observation, WorkspaceProviding, FileWatching, TagReconciling, SearchProviding
+**Dependencies:** SwiftUI, Observation, WorkspaceProviding, FileWatching, TagReconciling, SearchProviding, PhaseProviding
 
-**Notes:** ViewModel is a thin coordination layer. It does not perform I/O directly—it delegates to services. It holds transient UI state (selection, filter, sort) and cached data loaded from services. ViewModel starts file watching after workspace loads, triggers tag reconciliation on file changes, and coordinates Spotlight search.
+**Notes:** ViewModel is a thin coordination layer. It does not perform I/O directly—it delegates to services. It holds transient UI state (selection, filter, sort) and cached data loaded from services. ViewModel starts file watching after workspace loads, triggers tag reconciliation on file changes, coordinates Spotlight search, and loads phases when a project with a sourceDirectory is selected.
 
 ### Views Layer
 

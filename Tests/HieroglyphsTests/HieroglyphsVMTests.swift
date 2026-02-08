@@ -1130,8 +1130,8 @@ final class MockWorkspaceService: WorkspaceProviding {
     var deleteCardWasCalled = false
     var deleteProjectWasCalled = false
 
-    private var mockProjects: [Project] = []
-    private var mockCards: [Card] = []
+    var mockProjects: [Project] = []
+    var mockCards: [Card] = []
     private var createdProjectCount = 0
 
     func loadWorkspaceConfig(from configPath: String?) throws -> WorkspaceConfig {
@@ -1333,5 +1333,145 @@ final class MockTagReconciler: TagReconciling {
         reconcileTagsCalled = true
         lastTags = tags
         lastPath = path
+    }
+}
+
+// MARK: - Mock Phase Service
+
+final class MockPhaseService: PhaseProviding {
+    var shouldThrowOnLoadPhases = false
+    var mockPhases: [Phase] = []
+
+    func loadPhases(from sourceDirectory: String) throws -> [Phase] {
+        if shouldThrowOnLoadPhases {
+            throw NSError(
+                domain: "MockPhaseService",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Mock error"]
+            )
+        }
+        return mockPhases
+    }
+}
+
+// MARK: - loadPhases() Tests
+
+extension HieroglyphsVMTests {
+
+    @MainActor
+    func testLoadPhasesWithValidSourceDirectory() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPhases = MockPhaseService()
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: "/test/source"
+        )
+
+        mockPhases.mockPhases = [
+            Phase(
+                number: 1,
+                slug: "0001-test",
+                title: "Test Phase",
+                status: .planned,
+                intent: "Intent",
+                steps: [],
+                reviewNotes: ""
+            )
+        ]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            phaseService: mockPhases
+        )
+        viewModel.loadWorkspace()
+
+        mockWorkspace.mockProjects = [testProject]
+        viewModel.selectedSection = .phases(testProject)
+        viewModel.loadPhases()
+
+        XCTAssertEqual(viewModel.phases.count, 1)
+        XCTAssertEqual(viewModel.phases.first?.title, "Test Phase")
+    }
+
+    @MainActor
+    func testLoadPhasesWithNilSourceDirectory() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPhases = MockPhaseService()
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil
+        )
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            phaseService: mockPhases
+        )
+        viewModel.loadWorkspace()
+
+        mockWorkspace.mockProjects = [testProject]
+        viewModel.selectedSection = .phases(testProject)
+        viewModel.loadPhases()
+
+        XCTAssertTrue(viewModel.phases.isEmpty)
+    }
+
+    @MainActor
+    func testLoadPhasesWithNoSelectedProject() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPhases = MockPhaseService()
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            phaseService: mockPhases
+        )
+
+        viewModel.loadPhases()
+
+        XCTAssertTrue(viewModel.phases.isEmpty)
+    }
+
+    @MainActor
+    func testLoadPhasesHandlesServiceError() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPhases = MockPhaseService()
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: "/test/source"
+        )
+
+        mockPhases.shouldThrowOnLoadPhases = true
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            phaseService: mockPhases
+        )
+        viewModel.loadWorkspace()
+
+        mockWorkspace.mockProjects = [testProject]
+        viewModel.selectedSection = .phases(testProject)
+        viewModel.loadPhases()
+
+        XCTAssertTrue(viewModel.phases.isEmpty)
     }
 }

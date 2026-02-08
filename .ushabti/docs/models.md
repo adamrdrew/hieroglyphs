@@ -171,6 +171,70 @@ Additional markdown content here.
 - Stored in frontmatter `priority` field as raw string (e.g., `priority: high`)
 - Default priority for new cards is `medium` (handled by UI, not model)
 
+## Phase
+
+**Location:** `Sources/Hieroglyphs/Models/Phase.swift`
+
+**Purpose:** Represents a Ushabti phase with metadata, steps, and review state.
+
+**Fields:**
+- `number: Int` — Phase number extracted from directory name (e.g., 17)
+- `slug: String` — Directory name used as identifier (e.g., "0017-phases-view")
+- `title: String` — Phase title from progress.yaml
+- `status: PhaseStatus` — Current phase status (planned, active, green, yellow, red)
+- `intent: String` — Intent section extracted from phase.md
+- `steps: [PhaseStep]` — Array of implementation steps
+- `reviewNotes: String` — Full content of review.md (empty if not yet reviewed)
+
+**Conformances:** `Identifiable`, `Codable`, `Equatable`, `Hashable`
+
+**Notes:**
+- Phases are read from `{project.sourceDirectory}/.ushabti/phases/NNNN-slug/`
+- This is a read-only model—phases are managed by Ushabti agents outside Hieroglyphs
+- `id` is computed from `slug` for SwiftUI list selection
+- Phases are displayed in PhaseList and PhaseDetail views
+
+## PhaseStatus
+
+**Location:** `Sources/Hieroglyphs/Models/PhaseStatus.swift`
+
+**Purpose:** Enum representing the current status of a phase in the Ushabti workflow.
+
+**Cases:**
+- `planned` — Phase is planned but not yet started
+- `active` — Phase is currently being implemented (Builder working)
+- `green` — Phase complete and verified by Overseer
+- `yellow` — Phase has minor issues requiring attention
+- `red` — Phase has critical issues requiring fixes
+
+**Conformances:** `String`, `Codable`, `Equatable`, `Hashable`
+
+**Notes:**
+- Raw values match status strings in progress.yaml exactly (all lowercase)
+- Status progression: planned → active → green/yellow/red
+- Green indicates successful completion
+- Yellow/Red indicate Overseer found issues
+
+## PhaseStep
+
+**Location:** `Sources/Hieroglyphs/Models/PhaseStep.swift`
+
+**Purpose:** Represents a single implementation step within a phase.
+
+**Fields:**
+- `id: String` — Step identifier (e.g., "S001", "S002")
+- `summary: String` — Step title/description
+- `implemented: Bool` — True when Builder has completed the step
+- `reviewed: Bool` — True when Overseer has reviewed the step
+
+**Conformances:** `Identifiable`, `Codable`, `Equatable`, `Hashable`
+
+**Notes:**
+- Steps are defined in steps.md and tracked in progress.yaml
+- Builder marks `implemented: true` when work is done
+- Overseer marks `reviewed: true` after verification
+- Steps are displayed as a checklist in PhaseDetail view
+
 ## Model Relationships
 
 - **WorkspaceConfig → Projects:** Workspace path points to directory containing project subdirectories

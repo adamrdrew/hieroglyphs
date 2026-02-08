@@ -10,7 +10,7 @@ struct MainWindow: View {
         } content: {
             middleColumnContent
         } detail: {
-            CardDetail()
+            detailColumnContent
         }
     }
 
@@ -22,13 +22,22 @@ struct MainWindow: View {
         case .plans:
             PlansPlaceholder()
         case .phases:
-            PhasesPlaceholder()
+            PhaseList()
         case .none:
             ContentUnavailableView(
                 "Select a Project",
                 systemImage: "folder",
                 description: Text("Choose a project section from the sidebar to get started.")
             )
+        }
+    }
+
+    @ViewBuilder
+    private var detailColumnContent: some View {
+        if viewModel.selectedPhase != nil {
+            PhaseDetail()
+        } else {
+            CardDetail()
         }
     }
 }

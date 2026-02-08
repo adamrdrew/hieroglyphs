@@ -1,0 +1,119 @@
+phase:
+  id: 0017
+  slug: phases-view
+  title: Phases View (Ushabti Integration)
+  status: complete
+
+steps:
+  - id: S001
+    title: Define Phase Models
+    implemented: true
+    reviewed: true
+    notes: "Created PhaseStatus.swift, PhaseStep.swift, and Phase.swift following existing model patterns. All conform to Codable, Equatable. Phase conforms to Identifiable with id computed from slug."
+    touched:
+      - Sources/Hieroglyphs/Models/PhaseStatus.swift
+      - Sources/Hieroglyphs/Models/PhaseStep.swift
+      - Sources/Hieroglyphs/Models/Phase.swift
+
+  - id: S002
+    title: Define PhaseProviding Protocol
+    implemented: true
+    reviewed: true
+    notes: "Created PhaseProviding protocol with loadPhases(from:) method. Pattern follows WorkspaceProviding protocol style."
+    touched:
+      - Sources/Hieroglyphs/Services/PhaseProviding.swift
+
+  - id: S003
+    title: Implement PhaseService
+    implemented: true
+    reviewed: true
+    notes: "Implemented PhaseService with directory discovery, progress.yaml parsing via Yams, phase.md intent extraction, and review.md handling. Phases sorted by number. Missing files handled gracefully."
+    touched:
+      - Sources/Hieroglyphs/Services/PhaseService.swift
+
+  - id: S004
+    title: Create PhaseService Environment Key
+    implemented: true
+    reviewed: true
+    notes: "Created PhaseServiceEnvironmentKey following WorkspaceServiceEnvironmentKey pattern. Optional PhaseProviding type."
+    touched:
+      - Sources/Hieroglyphs/Services/PhaseServiceEnvironmentKey.swift
+
+  - id: S005
+    title: Add Phase State to HieroglyphsVM
+    implemented: true
+    reviewed: true
+    notes: "Added phases and selectedPhase properties to HieroglyphsVM. Added phaseService to init. Implemented loadPhases() method with guard checks for selectedProject and sourceDirectory."
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S006
+    title: Create PhaseList View
+    implemented: true
+    reviewed: true
+    notes: "Created PhaseList view with three states (no sourceDirectory, no phases, phase list). Created PhaseListEntry with status badges and icons. Added Hashable conformance to Phase models."
+    touched:
+      - Sources/Hieroglyphs/Views/PhaseList/PhaseList.swift
+      - Sources/Hieroglyphs/Views/PhaseList/PhaseListEntry.swift
+      - Sources/Hieroglyphs/Models/Phase.swift
+      - Sources/Hieroglyphs/Models/PhaseStep.swift
+      - Sources/Hieroglyphs/Models/PhaseStatus.swift
+
+  - id: S007
+    title: Create PhaseDetail View
+    implemented: true
+    reviewed: true
+    notes: "Created PhaseDetail view with sections for header, intent, steps, and review notes. Steps show completion indicators. Uses MarkdownUI for rendering intent and review notes. Read-only view following CardDetail pattern."
+    touched:
+      - Sources/Hieroglyphs/Views/PhaseDetail/PhaseDetail.swift
+
+  - id: S008
+    title: Integrate with MainWindow
+    implemented: true
+    reviewed: true
+    notes: "Updated MainWindow to show PhaseList for .phases case in middleColumnContent. Added detailColumnContent computed property that shows PhaseDetail when selectedPhase is non-nil, otherwise CardDetail."
+    touched:
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+
+  - id: S009
+    title: Inject PhaseService in App
+    implemented: true
+    reviewed: true
+    notes: "Instantiated PhaseService in App.init, passed to HieroglyphsVM, and injected via environment key. Pattern follows other service injections."
+    touched:
+      - Sources/Hieroglyphs/App.swift
+
+  - id: S010
+    title: Write PhaseService Tests
+    implemented: true
+    reviewed: true
+    notes: "Created comprehensive PhaseServiceTests with 13 test cases covering directory discovery, parsing, sorting, error handling, and edge cases. All tests pass. 174 total tests in suite."
+    touched:
+      - Tests/HieroglyphsTests/PhaseServiceTests.swift
+
+  - id: S011
+    title: Write ViewModel Integration Tests
+    implemented: true
+    reviewed: true
+    notes: "Added MockPhaseService and 4 test cases for ViewModel phase loading. Tests cover valid sourceDirectory, nil sourceDirectory, no selected project, and service errors. All tests pass. 178 total tests in suite."
+    touched:
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+
+  - id: S012
+    title: Manual Verification
+    implemented: true
+    reviewed: true
+    notes: "App builds successfully. Manual verification steps: (1) Run app with 'swift run', (2) Open/create project with sourceDirectory set to Hieroglyphs repo, (3) Select Phases section, (4) Verify phases list loads from .ushabti/phases/, (5) Verify phases sorted by number, (6) Select a phase and verify detail view shows intent, steps, and review notes. Ready for Overseer testing."
+    touched: []
+
+  - id: S013
+    title: Update Documentation
+    implemented: true
+    reviewed: true
+    notes: "Created comprehensive phases-view.md documenting models, service, ViewModel integration, views, testing, and limitations. Updated index.md, models.md, architecture.md, and views-ui.md to include phase system documentation."
+    touched:
+      - .ushabti/docs/phases-view.md
+      - .ushabti/docs/index.md
+      - .ushabti/docs/models.md
+      - .ushabti/docs/architecture.md
+      - .ushabti/docs/views-ui.md
