@@ -166,21 +166,26 @@ final class PlanService: PlanProviding {
     private func enumerateLinkedCards(in planURL: URL) throws -> [String] {
         let contents = try fileManager.contentsOfDirectory(
             at: planURL,
-            includingPropertiesForKeys: [.isSymbolicLinkKey],
+            includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
             options: [.skipsHiddenFiles]
         )
 
         var cardSlugs: [String] = []
         for item in contents {
-            // Skip non-symlinks (like plan.yaml and PHASE_PROMPT.md)
+            // Skip plan metadata files
             guard item.lastPathComponent != "plan.yaml",
                   item.lastPathComponent != "PHASE_PROMPT.md" else {
                 continue
             }
 
-            // Check if it's a symlink
-            let values = try item.resourceValues(forKeys: [.isSymbolicLinkKey])
-            if values.isSymbolicLink == true {
+            let values = try item.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+
+            // Include symlinks (even dangling ones) or directories containing card.md
+            let isSymlink = values.isSymbolicLink == true
+            let isDirectoryWithCard = values.isDirectory == true &&
+                fileManager.fileExists(atPath: item.appendingPathComponent("card.md").path)
+
+            if isSymlink || isDirectoryWithCard {
                 cardSlugs.append(item.lastPathComponent)
             }
         }
@@ -441,7 +446,7 @@ final class PlanService: PlanProviding {
         }
     }
 
-    func removeCardSymlinksFromPlans(cardSlug: String, projectPath: String) throws {
+    func removeCardFromPlans(cardSlug: String, projectPath: String) throws {
         let projectURL = URL(fileURLWithPath: projectPath)
         let plansURL = projectURL.appendingPathComponent("plans")
 
@@ -453,31 +458,20 @@ final class PlanService: PlanProviding {
         // Get all plan directories
         let planURLs = try discoverPlanDirectories(in: plansURL)
 
-        // For each plan directory, check for and remove matching symlink
+        // For each plan directory, check for and remove matching card directory
         for planURL in planURLs {
-            let symlinkURL = planURL.appendingPathComponent(cardSlug)
+            let cardURL = planURL.appendingPathComponent(cardSlug)
 
-            // Skip if symlink doesn't exist
-            guard fileManager.fileExists(atPath: symlinkURL.path) else {
+            // Skip if card directory doesn't exist
+            guard fileManager.fileExists(atPath: cardURL.path) else {
                 continue
             }
 
-            // Check that it's actually a symlink (safety check)
+            // Remove the card directory (symlink, hard link, or regular directory)
             do {
-                let values = try symlinkURL.resourceValues(forKeys: [.isSymbolicLinkKey])
-                guard values.isSymbolicLink == true else {
-                    continue
-                }
+                try fileManager.removeItem(at: cardURL)
             } catch {
-                print("Warning: Failed to check if \(symlinkURL.path) is symlink: \(error)")
-                continue
-            }
-
-            // Remove the symlink
-            do {
-                try fileManager.removeItem(at: symlinkURL)
-            } catch {
-                print("Warning: Failed to remove symlink at \(symlinkURL.path): \(error)")
+                print("Warning: Failed to remove card at \(cardURL.path): \(error)")
                 continue
             }
         }

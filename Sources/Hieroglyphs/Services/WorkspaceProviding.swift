@@ -149,4 +149,18 @@ protocol WorkspaceProviding {
     ///   - projectPath: Absolute path to the parent project directory
     /// - Throws: If the card is not found or trash operation fails
     func deleteCard(slug: String, projectPath: String) throws
+
+    /// Ingests cards from Ushabti agent directory into Hieroglyphs library.
+    ///
+    /// Discovers cards in `{sourceDirectory}/.ushabti/cards/`, copies them to the
+    /// Hieroglyphs library at `{projectPath}/cards/`, overrides status to triage,
+    /// and deletes source cards after successful import. Skips duplicate slugs and
+    /// malformed cards. Handles missing directories and permission errors gracefully.
+    ///
+    /// - Parameters:
+    ///   - projectPath: Absolute path to the project directory
+    ///   - sourceDirectory: Optional path to source directory containing .ushabti/cards/
+    /// - Returns: Count of successfully ingested cards
+    /// - Throws: Rarely throws (handles errors gracefully with warnings)
+    func ingestCardsFromUshabti(projectPath: String, sourceDirectory: String?) throws -> Int
 }

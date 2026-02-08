@@ -252,6 +252,21 @@ final class HieroglyphsVM {
 
         do {
             let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+
+            if let sourceDirectory = selectedProject.sourceDirectory {
+                do {
+                    let ingestedCount = try workspaceService.ingestCardsFromUshabti(
+                        projectPath: projectPath,
+                        sourceDirectory: sourceDirectory
+                    )
+                    if ingestedCount > 0 {
+                        print("Ingested \(ingestedCount) card(s) from Ushabti")
+                    }
+                } catch {
+                    print("Warning: Card ingestion failed: \(error)")
+                }
+            }
+
             let loadedCards = try workspaceService.loadCards(
                 from: projectPath,
                 for: selectedProject
@@ -835,14 +850,14 @@ final class HieroglyphsVM {
             if let selectedCard, let selectedProject {
                 let projectPath = "\(workspacePath)/\(selectedProject.slug)"
 
-                // Clean up plan symlinks before trashing the card
+                // Clean up plan links before trashing the card
                 do {
-                    try planService?.removeCardSymlinksFromPlans(
+                    try planService?.removeCardFromPlans(
                         cardSlug: selectedCard.slug,
                         projectPath: projectPath
                     )
                 } catch {
-                    print("Warning: Failed to clean up plan symlinks: \(error)")
+                    print("Warning: Failed to clean up plan links: \(error)")
                 }
 
                 try workspaceService.deleteCard(

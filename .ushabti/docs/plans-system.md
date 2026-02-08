@@ -168,11 +168,11 @@ Set up the project repository and build infrastructure.
 - Changes are written to disk immediately (not debounced)
 - Used by Ushabti Scribe to generate phase plans (future enhancement)
 
-## Symlinks
+## Card Links
 
-Plans use **relative symlinks** to link to cards. This enables workspace portability (moving the workspace to a different path preserves symlinks).
+Plans link to cards via **relative symlinks** by default. The system also supports hard links and regular directory copies, making it flexible for different workflows (e.g., Ushabti agent integration).
 
-**Symlink format:**
+**Symlink format (default):**
 
 ```
 {projectPath}/plans/{plan-slug}/{card-slug} → ../../cards/{card-slug}/
@@ -187,11 +187,13 @@ Plans use **relative symlinks** to link to cards. This enables workspace portabi
 
 **Notes:**
 
-- Symlinks point to card directories, not card.md files
-- Symlinks are relative (two levels up, then into cards directory)
+- Card links point to card directories, not card.md files
+- Symlinks are relative (two levels up, then into cards directory) for portability
 - Dangling symlinks (card deleted) are tolerated and shown as "Missing: card-slug" in UI
 - FileManager.createSymbolicLink() used to create symlinks
-- Card deletion removes symlinks from all plans via `removeCardSymlinksFromPlans()` (best-effort, orchestrated by ViewModel)
+- Hard links and directory copies are detected by checking for directories containing `card.md`
+- Card deletion removes card directories from all plans via `removeCardFromPlans()` (best-effort, orchestrated by ViewModel)
+- Removal is link-type agnostic — works with symlinks, hard links, and regular directories
 
 ## PlanProviding Protocol
 
@@ -223,7 +225,7 @@ Plans use **relative symlinks** to link to cards. This enables workspace portabi
 4. For each plan directory:
    - Read `plan.yaml`
    - Parse YAML via `Yams.load()`
-   - Enumerate symlinks to derive `linkedCardSlugs`
+   - Enumerate linked cards to derive `linkedCardSlugs` (detects directories containing `card.md`, agnostic to link type)
    - Read `PHASE_PROMPT.md` content (empty string if missing)
    - Construct `Plan` model
 5. Skip plans with missing required fields (log warning)
@@ -393,11 +395,11 @@ Plan status changes map to card status updates:
 1. Construct path to `{projectPath}/plans/{planSlug}/PHASE_PROMPT.md`
 2. Write content atomically
 
-### removeCardSymlinksFromPlans(cardSlug:projectPath:)
+### removeCardFromPlans(cardSlug:projectPath:)
 
-**Signature:** `func removeCardSymlinksFromPlans(cardSlug: String, projectPath: String) throws`
+**Signature:** `func removeCardFromPlans(cardSlug: String, projectPath: String) throws`
 
-**Purpose:** Remove all symlinks to a card from all plans when the card is deleted. Best-effort cleanup that prevents dangling symlinks.
+**Purpose:** Remove card from all plans when the card is deleted. Best-effort cleanup that prevents dangling links. Agnostic to link type (works with symlinks, hard links, or plain directories).
 
 **Parameters:**
 
@@ -413,17 +415,18 @@ Plan status changes map to card status updates:
 1. Check if `{projectPath}/plans/` exists; return silently if not
 2. Enumerate all plan directories via `discoverPlanDirectories()`
 3. For each plan directory:
-   - Check if symlink named `cardSlug` exists
-   - Verify it is a symlink (via `.isSymbolicLinkKey`)
-   - Remove symlink via `FileManager.removeItem()`
+   - Check if directory named `cardSlug` exists
+   - Remove directory via `FileManager.removeItem()`
 4. Log warnings for individual removal failures but do not throw
-5. Best-effort: continues to next symlink even if one fails
+5. Best-effort: continues to next directory even if one fails
 
 **Notes:**
 
 - Called by ViewModel before trashing a card
-- Does not fail the deletion if symlink cleanup fails
-- Non-symlink files with matching name are skipped (safety check)
+- Does not fail the deletion if cleanup fails
+- Removal is based on slug match, not link type
+- Works correctly with symlinks, hard links, and regular directories
+- No link-type checking is performed — any directory matching the card slug is removed
 
 ## PlanService Implementation
 

@@ -502,7 +502,7 @@ final class PlanServiceTests: XCTestCase {
 
         XCTAssertTrue(fileManager.fileExists(atPath: symlinkPath.path))
 
-        try service.removeCardSymlinksFromPlans(
+        try service.removeCardFromPlans(
             cardSlug: "test-card",
             projectPath: projectURL.path
         )
@@ -546,7 +546,7 @@ final class PlanServiceTests: XCTestCase {
         XCTAssertTrue(fileManager.fileExists(atPath: symlinkPath1.path))
         XCTAssertTrue(fileManager.fileExists(atPath: symlinkPath2.path))
 
-        try service.removeCardSymlinksFromPlans(
+        try service.removeCardFromPlans(
             cardSlug: "test-card",
             projectPath: projectURL.path
         )
@@ -564,7 +564,7 @@ final class PlanServiceTests: XCTestCase {
         )
 
         XCTAssertNoThrow(
-            try service.removeCardSymlinksFromPlans(
+            try service.removeCardFromPlans(
                 cardSlug: "nonexistent-card",
                 projectPath: projectURL.path
             )
@@ -573,10 +573,87 @@ final class PlanServiceTests: XCTestCase {
 
     func testRemoveCardSymlinksFromPlansHandlesMissingPlansDirectory() throws {
         XCTAssertNoThrow(
-            try service.removeCardSymlinksFromPlans(
+            try service.removeCardFromPlans(
                 cardSlug: "test-card",
                 projectPath: projectURL.path
             )
         )
+    }
+
+    func testEnumerateLinkedCardsWithHardLinks() throws {
+        try createPlan(
+            slug: "0001-test-plan",
+            id: "123e4567-e89b-12d3-a456-426614174000",
+            title: "Test Plan",
+            number: 1
+        )
+
+        try createCard(slug: "test-card")
+
+        let plansDir = projectURL.appendingPathComponent("plans")
+        let planDir = plansDir.appendingPathComponent("0001-test-plan")
+        let hardLinkPath = planDir.appendingPathComponent("test-card")
+
+        // Create hard link by copying the card directory
+        let cardDir = projectURL.appendingPathComponent("cards")
+            .appendingPathComponent("test-card")
+        try fileManager.copyItem(at: cardDir, to: hardLinkPath)
+
+        let plans = try service.loadPlans(projectPath: projectURL.path)
+        XCTAssertEqual(plans.count, 1)
+        XCTAssertEqual(plans[0].linkedCardSlugs, ["test-card"])
+    }
+
+    func testRemoveCardFromPlansWithHardLinks() throws {
+        try createPlan(
+            slug: "0001-test-plan",
+            id: "123e4567-e89b-12d3-a456-426614174000",
+            title: "Test Plan",
+            number: 1
+        )
+
+        try createCard(slug: "test-card")
+
+        let plansDir = projectURL.appendingPathComponent("plans")
+        let planDir = plansDir.appendingPathComponent("0001-test-plan")
+        let hardLinkPath = planDir.appendingPathComponent("test-card")
+
+        // Create hard link by copying the card directory
+        let cardDir = projectURL.appendingPathComponent("cards")
+            .appendingPathComponent("test-card")
+        try fileManager.copyItem(at: cardDir, to: hardLinkPath)
+
+        XCTAssertTrue(fileManager.fileExists(atPath: hardLinkPath.path))
+
+        try service.removeCardFromPlans(
+            cardSlug: "test-card",
+            projectPath: projectURL.path
+        )
+
+        XCTAssertFalse(fileManager.fileExists(atPath: hardLinkPath.path))
+    }
+
+    func testLoadPlansWithHardLinkedCards() throws {
+        try createPlan(
+            slug: "0001-test-plan",
+            id: "123e4567-e89b-12d3-a456-426614174000",
+            title: "Test Plan",
+            number: 1
+        )
+
+        try createCard(slug: "test-card")
+
+        let plansDir = projectURL.appendingPathComponent("plans")
+        let planDir = plansDir.appendingPathComponent("0001-test-plan")
+        let hardLinkPath = planDir.appendingPathComponent("test-card")
+
+        // Create hard link by copying the card directory with card.md
+        let cardDir = projectURL.appendingPathComponent("cards")
+            .appendingPathComponent("test-card")
+        try fileManager.copyItem(at: cardDir, to: hardLinkPath)
+
+        let plans = try service.loadPlans(projectPath: projectURL.path)
+        XCTAssertEqual(plans.count, 1)
+        XCTAssertTrue(plans[0].linkedCardSlugs.contains("test-card"))
     }
 }

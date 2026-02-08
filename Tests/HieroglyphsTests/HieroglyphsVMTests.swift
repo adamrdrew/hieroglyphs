@@ -299,6 +299,91 @@ final class HieroglyphsVMTests: XCTestCase {
         XCTAssertTrue(viewModel.cards.isEmpty)
     }
 
+    @MainActor
+    func testLoadCardsIngestsFromUshabtiWhenSourceDirectoryIsSet() {
+        let mockService = MockWorkspaceService()
+        mockService.ingestCardsReturnCount = 2
+
+        let projectWithSource = Project(
+            id: UUID(),
+            title: "Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "project",
+            sourceDirectory: "/source"
+        )
+
+        mockService.mockProjects = [projectWithSource]
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.cards(projectWithSource))
+
+        mockService.ingestCardsWasCalled = false
+
+        viewModel.loadCards()
+
+        XCTAssertTrue(mockService.ingestCardsWasCalled)
+    }
+
+    @MainActor
+    func testLoadCardsDoesNotIngestWhenSourceDirectoryIsNil() {
+        let mockService = MockWorkspaceService()
+
+        let projectWithoutSource = Project(
+            id: UUID(),
+            title: "Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "project",
+            sourceDirectory: nil
+        )
+
+        mockService.mockProjects = [projectWithoutSource]
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.cards(projectWithoutSource))
+
+        mockService.ingestCardsWasCalled = false
+
+        viewModel.loadCards()
+
+        XCTAssertFalse(mockService.ingestCardsWasCalled)
+    }
+
+    @MainActor
+    func testLoadCardsLoadsCardsAfterIngestion() {
+        let mockService = MockWorkspaceService()
+        mockService.ingestCardsReturnCount = 1
+
+        let projectWithSource = Project(
+            id: UUID(),
+            title: "Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "project",
+            sourceDirectory: "/source"
+        )
+
+        mockService.mockProjects = [projectWithSource]
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.cards(projectWithSource))
+
+        viewModel.loadCards()
+
+        XCTAssertTrue(mockService.ingestCardsWasCalled)
+        XCTAssertEqual(viewModel.cards.count, 2)
+    }
+
     // MARK: - createCard() Tests
 
     @MainActor
@@ -1104,11 +1189,11 @@ final class HieroglyphsVMTests: XCTestCase {
         viewModel.selectedCard = cardToDelete
 
         XCTAssertNotNil(viewModel.selectedCard)
-        XCTAssertFalse(mockPlan.removeCardSymlinksWasCalled)
+        XCTAssertFalse(mockPlan.removeCardWasCalled)
 
         viewModel.deleteSelectedItem()
 
-        XCTAssertTrue(mockPlan.removeCardSymlinksWasCalled)
+        XCTAssertTrue(mockPlan.removeCardWasCalled)
         XCTAssertEqual(mockPlan.lastRemovedCardSlug, cardToDelete?.slug)
         XCTAssertTrue(mockWorkspace.deleteCardWasCalled)
         XCTAssertNil(viewModel.selectedCard)
@@ -1170,7 +1255,7 @@ final class HieroglyphsVMTests: XCTestCase {
 
         viewModel.deleteSelectedItem()
 
-        XCTAssertTrue(mockPlan.removeCardSymlinksWasCalled)
+        XCTAssertTrue(mockPlan.removeCardWasCalled)
         XCTAssertTrue(mockWorkspace.deleteCardWasCalled)
         XCTAssertNil(viewModel.selectedCard)
     }
@@ -1390,6 +1475,17 @@ final class MockWorkspaceService: WorkspaceProviding {
     func deleteCard(slug: String, projectPath: String) throws {
         deleteCardWasCalled = true
     }
+
+    var ingestCardsWasCalled = false
+    var ingestCardsReturnCount = 0
+
+    func ingestCardsFromUshabti(
+        projectPath: String,
+        sourceDirectory: String?
+    ) throws -> Int {
+        ingestCardsWasCalled = true
+        return ingestCardsReturnCount
+    }
 }
 
 // MARK: - Mock File Watcher
@@ -1462,7 +1558,7 @@ final class MockPlanService: PlanProviding {
 
     var mockPlans: [Plan] = []
     var removedCardSlugs: [String] = []
-    var removeCardSymlinksWasCalled = false
+    var removeCardWasCalled = false
     var lastRemovedCardSlug: String?
     var lastRemovedCardProjectPath: String?
 
@@ -1550,8 +1646,8 @@ final class MockPlanService: PlanProviding {
         }
     }
 
-    func removeCardSymlinksFromPlans(cardSlug: String, projectPath: String) throws {
-        removeCardSymlinksWasCalled = true
+    func removeCardFromPlans(cardSlug: String, projectPath: String) throws {
+        removeCardWasCalled = true
         lastRemovedCardSlug = cardSlug
         lastRemovedCardProjectPath = projectPath
         removedCardSlugs.append(cardSlug)

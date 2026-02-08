@@ -392,5 +392,64 @@ WorkspaceService is tested via `WorkspaceServiceTests.swift` using temporary dir
 - CRUD operations (create, update, delete)
 - Unknown field preservation (round-trip tests)
 - Trash operations (verifying files are moved, not deleted)
+- Card ingestion from Ushabti (status override, duplicate detection, error handling)
 
 Tests use `FileManager.default` with temporary directories created via `FileManager.temporaryDirectory`.
+
+## Card Ingestion from Ushabti
+
+### ingestCardsFromUshabti(projectPath:sourceDirectory:)
+
+**Signature:** `func ingestCardsFromUshabti(projectPath: String, sourceDirectory: String?) throws -> Int`
+
+**Purpose:** Ingest cards created by Ushabti agents from `.ushabti/cards/` into the Hieroglyphs library with `triage` status.
+
+**Parameters:**
+
+- `projectPath` — Absolute path to the project directory
+- `sourceDirectory` — Optional path to source directory containing `.ushabti/cards/` (typically the project's source code directory)
+
+**Returns:** Count of successfully ingested cards (0 if no cards found or sourceDirectory is nil)
+
+**Throws:** Rarely throws (handles errors gracefully with warning logs)
+
+**Behavior:**
+
+1. Return 0 if `sourceDirectory` is nil (no ingestion source configured)
+2. Construct path to `{sourceDirectory}/.ushabti/cards/`
+3. Return 0 if directory doesn't exist (no cards to ingest)
+4. Enumerate subdirectories containing `card.md` via `discoverCardDirectories()`
+5. For each card directory:
+   - Parse `card.md` frontmatter and body via `FrontmatterParser`
+   - Check if slug already exists in `{projectPath}/cards/` (skip if duplicate)
+   - Override `status` field to `triage` regardless of source status
+   - Update `updated` timestamp to current date
+   - Create target card directory at `{projectPath}/cards/{slug}/`
+   - Write updated card.md to target directory
+   - Delete source directory from `.ushabti/cards/{slug}/` after successful copy
+   - If parsing or writing fails, log warning and skip to next card (no throw)
+6. Return count of successfully ingested cards
+
+**Status Override:**
+
+All ingested cards have their status set to `triage`, regardless of the status specified by the Ushabti agent. This forces human review before cards enter normal workflow.
+
+**Duplicate Detection:**
+
+If a card slug already exists in the target `cards/` directory, the card is skipped (no overwrite). Source card is NOT deleted in this case (remains in `.ushabti/cards/`).
+
+**Error Handling:**
+
+Ingestion follows "do your best" philosophy:
+- Missing `sourceDirectory`: returns 0, no error
+- Missing `.ushabti/cards/` directory: returns 0, no error
+- Malformed card files: skipped with warning log, continues to next card
+- Permission errors: skipped with warning log, continues to next card
+- Partial success is acceptable: returns count of successfully ingested cards even if some fail
+
+**Notes:**
+
+- Ingestion is a move operation (copy + delete source), not a sync
+- Once imported, the Hieroglyphs copy is authoritative
+- Ushabti does not write back to imported cards
+- Called automatically by `HieroglyphsVM.loadCards()` when `project.sourceDirectory` is set

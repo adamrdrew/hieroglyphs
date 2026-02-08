@@ -140,6 +140,7 @@ Additional markdown content here.
 
 **Cases:**
 - `backlog` — Not yet scheduled for work
+- `triage` — Auto-discovered cards awaiting human review (stored as `triage`)
 - `todo` — Scheduled but not started
 - `inProgress` — Currently being worked on (stored as `in-progress`)
 - `done` — Completed
@@ -151,6 +152,9 @@ Additional markdown content here.
 - Raw values are lowercase kebab-case strings (e.g., `in-progress` for `inProgress`)
 - Stored in frontmatter `status` field as raw string (e.g., `status: in-progress`)
 - Card counts in sidebar are grouped by status to show workflow progress
+- `triage` status is automatically assigned to cards imported from Ushabti agents via `ingestCardsFromUshabti()`
+- Cards in `triage` status require explicit human review to decide placement (`todo`, `backlog`, etc.)
+- Workflow progression: `backlog` or `triage` → `todo` → `inProgress` → `done` → `archived`
 
 ## Priority
 

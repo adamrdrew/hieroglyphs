@@ -27,8 +27,9 @@ protocol PlanProviding {
     /// Write phase prompt content to PHASE_PROMPT.md.
     func writePhasePrompt(planSlug: String, content: String, projectPath: String) throws
 
-    /// Remove card symlinks from all plans when a card is deleted.
-    /// Scans all plan directories and removes any symlink matching the card slug.
+    /// Remove card from all plans when a card is deleted.
+    /// Scans all plan directories and removes any directory matching the card slug.
+    /// Agnostic to link type (works with symlinks, hard links, or plain directories).
     /// Best-effort cleanup: logs warnings for individual failures but does not throw.
-    func removeCardSymlinksFromPlans(cardSlug: String, projectPath: String) throws
+    func removeCardFromPlans(cardSlug: String, projectPath: String) throws
 }

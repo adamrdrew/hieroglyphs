@@ -623,4 +623,94 @@ When working with this workspace:
         var resultingURL: NSURL?
         try fileManager.trashItem(at: cardURL, resultingItemURL: &resultingURL)
     }
+
+    // MARK: - Card Ingestion
+
+    func ingestCardsFromUshabti(
+        projectPath: String,
+        sourceDirectory: String?
+    ) throws -> Int {
+        guard let sourceDirectory else { return 0 }
+
+        let ushabtiCardsPath = "\(sourceDirectory)/.ushabti/cards"
+        let ushabtiCardsURL = URL(fileURLWithPath: ushabtiCardsPath)
+
+        guard fileManager.fileExists(atPath: ushabtiCardsURL.path) else {
+            return 0
+        }
+
+        return try ingestCardsFromDirectory(
+            ushabtiCardsURL,
+            projectPath: projectPath
+        )
+    }
+
+    private func ingestCardsFromDirectory(
+        _ sourceURL: URL,
+        projectPath: String
+    ) throws -> Int {
+        let projectURL = URL(fileURLWithPath: projectPath)
+        let targetCardsURL = projectURL.appendingPathComponent("cards")
+
+        let cardDirectories = try discoverCardDirectories(in: sourceURL)
+        var ingestedCount = 0
+
+        for cardURL in cardDirectories {
+            let slug = cardURL.lastPathComponent
+            let targetCardURL = targetCardsURL.appendingPathComponent(slug)
+
+            if fileManager.fileExists(atPath: targetCardURL.path) {
+                continue
+            }
+
+            if try ingestCard(from: cardURL, to: targetCardURL) {
+                ingestedCount += 1
+            }
+        }
+
+        return ingestedCount
+    }
+
+    private func ingestCard(from sourceURL: URL, to targetURL: URL) throws -> Bool {
+        let cardFileURL = sourceURL.appendingPathComponent("card.md")
+
+        do {
+            let markdown = try String(contentsOf: cardFileURL, encoding: .utf8)
+            let parsed = try FrontmatterParser.parse(markdown)
+            var frontmatter = parsed.frontmatter
+
+            frontmatter["status"] = "triage"
+            frontmatter["updated"] = formatDate(Date())
+
+            let updatedMarkdown = try FrontmatterParser.serialize(
+                frontmatter: frontmatter,
+                body: parsed.body
+            )
+
+            try createCardDirectoryAndWrite(
+                markdown: updatedMarkdown,
+                at: targetURL
+            )
+
+            try fileManager.removeItem(at: sourceURL)
+            return true
+        } catch {
+            print("Warning: Failed to ingest card at \(sourceURL.path): \(error)")
+            return false
+        }
+    }
+
+    private func createCardDirectoryAndWrite(
+        markdown: String,
+        at targetURL: URL
+    ) throws {
+        try fileManager.createDirectory(
+            at: targetURL,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+
+        let cardFileURL = targetURL.appendingPathComponent("card.md")
+        try markdown.write(to: cardFileURL, atomically: true, encoding: .utf8)
+    }
 }

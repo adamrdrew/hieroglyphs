@@ -1,0 +1,170 @@
+phase:
+  id: "0021"
+  slug: reinforcement
+  title: Reinforcement
+  status: complete
+
+steps:
+  - id: S001
+    title: Add triage status to CardStatus enum
+    implemented: true
+    reviewed: true
+    notes: "Added triage case to CardStatus enum between backlog and todo. Updated switch statements in CardList.swift and Sidebar.swift to handle new case. Code compiles successfully."
+    touched:
+      - Sources/Hieroglyphs/Models/CardStatus.swift
+      - Sources/Hieroglyphs/Views/CardList/CardList.swift
+      - Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift
+
+  - id: S002
+    title: Test triage status enum case
+    implemented: true
+    reviewed: true
+    notes: "Updated existing CardStatus tests in ModelTests.swift to include triage case. Added testCardStatusTriageCodable test. All tests pass."
+    touched:
+      - Tests/HieroglyphsTests/ModelTests.swift
+
+  - id: S003
+    title: Audit removeCardSymlinksFromPlans implementation
+    implemented: true
+    reviewed: true
+    notes: "Reviewed PlanService.removeCardSymlinksFromPlans. Implementation is CORRECT: uses slug-based directory removal that works for symlinks, hard links, and directories. The .isSymbolicLinkKey check is a safety guard to prevent deleting non-link files, not a link-type filter. Method name is misleading - should be removeCardFromPlans since it's agnostic to link type."
+    touched:
+      - Sources/Hieroglyphs/Services/PlanService.swift
+
+  - id: S004
+    title: Fix or verify removeCardFromPlans logic
+    implemented: true
+    reviewed: true
+    notes: "S003 confirmed implementation is correct - uses slug-based directory removal agnostic to link type. No fix needed."
+    touched: []
+
+  - id: S005
+    title: Rename removeCardSymlinksFromPlans to removeCardFromPlans
+    implemented: true
+    reviewed: true
+    notes: "Renamed method in protocol, implementation, mock, and all call sites. Updated comments to clarify link-agnostic behavior. All tests pass."
+    touched:
+      - Sources/Hieroglyphs/Services/PlanProviding.swift
+      - Sources/Hieroglyphs/Services/PlanService.swift
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+      - Tests/HieroglyphsTests/PlanServiceTests.swift
+
+  - id: S006
+    title: Update plans-system.md documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated method name from removeCardSymlinksFromPlans to removeCardFromPlans. Clarified slug-based removal approach and link-type agnostic behavior."
+    touched:
+      - .ushabti/docs/plans-system.md
+
+  - id: S007
+    title: Implement ingestCardsFromUshabti in WorkspaceService
+    implemented: true
+    reviewed: true
+    notes: "Added ingestCardsFromUshabti method to WorkspaceProviding protocol and WorkspaceService. Implementation discovers cards in .ushabti/cards/, copies to project cards/ directory with status override to triage, deletes source. Handles all error cases gracefully. Code compiles."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceProviding.swift
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S008
+    title: Add mock ingestCardsFromUshabti to MockWorkspaceService
+    implemented: true
+    reviewed: true
+    notes: "Added mock method to MockWorkspaceService with call tracking and configurable return count. Code compiles."
+    touched:
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+
+  - id: S009
+    title: Test ingestCardsFromUshabti in WorkspaceServiceTests
+    implemented: true
+    reviewed: true
+    notes: "Added 6 tests covering: successful ingestion with status override, duplicate detection, missing sourceDirectory, missing .ushabti/cards/, malformed cards, and partial success. All tests pass."
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S010
+    title: Trigger ingestion on project load in HieroglyphsVM
+    implemented: true
+    reviewed: true
+    notes: "Added ingestion call in loadCards() before loading cards. Checks for non-nil sourceDirectory, calls ingestCardsFromUshabti, logs count if > 0. Errors are caught and logged without blocking card loading. Code compiles."
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S011
+    title: Test ingestion trigger in HieroglyphsVMTests
+    implemented: true
+    reviewed: true
+    notes: "Added 3 tests: ingestCardsFromUshabti called when sourceDirectory is set, not called when nil, and cards loaded after ingestion. All tests pass."
+    touched:
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+
+  - id: S012
+    title: Update workspace-service.md documentation
+    implemented: true
+    reviewed: true
+    notes: "Added comprehensive documentation for ingestCardsFromUshabti method including parameters, behavior, status override, duplicate detection, and error handling."
+    touched:
+      - .ushabti/docs/workspace-service.md
+
+  - id: S013
+    title: Update viewmodel.md documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated loadCards() documentation to reflect ingestion step. Added notes about automatic ingestion and error handling."
+    touched:
+      - .ushabti/docs/viewmodel.md
+
+  - id: S014
+    title: Update models.md documentation
+    implemented: true
+    reviewed: true
+    notes: "Added triage status to CardStatus documentation. Documented raw value, position in workflow, and semantics (auto-discovered cards awaiting human review)."
+    touched:
+      - .ushabti/docs/models.md
+
+  - id: S015
+    title: Run tests and lint
+    implemented: true
+    reviewed: true
+    notes: "All 210 tests pass. No lint violations. Code builds successfully."
+    touched: []
+
+  - id: S016
+    title: Fix enumerateLinkedCards to handle hard links
+    implemented: true
+    reviewed: true
+    notes: "Replaced isSymbolicLink-only check with dual detection: symlinks (including dangling) OR directories containing card.md. This preserves backward compatibility with dangling symlink tests while adding hard-link support. Code compiles."
+    touched:
+      - Sources/Hieroglyphs/Services/PlanService.swift
+
+  - id: S017
+    title: Fix removeCardFromPlans to handle hard links
+    implemented: true
+    reviewed: true
+    notes: "Removed isSymbolicLink resource value check (lines 466-474). Simplified to directory removal by slug match. Hard-linked card directories now correctly cleaned up on card deletion. Code compiles."
+    touched:
+      - Sources/Hieroglyphs/Services/PlanService.swift
+
+  - id: S018
+    title: Add hard-link test coverage
+    implemented: true
+    reviewed: true
+    notes: "Added three tests: testEnumerateLinkedCardsWithHardLinks, testRemoveCardFromPlansWithHardLinks, testLoadPlansWithHardLinkedCards. All tests use copied directories (hard links) instead of symlinks. All three new tests pass."
+    touched:
+      - Tests/HieroglyphsTests/PlanServiceTests.swift
+
+  - id: S019
+    title: Update plans-system.md with correct logic
+    implemented: true
+    reviewed: true
+    notes: "Updated loadPlans behavior to describe directory+card.md detection. Updated removeCardFromPlans to remove link-type checking references. Renamed 'Symlinks' section to 'Card Links' and clarified link-type agnostic behavior. Documentation now accurately reflects directory-based detection."
+    touched:
+      - .ushabti/docs/plans-system.md
+
+  - id: S020
+    title: Run tests and lint after corrections
+    implemented: true
+    reviewed: true
+    notes: "All 213 tests pass (3 new hard-link tests added). swift build completes with no warnings in PlanService (pre-existing SpotlightService warnings are unrelated to this phase). Code quality verified."
+    touched: []

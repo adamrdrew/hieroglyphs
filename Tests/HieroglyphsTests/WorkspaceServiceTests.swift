@@ -1461,4 +1461,242 @@ final class WorkspaceServiceTests: XCTestCase {
         XCTAssertEqual(parsed.frontmatter["source_directory"] as? String, "/updated/source")
         XCTAssertEqual(parsed.frontmatter["custom_field"] as? String, "custom_value")
     }
+
+    // MARK: - Card Ingestion Tests
+
+    func testIngestCardsFromUshabtiSuccessfulIngestion() throws {
+        let service = WorkspaceService(fileManager: fileManager)
+        let projectDir = fixtureRoot.appendingPathComponent("test-project")
+        try fileManager.createDirectory(
+            at: projectDir,
+            withIntermediateDirectories: true
+        )
+
+        let sourceDir = fixtureRoot.appendingPathComponent("source")
+        let ushabtiCardsDir = sourceDir.appendingPathComponent(".ushabti/cards")
+        try fileManager.createDirectory(
+            at: ushabtiCardsDir,
+            withIntermediateDirectories: true
+        )
+
+        let cardDir = ushabtiCardsDir.appendingPathComponent("test-card")
+        try fileManager.createDirectory(at: cardDir, withIntermediateDirectories: true)
+
+        let frontmatter: [String: Any] = [
+            "id": UUID().uuidString,
+            "title": "Test Card",
+            "type": "task",
+            "status": "backlog",
+            "priority": "medium",
+            "tags": [],
+            "created": "2026-01-15T10:00:00Z",
+            "updated": "2026-01-15T10:00:00Z",
+            "slug": "test-card"
+        ]
+
+        let markdown = try FrontmatterParser.serialize(
+            frontmatter: frontmatter,
+            body: "Test body"
+        )
+
+        let cardFile = cardDir.appendingPathComponent("card.md")
+        try markdown.write(to: cardFile, atomically: true, encoding: .utf8)
+
+        let count = try service.ingestCardsFromUshabti(
+            projectPath: projectDir.path,
+            sourceDirectory: sourceDir.path
+        )
+
+        XCTAssertEqual(count, 1)
+
+        let targetCardDir = projectDir.appendingPathComponent("cards/test-card")
+        let targetCardFile = targetCardDir.appendingPathComponent("card.md")
+        XCTAssertTrue(fileManager.fileExists(atPath: targetCardFile.path))
+
+        let ingestedContent = try String(contentsOf: targetCardFile, encoding: .utf8)
+        let ingestedParsed = try FrontmatterParser.parse(ingestedContent)
+        XCTAssertEqual(ingestedParsed.frontmatter["status"] as? String, "triage")
+        XCTAssertEqual(ingestedParsed.body, "Test body")
+
+        XCTAssertFalse(fileManager.fileExists(atPath: cardDir.path))
+    }
+
+    func testIngestCardsFromUshabtiSkipsDuplicates() throws {
+        let service = WorkspaceService(fileManager: fileManager)
+        let projectDir = fixtureRoot.appendingPathComponent("test-project")
+        let projectCardsDir = projectDir.appendingPathComponent("cards")
+        try fileManager.createDirectory(
+            at: projectCardsDir,
+            withIntermediateDirectories: true
+        )
+
+        let existingCardDir = projectCardsDir.appendingPathComponent("test-card")
+        try fileManager.createDirectory(at: existingCardDir, withIntermediateDirectories: true)
+
+        let sourceDir = fixtureRoot.appendingPathComponent("source")
+        let ushabtiCardsDir = sourceDir.appendingPathComponent(".ushabti/cards")
+        try fileManager.createDirectory(
+            at: ushabtiCardsDir,
+            withIntermediateDirectories: true
+        )
+
+        let cardDir = ushabtiCardsDir.appendingPathComponent("test-card")
+        try fileManager.createDirectory(at: cardDir, withIntermediateDirectories: true)
+
+        let frontmatter: [String: Any] = [
+            "id": UUID().uuidString,
+            "title": "Test Card",
+            "slug": "test-card"
+        ]
+
+        let markdown = try FrontmatterParser.serialize(
+            frontmatter: frontmatter,
+            body: "Test"
+        )
+
+        let cardFile = cardDir.appendingPathComponent("card.md")
+        try markdown.write(to: cardFile, atomically: true, encoding: .utf8)
+
+        let count = try service.ingestCardsFromUshabti(
+            projectPath: projectDir.path,
+            sourceDirectory: sourceDir.path
+        )
+
+        XCTAssertEqual(count, 0)
+        XCTAssertTrue(fileManager.fileExists(atPath: cardDir.path))
+    }
+
+    func testIngestCardsFromUshabtiHandlesMissingSourceDirectory() throws {
+        let service = WorkspaceService(fileManager: fileManager)
+        let projectDir = fixtureRoot.appendingPathComponent("test-project")
+        try fileManager.createDirectory(
+            at: projectDir,
+            withIntermediateDirectories: true
+        )
+
+        let count = try service.ingestCardsFromUshabti(
+            projectPath: projectDir.path,
+            sourceDirectory: nil
+        )
+
+        XCTAssertEqual(count, 0)
+    }
+
+    func testIngestCardsFromUshabtiHandlesMissingUshabtiCardsDirectory() throws {
+        let service = WorkspaceService(fileManager: fileManager)
+        let projectDir = fixtureRoot.appendingPathComponent("test-project")
+        try fileManager.createDirectory(
+            at: projectDir,
+            withIntermediateDirectories: true
+        )
+
+        let sourceDir = fixtureRoot.appendingPathComponent("source")
+        try fileManager.createDirectory(
+            at: sourceDir,
+            withIntermediateDirectories: true
+        )
+
+        let count = try service.ingestCardsFromUshabti(
+            projectPath: projectDir.path,
+            sourceDirectory: sourceDir.path
+        )
+
+        XCTAssertEqual(count, 0)
+    }
+
+    func testIngestCardsFromUshabtiSkipsMalformedCards() throws {
+        let service = WorkspaceService(fileManager: fileManager)
+        let projectDir = fixtureRoot.appendingPathComponent("test-project")
+        try fileManager.createDirectory(
+            at: projectDir,
+            withIntermediateDirectories: true
+        )
+
+        let sourceDir = fixtureRoot.appendingPathComponent("source")
+        let ushabtiCardsDir = sourceDir.appendingPathComponent(".ushabti/cards")
+        try fileManager.createDirectory(
+            at: ushabtiCardsDir,
+            withIntermediateDirectories: true
+        )
+
+        let cardDir = ushabtiCardsDir.appendingPathComponent("bad-card")
+        try fileManager.createDirectory(at: cardDir, withIntermediateDirectories: true)
+
+        let cardFile = cardDir.appendingPathComponent("card.md")
+        let malformedYaml = """
+        ---
+        id: not-a-uuid
+        title: [this is not a string, it's an array]
+        status: {invalid: yaml
+        ---
+        """
+        try malformedYaml.write(to: cardFile, atomically: true, encoding: .utf8)
+
+        let count = try service.ingestCardsFromUshabti(
+            projectPath: projectDir.path,
+            sourceDirectory: sourceDir.path
+        )
+
+        XCTAssertEqual(count, 0)
+
+        let targetCardDir = projectDir.appendingPathComponent("cards/bad-card")
+        XCTAssertFalse(fileManager.fileExists(atPath: targetCardDir.path))
+    }
+
+    func testIngestCardsFromUshabtiPartialSuccess() throws {
+        let service = WorkspaceService(fileManager: fileManager)
+        let projectDir = fixtureRoot.appendingPathComponent("test-project")
+        try fileManager.createDirectory(
+            at: projectDir,
+            withIntermediateDirectories: true
+        )
+
+        let sourceDir = fixtureRoot.appendingPathComponent("source")
+        let ushabtiCardsDir = sourceDir.appendingPathComponent(".ushabti/cards")
+        try fileManager.createDirectory(
+            at: ushabtiCardsDir,
+            withIntermediateDirectories: true
+        )
+
+        let goodCardDir = ushabtiCardsDir.appendingPathComponent("good-card")
+        try fileManager.createDirectory(at: goodCardDir, withIntermediateDirectories: true)
+
+        let goodFrontmatter: [String: Any] = [
+            "id": UUID().uuidString,
+            "title": "Good Card",
+            "slug": "good-card"
+        ]
+
+        let goodMarkdown = try FrontmatterParser.serialize(
+            frontmatter: goodFrontmatter,
+            body: "Good"
+        )
+
+        let goodCardFile = goodCardDir.appendingPathComponent("card.md")
+        try goodMarkdown.write(to: goodCardFile, atomically: true, encoding: .utf8)
+
+        let badCardDir = ushabtiCardsDir.appendingPathComponent("bad-card")
+        try fileManager.createDirectory(at: badCardDir, withIntermediateDirectories: true)
+
+        let badCardFile = badCardDir.appendingPathComponent("card.md")
+        let malformedYaml = """
+        ---
+        invalid: {yaml: structure
+        ---
+        """
+        try malformedYaml.write(to: badCardFile, atomically: true, encoding: .utf8)
+
+        let count = try service.ingestCardsFromUshabti(
+            projectPath: projectDir.path,
+            sourceDirectory: sourceDir.path
+        )
+
+        XCTAssertEqual(count, 1)
+
+        let targetGoodCardDir = projectDir.appendingPathComponent("cards/good-card")
+        XCTAssertTrue(fileManager.fileExists(atPath: targetGoodCardDir.path))
+
+        let targetBadCardDir = projectDir.appendingPathComponent("cards/bad-card")
+        XCTAssertFalse(fileManager.fileExists(atPath: targetBadCardDir.path))
+    }
 }

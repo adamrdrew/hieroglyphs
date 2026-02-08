@@ -235,9 +235,13 @@ SwiftUI automatically calls `selectSection(_:)` when user clicks a section row.
 1. Guard check `selectedProject` is not nil (sets cards to empty array and returns if nil)
 2. Guard check `workspacePath` is not nil (logs error, sets cards to empty array, and returns if nil)
 3. Construct project path from workspace path and selected project slug
-4. Call `workspaceService.loadCards(from:for:)` to load all cards
-5. Update `self.cards` with loaded cards
-6. If any step throws, catch error, log to console, and set `cards` to empty array
+4. If `selectedProject.sourceDirectory` is set:
+   - Call `workspaceService.ingestCardsFromUshabti(projectPath:sourceDirectory:)` to import cards from Ushabti agents
+   - Log count of ingested cards if > 0
+   - If ingestion fails, catch error, log warning, and continue (does not block card loading)
+5. Call `workspaceService.loadCards(from:for:)` to load all cards
+6. Update `self.cards` with loaded cards
+7. If card loading throws, catch error, log to console, and set `cards` to empty array
 
 **Error Handling:**
 
@@ -262,6 +266,8 @@ Called automatically when selected project changes via `.onChange` modifier in `
 **Notes:**
 - Reloads all cards from disk on every call (no caching)
 - Empty array when no project selected or on error
+- Automatically ingests cards from `.ushabti/cards/` when `sourceDirectory` is set
+- Ingestion errors are logged but do not prevent card loading
 - Future optimization may add caching or incremental loading
 
 ### createCard(title:type:status:priority:tags:body:)

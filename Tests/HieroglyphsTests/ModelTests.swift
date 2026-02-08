@@ -7,8 +7,9 @@ final class ModelTests: XCTestCase {
 
     func testCardStatusAllCases() {
         let allCases = CardStatus.allCases
-        XCTAssertEqual(allCases.count, 5)
+        XCTAssertEqual(allCases.count, 6)
         XCTAssertTrue(allCases.contains(.backlog))
+        XCTAssertTrue(allCases.contains(.triage))
         XCTAssertTrue(allCases.contains(.todo))
         XCTAssertTrue(allCases.contains(.inProgress))
         XCTAssertTrue(allCases.contains(.done))
@@ -17,6 +18,7 @@ final class ModelTests: XCTestCase {
 
     func testCardStatusRawValues() {
         XCTAssertEqual(CardStatus.backlog.rawValue, "backlog")
+        XCTAssertEqual(CardStatus.triage.rawValue, "triage")
         XCTAssertEqual(CardStatus.todo.rawValue, "todo")
         XCTAssertEqual(CardStatus.inProgress.rawValue, "in-progress")
         XCTAssertEqual(CardStatus.done.rawValue, "done")
@@ -32,6 +34,18 @@ final class ModelTests: XCTestCase {
         let decoded = try decoder.decode(CardStatus.self, from: encoded)
 
         XCTAssertEqual(status, decoded)
+    }
+
+    func testCardStatusTriageCodable() throws {
+        let status = CardStatus.triage
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+
+        let encoded = try encoder.encode(status)
+        let decoded = try decoder.decode(CardStatus.self, from: encoded)
+
+        XCTAssertEqual(status, decoded)
+        XCTAssertEqual(decoded.rawValue, "triage")
     }
 
     // MARK: - CardType Tests

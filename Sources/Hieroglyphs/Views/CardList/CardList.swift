@@ -201,10 +201,11 @@ struct CardList: View {
     private func statusOrder(_ status: CardStatus) -> Int {
         switch status {
         case .backlog: return 0
-        case .todo: return 1
-        case .inProgress: return 2
-        case .done: return 3
-        case .archived: return 4
+        case .triage: return 1
+        case .todo: return 2
+        case .inProgress: return 3
+        case .done: return 4
+        case .archived: return 5
         }
     }
 
