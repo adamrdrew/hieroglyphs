@@ -4,11 +4,13 @@ import SwiftUI
 ///
 /// Loads cards for the project and displays count grouped by status.
 struct SidebarCardsItem: View {
+    @Environment(HieroglyphsVM.self) private var viewModel
+
     let project: Project
     let workspacePath: String
     let workspaceService: WorkspaceProviding
 
-    @State private var cardCounts: [CardStatus: Int] = [:]
+    @State private var onAppearCardCounts: [CardStatus: Int] = [:]
 
     var body: some View {
         HStack {
@@ -22,6 +24,19 @@ struct SidebarCardsItem: View {
         }
         .onAppear {
             loadCardCounts()
+        }
+    }
+
+    private var cardCounts: [CardStatus: Int] {
+        if let selectedProject = viewModel.selectedProject,
+           selectedProject.id == project.id {
+            var counts: [CardStatus: Int] = [:]
+            for card in viewModel.cards {
+                counts[card.status, default: 0] += 1
+            }
+            return counts
+        } else {
+            return onAppearCardCounts
         }
     }
 
@@ -53,7 +68,7 @@ struct SidebarCardsItem: View {
                 counts[card.status, default: 0] += 1
             }
 
-            cardCounts = counts
+            onAppearCardCounts = counts
         } catch {
             print("Failed to load cards for project \(project.slug): \(error)")
         }

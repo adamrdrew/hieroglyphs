@@ -310,11 +310,13 @@ Each child item is tagged with the appropriate section case for selection tracki
 
 ```swift
 struct SidebarCardsItem: View {
+    @Environment(HieroglyphsVM.self) private var viewModel
+
     let project: Project
     let workspacePath: String
     let workspaceService: WorkspaceProviding
 
-    @State private var cardCounts: [CardStatus: Int] = [:]
+    @State private var onAppearCardCounts: [CardStatus: Int] = [:]
 
     var body: some View {
         HStack {
@@ -327,19 +329,41 @@ struct SidebarCardsItem: View {
         }
         .onAppear { loadCardCounts() }
     }
+
+    private var cardCounts: [CardStatus: Int] {
+        // For selected project, derive counts from viewModel.cards (reactive)
+        if let selectedProject = viewModel.selectedProject,
+           selectedProject.id == project.id {
+            var counts: [CardStatus: Int] = [:]
+            for card in viewModel.cards {
+                counts[card.status, default: 0] += 1
+            }
+            return counts
+        } else {
+            // For non-selected projects, use onAppear loaded counts
+            return onAppearCardCounts
+        }
+    }
 }
 ```
 
 **Key Features:**
 
 1. **Card Count Summary:** Displays counts grouped by status (e.g., "3 todo • 2 in progress")
-2. **On-Demand Loading:** Loads cards via workspaceService in `.onAppear`
-3. **Formatted Display:** Uses bullet separator, replaces hyphens with spaces in status labels
-4. **Status Ordering:** Displays in workflow order (backlog, todo, in-progress, done, archived)
+2. **Reactive Updates:** For the selected project, counts derive from `viewModel.cards` and update automatically when cards are added, deleted, or change status
+3. **On-Demand Loading:** For non-selected projects, loads cards via workspaceService in `.onAppear`
+4. **Formatted Display:** Uses bullet separator, replaces hyphens with spaces in status labels
+5. **Status Ordering:** Displays in workflow order (backlog, todo, in-progress, done, archived)
+
+**Reactivity Behavior:**
+
+- **Selected Project:** `cardCounts` is a computed property that derives from `viewModel.cards`. Counts update immediately when cards change.
+- **Non-Selected Projects:** Counts are loaded once via `onAppear` and stored in `@State`. They update when the project is next selected.
 
 **Notes:**
 - Mirrors the original `SidebarProjectEntry` card counting logic
-- Loads cards independently for each project when disclosure group is expanded
+- Uses hybrid approach: reactive for selected project, lazy-loaded for others
+- Prevents loading all cards for all projects eagerly (performance optimization)
 - Errors are logged to console; counts remain empty on error
 
 ## SidebarProjectEntry
@@ -408,7 +432,7 @@ private func loadCardCounts() {
             counts[card.status, default: 0] += 1
         }
 
-        cardCounts = counts
+        onAppearCardCounts = counts
     } catch {
         print("Failed to load cards for project \(project.slug): \(error)")
     }
@@ -419,7 +443,8 @@ private func loadCardCounts() {
 1. Construct project path from workspace path and slug
 2. Load cards via `workspaceService.loadCards()`
 3. Group cards by status and count
-4. Store counts in `@State` variable
+4. Store counts in `@State` variable (`onAppearCardCounts`)
+5. These counts are used for non-selected projects; selected project derives from `viewModel.cards`
 5. On error, log to console and leave counts empty
 
 **Card Count Summary Formatting:**
@@ -753,6 +778,7 @@ private func selectSourceDirectory() {
 struct CardList: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @State private var showingNewCardSheet = false
+    @State private var cardPendingDeletion: Card?
 
     var body: some View {
         @Bindable var bindableViewModel = viewModel
@@ -767,6 +793,13 @@ struct CardList: View {
                     ForEach(filteredAndSortedCards) { card in
                         CardListEntry(card: card)
                             .tag(card)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    cardPendingDeletion = card
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                     }
                 }
                 .listStyle(.plain)
@@ -787,6 +820,25 @@ struct CardList: View {
         .sheet(isPresented: $showingNewCardSheet) {
             NewCardSheet()
         }
+        .alert(
+            "Delete Card",
+            isPresented: Binding(
+                get: { cardPendingDeletion != nil },
+                set: { if !$0 { cardPendingDeletion = nil } }
+            ),
+            presenting: cardPendingDeletion
+        ) { card in
+            Button("Cancel", role: .cancel) {
+                cardPendingDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                viewModel.selectedCard = card
+                viewModel.deleteSelectedItem()
+                cardPendingDeletion = nil
+            }
+        } message: { card in
+            Text("Are you sure you want to delete '\(card.title)'? This will move the card to Trash.")
+        }
     }
 }
 ```
@@ -795,12 +847,14 @@ struct CardList: View {
 
 1. **Empty States:** Shows appropriate message when no project selected or no cards exist
 2. **List with Selection:** Binds to `viewModel.selectedCard` for card selection
-3. **Search:** `.searchable()` modifier filters cards by title (case-insensitive substring match)
-4. **Filtering and Sorting:** Computed property `filteredAndSortedCards` applies all filters and sort criteria
-5. **Auto-Load:** `.onChange` modifier calls `loadCards()` when selected project changes
-6. **Search Focus:** Menu command (Cmd+F) can focus search field via ViewModel state
-7. **Toolbar Button:** "New Card" button opens NewCardSheet (disabled when no project selected)
-8. **Sheet Presentation:** Bound to ViewModel state (enables menu commands)
+3. **Context Menu:** Right-click card to show "Delete" option (destructive role, trash icon)
+4. **Confirmation Alert:** Deleting a card requires confirmation with card title in message
+5. **Search:** `.searchable()` modifier filters cards by title (case-insensitive substring match)
+6. **Filtering and Sorting:** Computed property `filteredAndSortedCards` applies all filters and sort criteria
+7. **Auto-Load:** `.onChange` modifier calls `loadCards()` when selected project changes
+8. **Search Focus:** Menu command (Cmd+F) can focus search field via ViewModel state
+9. **Toolbar Button:** "New Card" button opens NewCardSheet (disabled when no project selected)
+10. **Sheet Presentation:** Bound to ViewModel state (enables menu commands)
 
 **Filter and Sort Logic:**
 
@@ -816,10 +870,26 @@ Filters are applied in sequence:
 - **No Project Selected:** `ContentUnavailableView` with folder icon
 - **No Cards:** `ContentUnavailableView` with note.text icon
 
+**Deletion Flow:**
+
+1. User right-clicks card in list
+2. Context menu shows "Delete" option with trash icon (destructive role, red color)
+3. User selects "Delete"
+4. Alert presents with title "Delete Card" and confirmation message including card title
+5. User can cancel or confirm deletion
+6. On confirm:
+   - Card is set as `selectedCard`
+   - `deleteSelectedItem()` is called on ViewModel
+   - ViewModel cleans up plan symlinks before trashing card
+   - Card list refreshes automatically
+7. Alert dismisses
+
 **Notes:**
 - Uses `.plain` list style for clean appearance
 - Toolbar button placement follows TakeNote patterns
 - Empty states use `ContentUnavailableView` (macOS 14+)
+- Context menu uses `.destructive` role for delete action (renders red)
+- Alert uses two-way binding with `cardPendingDeletion` state
 
 ## CardListEntry
 

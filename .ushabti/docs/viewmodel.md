@@ -747,9 +747,12 @@ class MockWorkspaceService: WorkspaceProviding {
 
 1. Guard check `workspacePath` is not nil (log error and return if nil)
 2. If `selectedCard` is not nil:
+   - **Clean up plan symlinks first:** Call `planService?.removeCardSymlinksFromPlans(cardSlug:projectPath:)` to remove all symlinks to this card from all plans
+   - If symlink cleanup fails, log warning but continue (best-effort, does not block deletion)
    - Call `workspaceService.deleteCard(slug:projectPath:)` to move card to Trash
    - Set `selectedCard` to nil
    - Call `loadCards()` to reload card list
+   - Call `loadPlans()` to refresh plan state (symlinks removed)
 3. Else if `selectedProject` is not nil:
    - Call `workspaceService.deleteProject(at:)` to move project to Trash
    - Set `selectedProject` to nil
@@ -758,7 +761,7 @@ class MockWorkspaceService: WorkspaceProviding {
 
 **Error Handling:**
 
-Errors are logged to console via `print()`. Item is not deleted on error.
+Errors are logged to console via `print()`. Item is not deleted on error. Symlink cleanup errors are logged as warnings but do not prevent deletion.
 
 **Example error output:**
 ```

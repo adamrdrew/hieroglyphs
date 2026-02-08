@@ -422,4 +422,46 @@ final class PlanService: PlanProviding {
             throw PlanError.fileWriteFailed(error)
         }
     }
+
+    func removeCardSymlinksFromPlans(cardSlug: String, projectPath: String) throws {
+        let projectURL = URL(fileURLWithPath: projectPath)
+        let plansURL = projectURL.appendingPathComponent("plans")
+
+        // If plans directory doesn't exist, no cleanup needed
+        guard fileManager.fileExists(atPath: plansURL.path) else {
+            return
+        }
+
+        // Get all plan directories
+        let planURLs = try discoverPlanDirectories(in: plansURL)
+
+        // For each plan directory, check for and remove matching symlink
+        for planURL in planURLs {
+            let symlinkURL = planURL.appendingPathComponent(cardSlug)
+
+            // Skip if symlink doesn't exist
+            guard fileManager.fileExists(atPath: symlinkURL.path) else {
+                continue
+            }
+
+            // Check that it's actually a symlink (safety check)
+            do {
+                let values = try symlinkURL.resourceValues(forKeys: [.isSymbolicLinkKey])
+                guard values.isSymbolicLink == true else {
+                    continue
+                }
+            } catch {
+                print("Warning: Failed to check if \(symlinkURL.path) is symlink: \(error)")
+                continue
+            }
+
+            // Remove the symlink
+            do {
+                try fileManager.removeItem(at: symlinkURL)
+            } catch {
+                print("Warning: Failed to remove symlink at \(symlinkURL.path): \(error)")
+                continue
+            }
+        }
+    }
 }

@@ -358,7 +358,10 @@ workspacePath: /Users/alice/Hieroglyphs
 2. Check card directory exists
 3. Use `FileManager.trashItem(at:resultingItemURL:)` to move to Trash
 
-**Notes:** Uses system Trash per L06. Provides user safety and undo capability.
+**Notes:**
+- Uses system Trash per L06. Provides user safety and undo capability.
+- The ViewModel orchestrates deletion: it calls `PlanService.removeCardSymlinksFromPlans()` before calling `deleteCard()` to clean up plan symlinks
+- Symlink cleanup is best-effort and does not block deletion if it fails
 
 ## Environment Injection
 

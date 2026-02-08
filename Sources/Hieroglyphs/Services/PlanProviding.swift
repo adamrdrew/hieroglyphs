@@ -22,4 +22,9 @@ protocol PlanProviding {
 
     /// Write phase prompt content to PHASE_PROMPT.md.
     func writePhasePrompt(planSlug: String, content: String, projectPath: String) throws
+
+    /// Remove card symlinks from all plans when a card is deleted.
+    /// Scans all plan directories and removes any symlink matching the card slug.
+    /// Best-effort cleanup: logs warnings for individual failures but does not throw.
+    func removeCardSymlinksFromPlans(cardSlug: String, projectPath: String) throws
 }

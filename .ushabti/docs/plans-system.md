@@ -191,7 +191,7 @@ Plans use **relative symlinks** to link to cards. This enables workspace portabi
 - Symlinks are relative (two levels up, then into cards directory)
 - Dangling symlinks (card deleted) are tolerated and shown as "Missing: card-slug" in UI
 - FileManager.createSymbolicLink() used to create symlinks
-- Card deletion does not automatically remove symlinks from plans
+- Card deletion removes symlinks from all plans via `removeCardSymlinksFromPlans()` (best-effort, orchestrated by ViewModel)
 
 ## PlanProviding Protocol
 
@@ -384,6 +384,38 @@ Plans use **relative symlinks** to link to cards. This enables workspace portabi
 
 1. Construct path to `{projectPath}/plans/{planSlug}/PHASE_PROMPT.md`
 2. Write content atomically
+
+### removeCardSymlinksFromPlans(cardSlug:projectPath:)
+
+**Signature:** `func removeCardSymlinksFromPlans(cardSlug: String, projectPath: String) throws`
+
+**Purpose:** Remove all symlinks to a card from all plans when the card is deleted. Best-effort cleanup that prevents dangling symlinks.
+
+**Parameters:**
+
+- `cardSlug` — Slug of card being deleted
+- `projectPath` — Absolute path to project directory
+
+**Throws:**
+
+- Rarely throws (returns silently if plans directory missing)
+
+**Behavior:**
+
+1. Check if `{projectPath}/plans/` exists; return silently if not
+2. Enumerate all plan directories via `discoverPlanDirectories()`
+3. For each plan directory:
+   - Check if symlink named `cardSlug` exists
+   - Verify it is a symlink (via `.isSymbolicLinkKey`)
+   - Remove symlink via `FileManager.removeItem()`
+4. Log warnings for individual removal failures but do not throw
+5. Best-effort: continues to next symlink even if one fails
+
+**Notes:**
+
+- Called by ViewModel before trashing a card
+- Does not fail the deletion if symlink cleanup fails
+- Non-symlink files with matching name are skipped (safety check)
 
 ## PlanService Implementation
 

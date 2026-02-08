@@ -4,6 +4,7 @@ import SwiftUI
 struct CardList: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @State private var isSearchPresented: Bool = false
+    @State private var cardPendingDeletion: Card?
 
     var body: some View {
         @Bindable var bindableViewModel = viewModel
@@ -20,6 +21,13 @@ struct CardList: View {
                     ForEach(filteredAndSortedCards) { card in
                         CardListEntry(card: card)
                             .tag(card)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    cardPendingDeletion = card
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                     }
                 }
                 .listStyle(.plain)
@@ -50,6 +58,25 @@ struct CardList: View {
         }
         .sheet(isPresented: $bindableViewModel.showingNewCardSheet) {
             NewCardSheet()
+        }
+        .alert(
+            "Delete Card",
+            isPresented: Binding(
+                get: { cardPendingDeletion != nil },
+                set: { if !$0 { cardPendingDeletion = nil } }
+            ),
+            presenting: cardPendingDeletion
+        ) { card in
+            Button("Cancel", role: .cancel) {
+                cardPendingDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                viewModel.selectedCard = card
+                viewModel.deleteSelectedItem()
+                cardPendingDeletion = nil
+            }
+        } message: { card in
+            Text("Are you sure you want to delete '\(card.title)'? This will move the card to Trash.")
         }
     }
 

@@ -1081,6 +1081,100 @@ final class HieroglyphsVMTests: XCTestCase {
         XCTAssertFalse(mockService.deleteProjectWasCalled)
     }
 
+    @MainActor
+    func testDeleteSelectedCardCleansUpPlanSymlinks() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+        mockWorkspace.shouldThrowOnLoadCards = false
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+        viewModel.loadWorkspace()
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
+        viewModel.loadCards()
+
+        let cardToDelete = viewModel.cards.first
+        viewModel.selectedCard = cardToDelete
+
+        XCTAssertNotNil(viewModel.selectedCard)
+        XCTAssertFalse(mockPlan.removeCardSymlinksWasCalled)
+
+        viewModel.deleteSelectedItem()
+
+        XCTAssertTrue(mockPlan.removeCardSymlinksWasCalled)
+        XCTAssertEqual(mockPlan.lastRemovedCardSlug, cardToDelete?.slug)
+        XCTAssertTrue(mockWorkspace.deleteCardWasCalled)
+        XCTAssertNil(viewModel.selectedCard)
+    }
+
+    @MainActor
+    func testDeleteSelectedCardWorksWhenPlanServiceIsNil() {
+        let mockWorkspace = MockWorkspaceService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+        mockWorkspace.shouldThrowOnLoadCards = false
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: nil
+        )
+        viewModel.loadWorkspace()
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
+        viewModel.loadCards()
+
+        let cardToDelete = viewModel.cards.first
+        viewModel.selectedCard = cardToDelete
+
+        XCTAssertNotNil(viewModel.selectedCard)
+
+        viewModel.deleteSelectedItem()
+
+        XCTAssertTrue(mockWorkspace.deleteCardWasCalled)
+        XCTAssertNil(viewModel.selectedCard)
+    }
+
+    @MainActor
+    func testDeleteSelectedCardContinuesWhenSymlinkCleanupFails() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+        mockWorkspace.shouldThrowOnLoadCards = false
+        mockPlan.shouldThrowOnRemoveCardSymlinks = true
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+        viewModel.loadWorkspace()
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
+        viewModel.loadCards()
+
+        let cardToDelete = viewModel.cards.first
+        viewModel.selectedCard = cardToDelete
+
+        XCTAssertNotNil(viewModel.selectedCard)
+
+        viewModel.deleteSelectedItem()
+
+        XCTAssertTrue(mockPlan.removeCardSymlinksWasCalled)
+        XCTAssertTrue(mockWorkspace.deleteCardWasCalled)
+        XCTAssertNil(viewModel.selectedCard)
+    }
+
     // MARK: - requestSearchFocus() Tests
 
     @MainActor
@@ -1351,6 +1445,124 @@ final class MockPhaseService: PhaseProviding {
             )
         }
         return mockPhases
+    }
+}
+
+// MARK: - Mock Plan Service
+
+final class MockPlanService: PlanProviding {
+    var shouldThrowOnLoadPlans = false
+    var shouldThrowOnCreatePlan = false
+    var shouldThrowOnUpdatePlan = false
+    var shouldThrowOnAddCardToPlan = false
+    var shouldThrowOnRemoveCardFromPlan = false
+    var shouldThrowOnUpdatePlanStatus = false
+    var shouldThrowOnWritePhasePrompt = false
+    var shouldThrowOnRemoveCardSymlinks = false
+
+    var mockPlans: [Plan] = []
+    var removedCardSlugs: [String] = []
+    var removeCardSymlinksWasCalled = false
+    var lastRemovedCardSlug: String?
+    var lastRemovedCardProjectPath: String?
+
+    func loadPlans(projectPath: String) throws -> [Plan] {
+        if shouldThrowOnLoadPlans {
+            throw NSError(
+                domain: "MockPlanService",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Mock error"]
+            )
+        }
+        return mockPlans
+    }
+
+    func createPlan(title: String, number: Int, projectPath: String) throws -> Plan {
+        if shouldThrowOnCreatePlan {
+            throw NSError(
+                domain: "MockPlanService",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Mock error"]
+            )
+        }
+        let plan = Plan(
+            id: UUID(),
+            title: title,
+            number: number,
+            slug: "\(String(format: "%04d", number))-\(title.lowercased().replacingOccurrences(of: " ", with: "-"))",
+            status: .planning,
+            created: Date(),
+            updated: Date(),
+            linkedCardSlugs: [],
+            phasePrompt: ""
+        )
+        mockPlans.append(plan)
+        return plan
+    }
+
+    func updatePlan(_ plan: Plan, projectPath: String) throws {
+        if shouldThrowOnUpdatePlan {
+            throw NSError(
+                domain: "MockPlanService",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Mock error"]
+            )
+        }
+    }
+
+    func addCardToPlan(cardSlug: String, planSlug: String, projectPath: String) throws {
+        if shouldThrowOnAddCardToPlan {
+            throw NSError(
+                domain: "MockPlanService",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Mock error"]
+            )
+        }
+    }
+
+    func removeCardFromPlan(cardSlug: String, planSlug: String, projectPath: String) throws {
+        if shouldThrowOnRemoveCardFromPlan {
+            throw NSError(
+                domain: "MockPlanService",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Mock error"]
+            )
+        }
+    }
+
+    func updatePlanStatus(plan: Plan, status: PlanStatus, projectPath: String) throws {
+        if shouldThrowOnUpdatePlanStatus {
+            throw NSError(
+                domain: "MockPlanService",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Mock error"]
+            )
+        }
+    }
+
+    func writePhasePrompt(planSlug: String, content: String, projectPath: String) throws {
+        if shouldThrowOnWritePhasePrompt {
+            throw NSError(
+                domain: "MockPlanService",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Mock error"]
+            )
+        }
+    }
+
+    func removeCardSymlinksFromPlans(cardSlug: String, projectPath: String) throws {
+        removeCardSymlinksWasCalled = true
+        lastRemovedCardSlug = cardSlug
+        lastRemovedCardProjectPath = projectPath
+        removedCardSlugs.append(cardSlug)
+
+        if shouldThrowOnRemoveCardSymlinks {
+            throw NSError(
+                domain: "MockPlanService",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Mock error"]
+            )
+        }
     }
 }
 

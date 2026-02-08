@@ -1,0 +1,86 @@
+phase:
+  id: "0019"
+  slug: card-management-polish
+  title: Card Management Polish
+  status: complete
+
+steps:
+  - id: S001
+    title: Add removeCardSymlinksFromPlans to PlanProviding protocol
+    implemented: true
+    reviewed: true
+    notes: "Added method signature to PlanProviding protocol with doc comment"
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Services/PlanProviding.swift
+  - id: S002
+    title: Implement removeCardSymlinksFromPlans in PlanService
+    implemented: true
+    reviewed: true
+    notes: "Implemented best-effort symlink cleanup. Handles missing plans directory, verifies symlinks before removal, logs warnings for failures but doesn't throw."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Services/PlanService.swift
+  - id: S003
+    title: Add mock implementation for removeCardSymlinksFromPlans
+    implemented: true
+    reviewed: true
+    notes: "Created MockPlanService with full protocol conformance. Tracks removeCardSymlinksFromPlans calls for test assertions."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+  - id: S004
+    title: Test removeCardSymlinksFromPlans
+    implemented: true
+    reviewed: true
+    notes: "Added 4 tests covering: single plan cleanup, multiple plan cleanup, card not found, missing plans directory. All tests pass."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/PlanServiceTests.swift
+  - id: S005
+    title: Wire card deletion in HieroglyphsVM to clean up symlinks
+    implemented: true
+    reviewed: true
+    notes: "Updated deleteSelectedItem() to call planService.removeCardSymlinksFromPlans before trashing card. Wrapped cleanup in do-catch with warning on failure (doesn't block deletion). Also calls loadPlans() after deletion."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S006
+    title: Test VM deletion with symlink cleanup
+    implemented: true
+    reviewed: true
+    notes: "Added 3 tests: symlink cleanup is called before deletion, deletion works when planService is nil, deletion continues even if cleanup fails. All tests pass."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+  - id: S007
+    title: Add context menu with delete action to CardListEntry
+    implemented: true
+    reviewed: true
+    notes: "Added contextMenu to CardListEntry row with destructive Delete button. Added cardPendingDeletion state to track which card should be deleted."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/CardList/CardList.swift
+  - id: S008
+    title: Add confirmation alert for card deletion
+    implemented: true
+    reviewed: true
+    notes: "Added alert with Delete (destructive) and Cancel buttons. Alert shows card title and confirmation message. On confirm, sets selectedCard and calls deleteSelectedItem()."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/CardList/CardList.swift
+  - id: S009
+    title: Fix SidebarCardsItem card count reactivity
+    implemented: true
+    reviewed: true
+    notes: "Made cardCounts a computed property that derives from viewModel.cards when project matches selectedProject. Renamed state to onAppearCardCounts for non-selected projects. Counts now update reactively for selected project."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift
+  - id: S010
+    title: Verify build and all tests pass
+    implemented: true
+    reviewed: true
+    notes: "Build succeeds with no errors. All 197 tests pass. No dead code introduced."
+    touched: []
+  - id: S011
+    title: Update documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated plans-system.md (removeCardSymlinksFromPlans method, symlink cleanup note), workspace-service.md (deletion orchestration note), viewmodel.md (updated deleteSelectedItem flow), views-ui.md (context menu, confirmation alert, SidebarCardsItem reactivity). All docs reconciled with code changes."
+    touched:
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/plans-system.md
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/workspace-service.md
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/viewmodel.md
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/views-ui.md

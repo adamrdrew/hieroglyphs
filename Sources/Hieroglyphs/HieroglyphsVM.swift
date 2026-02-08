@@ -834,12 +834,24 @@ final class HieroglyphsVM {
         do {
             if let selectedCard, let selectedProject {
                 let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+
+                // Clean up plan symlinks before trashing the card
+                do {
+                    try planService?.removeCardSymlinksFromPlans(
+                        cardSlug: selectedCard.slug,
+                        projectPath: projectPath
+                    )
+                } catch {
+                    print("Warning: Failed to clean up plan symlinks: \(error)")
+                }
+
                 try workspaceService.deleteCard(
                     slug: selectedCard.slug,
                     projectPath: projectPath
                 )
                 self.selectedCard = nil
                 loadCards()
+                loadPlans()
             } else if let selectedProject {
                 let projectPath = "\(workspacePath)/\(selectedProject.slug)"
                 try workspaceService.deleteProject(at: projectPath)

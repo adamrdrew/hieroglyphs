@@ -370,4 +370,103 @@ final class PlanServiceTests: XCTestCase {
         let writtenContent = try String(contentsOf: phasePromptFile, encoding: .utf8)
         XCTAssertEqual(writtenContent, content)
     }
+
+    func testRemoveCardSymlinksFromPlansRemovesSymlinkFromOnePlan() throws {
+        try createPlan(
+            slug: "0001-test-plan",
+            id: "123e4567-e89b-12d3-a456-426614174000",
+            title: "Test Plan",
+            number: 1
+        )
+
+        try createCard(slug: "test-card")
+
+        let plansDir = projectURL.appendingPathComponent("plans")
+        let planDir = plansDir.appendingPathComponent("0001-test-plan")
+        let symlinkPath = planDir.appendingPathComponent("test-card")
+
+        try fileManager.createSymbolicLink(
+            atPath: symlinkPath.path,
+            withDestinationPath: "../../cards/test-card/"
+        )
+
+        XCTAssertTrue(fileManager.fileExists(atPath: symlinkPath.path))
+
+        try service.removeCardSymlinksFromPlans(
+            cardSlug: "test-card",
+            projectPath: projectURL.path
+        )
+
+        XCTAssertFalse(fileManager.fileExists(atPath: symlinkPath.path))
+    }
+
+    func testRemoveCardSymlinksFromPlansRemovesSymlinkFromMultiplePlans() throws {
+        try createPlan(
+            slug: "0001-test-plan",
+            id: "123e4567-e89b-12d3-a456-426614174000",
+            title: "Test Plan",
+            number: 1
+        )
+
+        try createPlan(
+            slug: "0002-another-plan",
+            id: "223e4567-e89b-12d3-a456-426614174000",
+            title: "Another Plan",
+            number: 2
+        )
+
+        try createCard(slug: "test-card")
+
+        let plansDir = projectURL.appendingPathComponent("plans")
+        let planDir1 = plansDir.appendingPathComponent("0001-test-plan")
+        let planDir2 = plansDir.appendingPathComponent("0002-another-plan")
+        let symlinkPath1 = planDir1.appendingPathComponent("test-card")
+        let symlinkPath2 = planDir2.appendingPathComponent("test-card")
+
+        try fileManager.createSymbolicLink(
+            atPath: symlinkPath1.path,
+            withDestinationPath: "../../cards/test-card/"
+        )
+
+        try fileManager.createSymbolicLink(
+            atPath: symlinkPath2.path,
+            withDestinationPath: "../../cards/test-card/"
+        )
+
+        XCTAssertTrue(fileManager.fileExists(atPath: symlinkPath1.path))
+        XCTAssertTrue(fileManager.fileExists(atPath: symlinkPath2.path))
+
+        try service.removeCardSymlinksFromPlans(
+            cardSlug: "test-card",
+            projectPath: projectURL.path
+        )
+
+        XCTAssertFalse(fileManager.fileExists(atPath: symlinkPath1.path))
+        XCTAssertFalse(fileManager.fileExists(atPath: symlinkPath2.path))
+    }
+
+    func testRemoveCardSymlinksFromPlansHandlesCardNotFoundInAnyPlan() throws {
+        try createPlan(
+            slug: "0001-test-plan",
+            id: "123e4567-e89b-12d3-a456-426614174000",
+            title: "Test Plan",
+            number: 1
+        )
+
+        XCTAssertNoThrow(
+            try service.removeCardSymlinksFromPlans(
+                cardSlug: "nonexistent-card",
+                projectPath: projectURL.path
+            )
+        )
+    }
+
+    func testRemoveCardSymlinksFromPlansHandlesMissingPlansDirectory() throws {
+        XCTAssertNoThrow(
+            try service.removeCardSymlinksFromPlans(
+                cardSlug: "test-card",
+                projectPath: projectURL.path
+            )
+        )
+    }
 }
