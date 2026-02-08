@@ -338,7 +338,7 @@ Plans use **relative symlinks** to link to cards. This enables workspace portabi
 
 **Signature:** `func updatePlanStatus(plan: Plan, status: PlanStatus, projectPath: String) throws`
 
-**Purpose:** Update a plan's status and cascade to linked cards if status is "done".
+**Purpose:** Update a plan's status and cascade status changes to all linked cards.
 
 **Parameters:**
 
@@ -351,15 +351,23 @@ Plans use **relative symlinks** to link to cards. This enables workspace portabi
 - `PlanError.planNotFound` if plan does not exist
 - `PlanError.fileWriteFailed` if write fails
 
+**Status Mapping:**
+
+Plan status changes map to card status updates:
+- `.planning` → `CardStatus.backlog`
+- `.ready` → `CardStatus.todo`
+- `.done` → `CardStatus.done`
+
 **Behavior:**
 
 1. Update plan status in `plan.yaml` via `updatePlan()`
-2. If status is `done`:
+2. Map plan status to target card status via `mapPlanStatusToCardStatus()`
+3. Update all linked cards via `updateLinkedCardStatuses()`:
    - Enumerate symlinks to get linked card slugs
    - For each linked card:
      - Read card.md
      - Parse frontmatter
-     - Set `status` to `done`
+     - Set `status` to mapped card status
      - Update `updated` timestamp
      - Write card back to disk
    - Skip dangling symlinks with warning log
@@ -470,7 +478,7 @@ Plans use **relative symlinks** to link to cards. This enables workspace portabi
 
 - All methods call through to `planService`
 - Methods reload plans after mutations to reflect changes in UI
-- `updatePlanStatus()` also reloads cards when status is `done` to reflect card status changes
+- `updatePlanStatus()` reloads both plans and cards to reflect cascaded status changes
 
 ## Views
 

@@ -851,10 +851,18 @@ struct CardList: View {
 4. **Confirmation Alert:** Deleting a card requires confirmation with card title in message
 5. **Search:** `.searchable()` modifier filters cards by title (case-insensitive substring match)
 6. **Filtering and Sorting:** Computed property `filteredAndSortedCards` applies all filters and sort criteria
-7. **Auto-Load:** `.onChange` modifier calls `loadCards()` when selected project changes
-8. **Search Focus:** Menu command (Cmd+F) can focus search field via ViewModel state
-9. **Toolbar Button:** "New Card" button opens NewCardSheet (disabled when no project selected)
-10. **Sheet Presentation:** Bound to ViewModel state (enables menu commands)
+7. **Filter Bar:** Toolbar button toggles inline `CardFilterBar` with visual indicator for active filters
+8. **Sort Popover:** Toolbar button presents `CardSortPopover` as popover anchored to button
+9. **Auto-Load:** `.onChange` modifier calls `loadCards()` when selected project changes
+10. **Search Focus:** Menu command (Cmd+F) can focus search field via ViewModel state
+11. **Toolbar Buttons:** "New Card", "Filter", and "Sort" buttons in toolbar
+12. **Sheet Presentation:** Bound to ViewModel state (enables menu commands)
+
+**Toolbar:**
+
+- **Filter Button:** Toggles visibility of `CardFilterBar` inline below toolbar. Icon changes to filled variant when filters are active.
+- **Sort Button:** Opens `CardSortPopover` as popover for selecting sort criteria and order.
+- **New Card Button:** Opens `NewCardSheet` (disabled when no project selected).
 
 **Filter and Sort Logic:**
 
@@ -1006,6 +1014,7 @@ struct CardFilterBar: View {
 - Filters bind to ViewModel state (filterStatus, filterType, filterPriority)
 - Empty set means "show all" (no filter applied)
 - Non-empty set means "show only cards matching set"
+- Filter state is ephemeral (not persisted across app launches)
 
 ## CardSortPopover
 
@@ -1067,6 +1076,7 @@ struct CardSortPopover: View {
 - Follows TakeNote's NoteSortPopover pattern
 - Fixed width (200pt) for consistent popover size
 - Binds to ViewModel sort state
+- Sort state is ephemeral (not persisted across app launches)
 
 ## NewCardSheet
 
@@ -1567,9 +1577,13 @@ struct PlanList: View {
 3. PHASE_PROMPT.md content editor
 
 **Features:**
-- Status picker updates plan immediately
+- Status picker updates plan immediately and cascades to linked cards
 - Add Card button shows AddCardToPlanSheet
-- Remove Card action in context menu on linked cards
+- **Card Management Buttons:** Each linked card row shows visible action buttons:
+  - View Card button (doc.text icon) navigates to card in Cards section
+  - Remove from Plan button (minus.circle icon, destructive styling)
+  - Both buttons include tooltips
+- Remove Card action also available in context menu (secondary interaction path)
 - Dangling symlinks shown as "Missing: card-slug" with warning icon
 - PHASE_PROMPT.md editable via TextEditor with immediate writes
 - "Generate Phase Prompt" button (disabled placeholder for future)
@@ -1577,15 +1591,25 @@ struct PlanList: View {
 **Notes:**
 - Two states: no plan selected (ContentUnavailableView) or plan selected
 - Handles dangling symlinks gracefully
+- View Card navigation switches to Cards section and selects the card
 
 ## AddCardToPlanSheet
 
 **File:** `Sources/Hieroglyphs/Views/PlanDetail/AddCardToPlanSheet.swift`
 
-**Purpose:** Modal sheet for adding a card to a plan.
+**Purpose:** Modal sheet for adding a card to a plan with search and filter capabilities.
+
+**Features:**
+
+1. **Search:** `.searchable()` modifier filters cards by title (case-insensitive substring match)
+2. **Filter Menus:** Toolbar provides three filter menus for status, type, and priority (multi-select toggles)
+3. **Available Cards:** Lists cards not already linked to the plan
+4. **Selection:** Single-select list with Add button
+5. **Filter State:** Local to sheet (independent from main card list filters)
 
 **Behavior:**
 - Lists available cards (cards not already linked to plan)
+- Apply search text and active filters to available cards
 - Select card and click Add
 - Calls `viewModel.addCardToPlan(cardSlug:planSlug:)`
 - Dismisses sheet on success
@@ -1593,6 +1617,7 @@ struct PlanList: View {
 **Notes:**
 - Loads cards on appear
 - Filters out cards already linked to selected plan
+- Filter and search state is local to the sheet (not shared with CardList)
 
 ## PhasesPlaceholder
 

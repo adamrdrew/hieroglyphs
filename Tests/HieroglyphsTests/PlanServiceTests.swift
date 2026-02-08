@@ -313,7 +313,7 @@ final class PlanServiceTests: XCTestCase {
         XCTAssertEqual(updatedPlans[0].status, .ready)
     }
 
-    func testUpdatePlanStatusToDonesMarksLinkedCardsAsDone() throws {
+    func testUpdatePlanStatusToDoneMarksLinkedCardsAsDone() throws {
         try createPlan(
             slug: "0001-test-plan",
             id: "123e4567-e89b-12d3-a456-426614174000",
@@ -345,6 +345,116 @@ final class PlanServiceTests: XCTestCase {
         let cardContent = try String(contentsOf: cardFile, encoding: .utf8)
 
         XCTAssertTrue(cardContent.contains("status: done"))
+    }
+
+    func testUpdatePlanStatusToPlanningMarksLinkedCardsAsBacklog() throws {
+        try createPlan(
+            slug: "0001-test-plan",
+            id: "123e4567-e89b-12d3-a456-426614174000",
+            title: "Test Plan",
+            number: 1,
+            status: "ready"
+        )
+
+        try createCard(slug: "test-card")
+
+        try service.addCardToPlan(
+            cardSlug: "test-card",
+            planSlug: "0001-test-plan",
+            projectPath: projectURL.path
+        )
+
+        let plans = try service.loadPlans(projectPath: projectURL.path)
+        let plan = plans[0]
+
+        try service.updatePlanStatus(
+            plan: plan,
+            status: .planning,
+            projectPath: projectURL.path
+        )
+
+        let cardFile = projectURL
+            .appendingPathComponent("cards")
+            .appendingPathComponent("test-card")
+            .appendingPathComponent("card.md")
+        let cardContent = try String(contentsOf: cardFile, encoding: .utf8)
+
+        XCTAssertTrue(cardContent.contains("status: backlog"))
+    }
+
+    func testUpdatePlanStatusToReadyMarksLinkedCardsAsTodo() throws {
+        try createPlan(
+            slug: "0001-test-plan",
+            id: "123e4567-e89b-12d3-a456-426614174000",
+            title: "Test Plan",
+            number: 1,
+            status: "planning"
+        )
+
+        try createCard(slug: "test-card")
+
+        try service.addCardToPlan(
+            cardSlug: "test-card",
+            planSlug: "0001-test-plan",
+            projectPath: projectURL.path
+        )
+
+        let plans = try service.loadPlans(projectPath: projectURL.path)
+        let plan = plans[0]
+
+        try service.updatePlanStatus(
+            plan: plan,
+            status: .ready,
+            projectPath: projectURL.path
+        )
+
+        let cardFile = projectURL
+            .appendingPathComponent("cards")
+            .appendingPathComponent("test-card")
+            .appendingPathComponent("card.md")
+        let cardContent = try String(contentsOf: cardFile, encoding: .utf8)
+
+        XCTAssertTrue(cardContent.contains("status: todo"))
+    }
+
+    func testUpdatePlanStatusUpdatesCardTimestamp() throws {
+        try createPlan(
+            slug: "0001-test-plan",
+            id: "123e4567-e89b-12d3-a456-426614174000",
+            title: "Test Plan",
+            number: 1
+        )
+
+        try createCard(slug: "test-card")
+
+        try service.addCardToPlan(
+            cardSlug: "test-card",
+            planSlug: "0001-test-plan",
+            projectPath: projectURL.path
+        )
+
+        let cardFile = projectURL
+            .appendingPathComponent("cards")
+            .appendingPathComponent("test-card")
+            .appendingPathComponent("card.md")
+        let originalContent = try String(contentsOf: cardFile, encoding: .utf8)
+        let originalUpdated = originalContent.components(separatedBy: "updated: ")[1].components(separatedBy: "\n")[0]
+
+        Thread.sleep(forTimeInterval: 0.1)
+
+        let plans = try service.loadPlans(projectPath: projectURL.path)
+        let plan = plans[0]
+
+        try service.updatePlanStatus(
+            plan: plan,
+            status: .done,
+            projectPath: projectURL.path
+        )
+
+        let updatedContent = try String(contentsOf: cardFile, encoding: .utf8)
+        let newUpdated = updatedContent.components(separatedBy: "updated: ")[1].components(separatedBy: "\n")[0]
+
+        XCTAssertNotEqual(originalUpdated, newUpdated)
     }
 
     func testWritePhasePromptWritesContent() throws {

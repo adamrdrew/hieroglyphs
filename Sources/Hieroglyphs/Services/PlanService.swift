@@ -368,13 +368,31 @@ final class PlanService: PlanProviding {
         )
         try updatePlan(updatedPlan, projectPath: projectPath)
 
-        // If status is "done", mark all linked cards as done
-        if status == .done {
-            try markLinkedCardsAsDone(plan: plan, projectPath: projectPath)
+        // Map plan status to card status and update all linked cards
+        let targetCardStatus = mapPlanStatusToCardStatus(status)
+        try updateLinkedCardStatuses(
+            plan: plan,
+            status: targetCardStatus,
+            projectPath: projectPath
+        )
+    }
+
+    private func mapPlanStatusToCardStatus(_ planStatus: PlanStatus) -> CardStatus {
+        switch planStatus {
+        case .planning:
+            return .backlog
+        case .ready:
+            return .todo
+        case .done:
+            return .done
         }
     }
 
-    private func markLinkedCardsAsDone(plan: Plan, projectPath: String) throws {
+    private func updateLinkedCardStatuses(
+        plan: Plan,
+        status: CardStatus,
+        projectPath: String
+    ) throws {
         let projectURL = URL(fileURLWithPath: projectPath)
         let cardsURL = projectURL.appendingPathComponent("cards")
 
@@ -394,7 +412,7 @@ final class PlanService: PlanProviding {
                 let parsed = try FrontmatterParser.parse(existingMarkdown)
                 var frontmatter = parsed.frontmatter
 
-                frontmatter["status"] = "done"
+                frontmatter["status"] = status.rawValue
                 frontmatter["updated"] = formatDate(Date())
 
                 let markdown = try FrontmatterParser.serialize(

@@ -2,54 +2,63 @@ phase:
   id: "0020"
   slug: ux-improvements
   title: UX Improvements
-  status: planned
+  status: complete
 
 steps:
   - id: S001
     title: Wire Filter Bar into CardList Toolbar
-    implemented: false
-    reviewed: false
-    notes: ""
-    touched: []
+    implemented: true
+    reviewed: true
+    notes: "Added showFilterBar state, toolbar button with active filter visual indicator, and conditional CardFilterBar rendering."
+    touched:
+      - "Sources/Hieroglyphs/Views/CardList/CardList.swift"
 
   - id: S002
     title: Wire Sort Popover into CardList Toolbar
-    implemented: false
-    reviewed: false
-    notes: ""
-    touched: []
+    implemented: true
+    reviewed: true
+    notes: "Added showSortPopover state, toolbar button with popover presentation anchored to button."
+    touched:
+      - "Sources/Hieroglyphs/Views/CardList/CardList.swift"
 
   - id: S003
     title: Add Card Management Buttons to Plan Detail
-    implemented: false
-    reviewed: false
-    notes: ""
-    touched: []
+    implemented: true
+    reviewed: true
+    notes: "Added View Card and Remove from Plan icon buttons with tooltips to linked card rows. Implemented navigateToCard method to switch to Cards section and select card."
+    touched:
+      - "Sources/Hieroglyphs/Views/PlanDetail/PlanDetail.swift"
 
   - id: S004
     title: Add Filtering to Card Selection Sheet
-    implemented: false
-    reviewed: false
-    notes: ""
-    touched: []
+    implemented: true
+    reviewed: true
+    notes: "Added search field and filter menus (status, type, priority) to AddCardToPlanSheet toolbar. Filter state is local to the sheet."
+    touched:
+      - "Sources/Hieroglyphs/Views/PlanDetail/AddCardToPlanSheet.swift"
 
   - id: S005
     title: Generalize Plan Status Cascade to All Statuses
-    implemented: false
-    reviewed: false
-    notes: ""
-    touched: []
+    implemented: true
+    reviewed: true
+    notes: "Added mapPlanStatusToCardStatus method and renamed markLinkedCardsAsDone to updateLinkedCardStatuses. All plan status changes now cascade to linked cards with appropriate mappings."
+    touched:
+      - "Sources/Hieroglyphs/Services/PlanService.swift"
+      - "Sources/Hieroglyphs/Services/PlanProviding.swift"
 
   - id: S006
     title: Add Tests for New Public Methods
-    implemented: false
-    reviewed: false
-    notes: ""
-    touched: []
+    implemented: true
+    reviewed: true
+    notes: "Added tests for all status mapping scenarios (planning→backlog, ready→todo, done→done) and verified card timestamp updates. All tests pass."
+    touched:
+      - "Tests/HieroglyphsTests/PlanServiceTests.swift"
 
   - id: S007
     title: Update Documentation
-    implemented: false
-    reviewed: false
-    notes: ""
-    touched: []
+    implemented: true
+    reviewed: true
+    notes: "Updated plans-system.md to document generalized status cascade. Updated views-ui.md to document toolbar buttons, filter bar, sort popover, card management buttons, and filter/sort state ephemerality."
+    touched:
+      - ".ushabti/docs/plans-system.md"
+      - ".ushabti/docs/views-ui.md"

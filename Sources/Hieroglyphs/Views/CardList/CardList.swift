@@ -5,36 +5,45 @@ struct CardList: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @State private var isSearchPresented: Bool = false
     @State private var cardPendingDeletion: Card?
+    @State private var showFilterBar = false
+    @State private var showSortPopover = false
 
     var body: some View {
         @Bindable var bindableViewModel = viewModel
 
-        Group {
-            if viewModel.selectedProject == nil {
-                emptyProjectState
-            } else if viewModel.isLoadingCards && viewModel.cards.isEmpty {
-                loadingState
-            } else if viewModel.cards.isEmpty {
-                emptyCardsState
-            } else {
-                List(selection: $bindableViewModel.selectedCard) {
-                    ForEach(filteredAndSortedCards) { card in
-                        CardListEntry(card: card)
-                            .tag(card)
-                            .contextMenu {
-                                Button(role: .destructive) {
-                                    cardPendingDeletion = card
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+        VStack(spacing: 0) {
+            if showFilterBar {
+                CardFilterBar()
+                Divider()
+            }
+
+            Group {
+                if viewModel.selectedProject == nil {
+                    emptyProjectState
+                } else if viewModel.isLoadingCards && viewModel.cards.isEmpty {
+                    loadingState
+                } else if viewModel.cards.isEmpty {
+                    emptyCardsState
+                } else {
+                    List(selection: $bindableViewModel.selectedCard) {
+                        ForEach(filteredAndSortedCards) { card in
+                            CardListEntry(card: card)
+                                .tag(card)
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        cardPendingDeletion = card
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
                                 }
-                            }
+                        }
                     }
+                    .listStyle(.plain)
+                    .searchable(
+                        text: $bindableViewModel.searchText,
+                        isPresented: $isSearchPresented
+                    )
                 }
-                .listStyle(.plain)
-                .searchable(
-                    text: $bindableViewModel.searchText,
-                    isPresented: $isSearchPresented
-                )
             }
         }
         .onChange(of: viewModel.selectedProject, initial: true) { _, _ in
@@ -47,6 +56,27 @@ struct CardList: View {
             }
         }
         .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    showFilterBar.toggle()
+                } label: {
+                    Label("Filter", systemImage: filterButtonIcon)
+                }
+                .help("Toggle filter bar")
+            }
+
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    showSortPopover = true
+                } label: {
+                    Label("Sort", systemImage: "arrow.up.arrow.down")
+                }
+                .help("Sort options")
+                .popover(isPresented: $showSortPopover) {
+                    CardSortPopover()
+                }
+            }
+
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     viewModel.showNewCardSheet()
@@ -176,5 +206,12 @@ struct CardList: View {
         case .done: return 3
         case .archived: return 4
         }
+    }
+
+    private var filterButtonIcon: String {
+        let hasActiveFilters = !viewModel.filterStatus.isEmpty ||
+                              !viewModel.filterType.isEmpty ||
+                              !viewModel.filterPriority.isEmpty
+        return hasActiveFilters ? "line.horizontal.3.decrease.circle.fill" : "line.horizontal.3.decrease.circle"
     }
 }

@@ -17,7 +17,11 @@ protocol PlanProviding {
     /// Remove a card from a plan by deleting the symlink.
     func removeCardFromPlan(cardSlug: String, planSlug: String, projectPath: String) throws
 
-    /// Update a plan's status and cascade to linked cards if status is "done".
+    /// Update a plan's status and cascade status changes to all linked cards.
+    /// Maps plan status to corresponding card status:
+    /// - planning → backlog
+    /// - ready → todo
+    /// - done → done
     func updatePlanStatus(plan: Plan, status: PlanStatus, projectPath: String) throws
 
     /// Write phase prompt content to PHASE_PROMPT.md.

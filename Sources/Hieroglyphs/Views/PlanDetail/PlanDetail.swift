@@ -122,9 +122,32 @@ struct PlanDetail: View {
                 }
 
                 Spacer()
+
+                Button {
+                    navigateToCard(card: card)
+                } label: {
+                    Image(systemName: "doc.text")
+                }
+                .buttonStyle(.borderless)
+                .help("View Card")
+
+                Button(role: .destructive) {
+                    viewModel.removeCardFromPlan(
+                        cardSlug: cardSlug,
+                        planSlug: plan.slug
+                    )
+                } label: {
+                    Image(systemName: "minus.circle")
+                }
+                .buttonStyle(.borderless)
+                .help("Remove from Plan")
             }
             .padding(.vertical, 4)
             .contextMenu {
+                Button("View Card") {
+                    navigateToCard(card: card)
+                }
+
                 Button("Remove from Plan", role: .destructive) {
                     viewModel.removeCardFromPlan(
                         cardSlug: cardSlug,
@@ -140,6 +163,17 @@ struct PlanDetail: View {
                     .foregroundStyle(.secondary)
 
                 Spacer()
+
+                Button(role: .destructive) {
+                    viewModel.removeCardFromPlan(
+                        cardSlug: cardSlug,
+                        planSlug: plan.slug
+                    )
+                } label: {
+                    Image(systemName: "minus.circle")
+                }
+                .buttonStyle(.borderless)
+                .help("Remove from Plan")
             }
             .padding(.vertical, 4)
             .contextMenu {
@@ -186,5 +220,11 @@ struct PlanDetail: View {
                 viewModel.updatePlanStatus(plan: plan, status: newStatus)
             }
         )
+    }
+
+    private func navigateToCard(card: Card) {
+        guard let project = viewModel.selectedProject else { return }
+        viewModel.selectedSection = .cards(project)
+        viewModel.selectedCard = card
     }
 }
