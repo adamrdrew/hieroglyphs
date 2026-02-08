@@ -32,6 +32,6 @@ mkdir -p "$MACOS_DIR"
 mkdir -p "$RESOURCES_DIR"
 
 cp "$BUILD_DIR/arm64-apple-macosx/release/$APP_NAME" "$MACOS_DIR/$APP_NAME"
-cp "$PROJECT_DIR/Resources/Info.plist" "$CONTENTS/Info.plist"
+cp "$PROJECT_DIR/Sources/Hieroglyphs/Resources/Info.plist" "$CONTENTS/Info.plist"
 
 echo "Built: $APP_BUNDLE"
