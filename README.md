@@ -22,20 +22,17 @@ A macOS-native markdown-based project management tool built with SwiftUI. Hierog
 Hieroglyphs is a Swift Package Manager project. No Xcode project files are used.
 
 ```bash
-# Debug build
-swift build
-
-# Release build
-swift build -c release
-# or
+# Build the app bundle (release)
 ./Scripts/build-app.sh
 
-# Run
-swift run
+# Launch it
+open .build/Hieroglyphs.app
 
 # Run tests
 swift test
 ```
+
+`build-app.sh` compiles a release build and assembles a proper macOS `.app` bundle at `.build/Hieroglyphs.app` with Info.plist and the correct bundle structure. You can also use `swift build` and `swift run` for quick debug iterations, but `swift run` launches as a bare executable without a menu bar or dock icon.
 
 ## Workspace Structure
 

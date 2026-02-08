@@ -2,14 +2,36 @@
 #
 # build-app.sh
 #
-# Builds the Hieroglyphs app using Swift Package Manager.
-# This script provides a simple command-line interface to build the release
-# configuration of the app.
+# Builds Hieroglyphs and assembles a macOS .app bundle.
 #
 # Usage:
 #   ./Scripts/build-app.sh
 #
+# Output:
+#   .build/Hieroglyphs.app
+#
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+APP_NAME="Hieroglyphs"
+BUILD_DIR="$PROJECT_DIR/.build"
+APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
+CONTENTS="$APP_BUNDLE/Contents"
+MACOS_DIR="$CONTENTS/MacOS"
+RESOURCES_DIR="$CONTENTS/Resources"
+
+echo "Building $APP_NAME (release)..."
 swift build -c release
+
+echo "Assembling app bundle..."
+
+rm -rf "$APP_BUNDLE"
+mkdir -p "$MACOS_DIR"
+mkdir -p "$RESOURCES_DIR"
+
+cp "$BUILD_DIR/arm64-apple-macosx/release/$APP_NAME" "$MACOS_DIR/$APP_NAME"
+cp "$PROJECT_DIR/Resources/Info.plist" "$CONTENTS/Info.plist"
+
+echo "Built: $APP_BUNDLE"
