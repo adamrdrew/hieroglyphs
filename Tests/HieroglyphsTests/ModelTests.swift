@@ -350,4 +350,115 @@ final class ModelTests: XCTestCase {
 
         XCTAssertEqual(config, decoded)
     }
+
+    // MARK: - SearchResult Tests
+
+    func testSearchResultInitializationProject() {
+        let resultId = UUID()
+
+        let result = SearchResult(
+            id: resultId,
+            title: "Test Project",
+            path: "/workspace/test-project/project.md",
+            resultType: .project,
+            projectSlug: "test-project",
+            cardSlug: nil
+        )
+
+        XCTAssertEqual(result.id, resultId)
+        XCTAssertEqual(result.title, "Test Project")
+        XCTAssertEqual(result.path, "/workspace/test-project/project.md")
+        XCTAssertEqual(result.resultType, .project)
+        XCTAssertEqual(result.projectSlug, "test-project")
+        XCTAssertNil(result.cardSlug)
+    }
+
+    func testSearchResultInitializationCard() {
+        let resultId = UUID()
+
+        let result = SearchResult(
+            id: resultId,
+            title: "Test Card",
+            path: "/workspace/test-project/cards/test-card/card.md",
+            resultType: .card,
+            projectSlug: "test-project",
+            cardSlug: "test-card"
+        )
+
+        XCTAssertEqual(result.id, resultId)
+        XCTAssertEqual(result.title, "Test Card")
+        XCTAssertEqual(result.path, "/workspace/test-project/cards/test-card/card.md")
+        XCTAssertEqual(result.resultType, .card)
+        XCTAssertEqual(result.projectSlug, "test-project")
+        XCTAssertEqual(result.cardSlug, "test-card")
+    }
+
+    func testSearchResultIdentifiable() {
+        let resultId = UUID()
+
+        let result = SearchResult(
+            id: resultId,
+            title: "Test",
+            path: "/test/path",
+            resultType: .project
+        )
+
+        XCTAssertEqual(result.id, resultId)
+    }
+
+    func testSearchResultEquatable() {
+        let resultId = UUID()
+
+        let result1 = SearchResult(
+            id: resultId,
+            title: "Test",
+            path: "/test/path",
+            resultType: .project,
+            projectSlug: "test"
+        )
+
+        let result2 = SearchResult(
+            id: resultId,
+            title: "Test",
+            path: "/test/path",
+            resultType: .project,
+            projectSlug: "test"
+        )
+
+        XCTAssertEqual(result1, result2)
+    }
+
+    func testSearchResultHashable() {
+        let resultId = UUID()
+
+        let result1 = SearchResult(
+            id: resultId,
+            title: "Test",
+            path: "/test/path",
+            resultType: .project
+        )
+
+        let result2 = SearchResult(
+            id: resultId,
+            title: "Test",
+            path: "/test/path",
+            resultType: .project
+        )
+
+        var set = Set<SearchResult>()
+        set.insert(result1)
+        set.insert(result2)
+
+        XCTAssertEqual(set.count, 1)
+    }
+
+    func testSearchResultTypeProject() {
+        let type = SearchResultType.project
+        XCTAssertEqual(type.rawValue, "project")
+    }
+
+    func testSearchResultTypeCard() {
+        let type = SearchResultType.card
+        XCTAssertEqual(type.rawValue, "card")
+    }
 }

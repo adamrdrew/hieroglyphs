@@ -23,18 +23,23 @@ final class HieroglyphsVM {
     var sortBy: CardSortOption = .updated
     var sortOrder: SortOrder = .forward
 
+    var searchResults: [SearchResult] = []
+
     private let workspaceService: WorkspaceProviding
     private let fileWatcher: FileWatching?
     private let tagReconciler: TagReconciling?
+    private let searchService: SearchProviding?
 
     init(
         workspaceService: WorkspaceProviding,
         fileWatcher: FileWatching? = nil,
-        tagReconciler: TagReconciling? = nil
+        tagReconciler: TagReconciling? = nil,
+        searchService: SearchProviding? = nil
     ) {
         self.workspaceService = workspaceService
         self.fileWatcher = fileWatcher
         self.tagReconciler = tagReconciler
+        self.searchService = searchService
     }
 
     /// Loads workspace configuration and projects.
@@ -307,5 +312,78 @@ final class HieroglyphsVM {
         }
 
         return card
+    }
+
+    /// Performs a Spotlight search across workspace files.
+    ///
+    /// Searches file content, titles, and tags for matches. Updates
+    /// searchResults property with results. Clears results if query is empty.
+    ///
+    /// - Parameter query: Search query string
+    func performSearch(query: String) {
+        guard let searchService else {
+            print("Cannot perform search: search service is nil")
+            return
+        }
+
+        guard !query.isEmpty else {
+            self.searchResults = []
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot perform search: workspace path is nil")
+            self.searchResults = []
+            return
+        }
+
+        searchService.performSearch(
+            query: query,
+            scope: workspacePath
+        ) { [weak self] results in
+            Task { @MainActor in
+                self?.searchResults = results
+            }
+        }
+    }
+
+    /// Navigates to a search result by setting selection state.
+    ///
+    /// For project results, sets selectedProject. For card results,
+    /// sets selectedProject and selectedCard, loading cards if needed.
+    ///
+    /// - Parameter result: The search result to navigate to
+    func navigateToSearchResult(_ result: SearchResult) {
+        switch result.resultType {
+        case .project:
+            navigateToProject(slug: result.projectSlug)
+
+        case .card:
+            navigateToCard(
+                projectSlug: result.projectSlug,
+                cardSlug: result.cardSlug
+            )
+        }
+    }
+
+    private func navigateToProject(slug: String?) {
+        guard let slug else { return }
+
+        if let project = projects.first(where: { $0.slug == slug }) {
+            self.selectedProject = project
+        }
+    }
+
+    private func navigateToCard(projectSlug: String?, cardSlug: String?) {
+        guard let projectSlug, let cardSlug else { return }
+
+        if let project = projects.first(where: { $0.slug == projectSlug }) {
+            self.selectedProject = project
+            loadCards()
+
+            if let card = cards.first(where: { $0.slug == cardSlug }) {
+                self.selectedCard = card
+            }
+        }
     }
 }

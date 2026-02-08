@@ -558,9 +558,165 @@ final class HieroglyphsVMTests: XCTestCase {
         // Should not crash when reconciler is nil
         XCTAssertEqual(viewModel.projects.count, 2)
     }
+
+    // MARK: - performSearch() Tests
+
+    @MainActor
+    func testPerformSearchWithResults() async {
+        let mockWorkspaceService = MockWorkspaceService()
+        let mockSearchService = MockSearchService()
+
+        mockSearchService.mockResults = [
+            SearchResult(
+                title: "Test Card",
+                path: "/workspace/project/cards/test/card.md",
+                resultType: .card,
+                projectSlug: "project",
+                cardSlug: "test"
+            )
+        ]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspaceService,
+            searchService: mockSearchService
+        )
+        viewModel.loadWorkspace()
+
+        viewModel.performSearch(query: "test")
+
+        try? await Task.sleep(for: .milliseconds(100))
+
+        XCTAssertEqual(viewModel.searchResults.count, 1)
+        XCTAssertEqual(viewModel.searchResults[0].title, "Test Card")
+    }
+
+    @MainActor
+    func testPerformSearchWithEmptyQuery() {
+        let mockWorkspaceService = MockWorkspaceService()
+        let mockSearchService = MockSearchService()
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspaceService,
+            searchService: mockSearchService
+        )
+        viewModel.loadWorkspace()
+
+        viewModel.performSearch(query: "")
+
+        XCTAssertEqual(viewModel.searchResults.count, 0)
+    }
+
+    @MainActor
+    func testPerformSearchWithNilSearchService() {
+        let mockWorkspaceService = MockWorkspaceService()
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspaceService,
+            searchService: nil
+        )
+        viewModel.loadWorkspace()
+
+        viewModel.performSearch(query: "test")
+
+        XCTAssertEqual(viewModel.searchResults.count, 0)
+    }
+
+    @MainActor
+    func testPerformSearchWithNilWorkspacePath() {
+        let mockWorkspaceService = MockWorkspaceService()
+        let mockSearchService = MockSearchService()
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspaceService,
+            searchService: mockSearchService
+        )
+
+        viewModel.performSearch(query: "test")
+
+        XCTAssertEqual(viewModel.searchResults.count, 0)
+    }
+
+    // MARK: - navigateToSearchResult() Tests
+
+    @MainActor
+    func testNavigateToProjectResult() {
+        let mockWorkspaceService = MockWorkspaceService()
+
+        let viewModel = HieroglyphsVM(workspaceService: mockWorkspaceService)
+        viewModel.loadWorkspace()
+
+        let result = SearchResult(
+            title: "Mock Project 1",
+            path: "/workspace/mock-project-1/project.md",
+            resultType: .project,
+            projectSlug: "mock-project-1"
+        )
+
+        viewModel.navigateToSearchResult(result)
+
+        XCTAssertNotNil(viewModel.selectedProject)
+        XCTAssertEqual(viewModel.selectedProject?.slug, "mock-project-1")
+    }
+
+    @MainActor
+    func testNavigateToCardResult() {
+        let mockWorkspaceService = MockWorkspaceService()
+
+        let viewModel = HieroglyphsVM(workspaceService: mockWorkspaceService)
+        viewModel.loadWorkspace()
+
+        let result = SearchResult(
+            title: "Mock Card 1",
+            path: "/workspace/mock-project-1/cards/mock-card-1/card.md",
+            resultType: .card,
+            projectSlug: "mock-project-1",
+            cardSlug: "mock-card-1"
+        )
+
+        viewModel.navigateToSearchResult(result)
+
+        XCTAssertNotNil(viewModel.selectedProject)
+        XCTAssertEqual(viewModel.selectedProject?.slug, "mock-project-1")
+    }
+
+    @MainActor
+    func testNavigateToSearchResultWithNilSlug() {
+        let mockWorkspaceService = MockWorkspaceService()
+
+        let viewModel = HieroglyphsVM(workspaceService: mockWorkspaceService)
+        viewModel.loadWorkspace()
+
+        let result = SearchResult(
+            title: "Invalid Result",
+            path: "/workspace/invalid/project.md",
+            resultType: .project,
+            projectSlug: nil
+        )
+
+        viewModel.navigateToSearchResult(result)
+
+        XCTAssertNil(viewModel.selectedProject)
+    }
 }
 
 // MARK: - Mock Workspace Service
+
+final class MockSearchService: SearchProviding {
+    var shouldReturnResults = true
+    var mockResults: [SearchResult] = []
+
+    func performSearch(
+        query: String,
+        scope: String,
+        completion: @escaping @Sendable ([SearchResult]) -> Void
+    ) {
+        if shouldReturnResults {
+            completion(mockResults)
+        } else {
+            completion([])
+        }
+    }
+}
 
 final class MockWorkspaceService: WorkspaceProviding {
     var shouldThrowOnLoadConfig = false

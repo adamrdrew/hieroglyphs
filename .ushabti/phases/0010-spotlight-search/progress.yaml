@@ -1,0 +1,80 @@
+phase: "0010"
+status: complete
+steps:
+  - id: 1
+    title: "Create SearchResult model"
+    implemented: true
+    reviewed: true
+    notes: "Created SearchResult struct with id, title, path, resultType, projectSlug, cardSlug. Conforms to Identifiable, Equatable, Hashable. SearchResultType enum with project/card cases."
+    files:
+      - "Sources/Hieroglyphs/Models/SearchResult.swift"
+  - id: 2
+    title: "Create SearchProviding protocol"
+    implemented: true
+    reviewed: true
+    notes: "Created protocol with performSearch(query:scope:completion:) method. @Sendable completion handler. Documents search contract for content and metadata search."
+    files:
+      - "Sources/Hieroglyphs/Services/SearchProviding.swift"
+  - id: 3
+    title: "Create SpotlightService implementation"
+    implemented: true
+    reviewed: true
+    notes: "Implemented SpotlightService using NSMetadataQuery. Scopes queries to workspace directory, searches content/title/tags, extracts project/card slugs from paths. Handles query lifecycle and observer cleanup. determineResultType and extractSlugs made internal for unit testing."
+    files:
+      - "Sources/Hieroglyphs/Services/SpotlightService.swift"
+      - "Sources/Hieroglyphs/Services/SearchProviding.swift"
+  - id: 4
+    title: "Create SpotlightServiceEnvironmentKey"
+    implemented: true
+    reviewed: true
+    notes: "Created SearchServiceKey environment key following WorkspaceServiceKey pattern. Provides .searchService accessor for dependency injection."
+    files:
+      - "Sources/Hieroglyphs/Services/SpotlightServiceEnvironmentKey.swift"
+  - id: 5
+    title: "Integrate SearchProviding into HieroglyphsVM"
+    implemented: true
+    reviewed: true
+    notes: "Added searchService parameter to init, searchResults property, performSearch(query:) method, and navigateToSearchResult(_:) method. Navigation handles both project and card results, loading cards when needed."
+    files:
+      - "Sources/Hieroglyphs/HieroglyphsVM.swift"
+  - id: 6
+    title: "Update App.swift to inject SearchProviding"
+    implemented: true
+    reviewed: true
+    notes: "Created SpotlightService instance, passed to HieroglyphsVM initializer, and injected via .environment(\.searchService, searchService)."
+    files:
+      - "Sources/Hieroglyphs/App.swift"
+  - id: 7
+    title: "Write tests for SearchResult model"
+    implemented: true
+    reviewed: true
+    notes: "Added 7 tests to ModelTests covering initialization (project/card), Identifiable, Equatable, Hashable conformance, and SearchResultType enum. All tests pass."
+    files:
+      - "Tests/HieroglyphsTests/ModelTests.swift"
+  - id: 8
+    title: "Write tests for SpotlightService"
+    implemented: true
+    reviewed: true
+    notes: "Created SpotlightServiceTests with 9 tests: 1 integration test (empty query), 8 unit tests (determineResultType and extractSlugs path parsing). User corrected Builder's timeout-prone integration tests by making path-parsing methods internal and testing them directly. All 9 tests pass."
+    files:
+      - "Tests/HieroglyphsTests/SpotlightServiceTests.swift"
+  - id: 9
+    title: "Write tests for ViewModel search integration"
+    implemented: true
+    reviewed: true
+    notes: "Added MockSearchService and 7 tests covering performSearch (with results, empty query, nil service, nil workspace) and navigateToSearchResult (project result, card result, nil slug). All tests pass."
+    files:
+      - "Tests/HieroglyphsTests/HieroglyphsVMTests.swift"
+  - id: 10
+    title: "Update documentation"
+    implemented: true
+    reviewed: true
+    notes: "Created comprehensive spotlight-search.md documenting SearchResult model, SearchProviding protocol, SpotlightService implementation, ViewModel integration, testing strategy, known limitations, and future enhancements."
+    files:
+      - ".ushabti/docs/spotlight-search.md"
+  - id: 11
+    title: "Manual verification"
+    implemented: true
+    reviewed: true
+    notes: "Verified swift build completes successfully. All 131 tests pass (0 failures, ~0.9s execution time). User fixed 4 timeout-prone Spotlight integration tests post-Builder by unit testing path-parsing logic directly. Search infrastructure complete; UI integration deferred to future phase per phase.md scope."
+    files: []
