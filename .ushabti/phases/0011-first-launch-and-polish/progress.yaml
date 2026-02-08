@@ -1,0 +1,121 @@
+phase:
+  id: 0011
+  slug: first-launch-and-polish
+  title: First Launch and Polish
+  status: complete
+
+steps:
+  - id: S001
+    title: Add WelcomeView
+    implemented: true
+    reviewed: true
+    notes: "Created WelcomeView with NSOpenPanel integration for directory selection. Calls viewModel.initializeWorkspace(at:) on selection."
+    touched:
+      - Sources/Hieroglyphs/Views/Welcome/WelcomeView.swift
+
+  - id: S002
+    title: Add ViewModel workspace initialization
+    implemented: true
+    reviewed: true
+    notes: "Added initializeWorkspace(at:) method that calls createWorkspace, initializeWorkspaceFiles, and loadWorkspace in sequence."
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S003
+    title: Add conditional welcome/main window in App.swift
+    implemented: true
+    reviewed: true
+    notes: "Modified App.swift to show WelcomeView when workspacePath is nil, otherwise show MainWindow. loadWorkspace() is called on appear to set initial state."
+    touched:
+      - Sources/Hieroglyphs/App.swift
+
+  - id: S004
+    title: Add menu bar commands
+    implemented: true
+    reviewed: true
+    notes: "Added .commands() modifier with File menu (New Project Cmd+Shift+N, New Card Cmd+N) and Edit menu (Delete Cmd+Delete, Find Cmd+F). Commands disabled appropriately based on selection state."
+    touched:
+      - Sources/Hieroglyphs/App.swift
+
+  - id: S005
+    title: Add ViewModel sheet presentation state
+    implemented: true
+    reviewed: true
+    notes: "Added showingNewProjectSheet, showingNewCardSheet, and focusSearch published properties. Added showNewProjectSheet(), showNewCardSheet(), deleteSelectedItem(), and requestSearchFocus() methods."
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S006
+    title: Update Sidebar and CardList to observe sheet state
+    implemented: true
+    reviewed: true
+    notes: "Updated Sidebar and CardList to bind sheets to viewModel state instead of local @State. Removed local state variables and updated button actions to call viewModel methods."
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift
+      - Sources/Hieroglyphs/Views/CardList/CardList.swift
+
+  - id: S007
+    title: Add empty state to Sidebar
+    implemented: true
+    reviewed: true
+    notes: "Added ContentUnavailableView empty state when viewModel.projects.isEmpty. Shows folder icon with helpful message."
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift
+
+  - id: S008
+    title: Add delete command logic
+    implemented: true
+    reviewed: true
+    notes: "deleteSelectedItem() method added in S005. Deletes card if selected, otherwise deletes project. Clears selection and reloads appropriate list."
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S009
+    title: Add Find menu command
+    implemented: true
+    reviewed: true
+    notes: "Added @FocusState to CardList. Modified .searchable() to bind isPresented. Added .onChange observer for viewModel.focusSearch that sets focus and resets state."
+    touched:
+      - Sources/Hieroglyphs/Views/CardList/CardList.swift
+
+  - id: S010
+    title: Add app icon
+    implemented: true
+    reviewed: true
+    notes: "Created AppIcon.icns with stylized H hieroglyphic design. Moved Resources to Sources/Hieroglyphs/Resources and updated Package.swift to copy icon file. Updated Info.plist with CFBundleIconFile reference."
+    touched:
+      - Sources/Hieroglyphs/Resources/AppIcon.icns
+      - Sources/Hieroglyphs/Resources/Info.plist
+      - Package.swift
+
+  - id: S011
+    title: Review and verify malformed file handling
+    implemented: true
+    reviewed: true
+    notes: "Reviewed WorkspaceService implementation. loadProjects() and loadCards() catch parsing errors, log warnings to console, and skip malformed items without crashing. Missing required fields return nil and are skipped. Invalid enum values use defaults. Implementation satisfies L02 laissez-faire on read."
+    touched: []
+
+  - id: S012
+    title: Write tests for new ViewModel methods
+    implemented: true
+    reviewed: true
+    notes: "Added tests for initializeWorkspace (success and failure cases), showNewProjectSheet, showNewCardSheet, deleteSelectedItem (card and project variants, nil workspace, nothing selected), and requestSearchFocus. Updated MockWorkspaceService to track delete calls. All 141 tests pass."
+    touched:
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+
+  - id: S013
+    title: Update documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated viewmodel.md with new properties (showingNewProjectSheet, showingNewCardSheet, focusSearch) and new methods (initializeWorkspace, showNewProjectSheet, showNewCardSheet, deleteSelectedItem, requestSearchFocus). Updated views-ui.md with WelcomeView documentation, App.swift conditional rendering, first-launch flow, and menu commands. Updated Sidebar and CardList documentation to reflect sheet state management changes."
+    touched:
+      - .ushabti/docs/viewmodel.md
+      - .ushabti/docs/views-ui.md
+
+  - id: S014
+    title: Fix Info.plist build warning
+    implemented: true
+    reviewed: true
+    notes: "Added exclude directive for Resources/Info.plist in Package.swift. SPM forbids Info.plist as a top-level resource file, so excluding it from the target eliminates the unhandled file warning. Build now completes with no warnings."
+    touched:
+      - Package.swift

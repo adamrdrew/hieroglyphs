@@ -25,6 +25,10 @@ final class HieroglyphsVM {
 
     var searchResults: [SearchResult] = []
 
+    var showingNewProjectSheet: Bool = false
+    var showingNewCardSheet: Bool = false
+    var focusSearch: Bool = false
+
     private let workspaceService: WorkspaceProviding
     private let fileWatcher: FileWatching?
     private let tagReconciler: TagReconciling?
@@ -40,6 +44,22 @@ final class HieroglyphsVM {
         self.fileWatcher = fileWatcher
         self.tagReconciler = tagReconciler
         self.searchService = searchService
+    }
+
+    /// Initializes a new workspace at the specified path.
+    ///
+    /// Creates workspace directory, writes config, generates instructional files
+    /// (CLAUDE.md and AGENT.md), and loads the workspace.
+    ///
+    /// - Parameter path: Absolute path to workspace directory
+    func initializeWorkspace(at path: String) {
+        do {
+            try workspaceService.createWorkspace(at: path, configDirectory: nil)
+            try workspaceService.initializeWorkspaceFiles(at: path)
+            loadWorkspace()
+        } catch {
+            print("Failed to initialize workspace: \(error)")
+        }
     }
 
     /// Loads workspace configuration and projects.
@@ -385,5 +405,50 @@ final class HieroglyphsVM {
                 self.selectedCard = card
             }
         }
+    }
+
+    /// Shows the New Project sheet.
+    func showNewProjectSheet() {
+        self.showingNewProjectSheet = true
+    }
+
+    /// Shows the New Card sheet.
+    func showNewCardSheet() {
+        self.showingNewCardSheet = true
+    }
+
+    /// Deletes the currently selected item (card or project).
+    ///
+    /// If a card is selected, deletes the card. If only a project is selected,
+    /// deletes the project. Reloads appropriate list after deletion.
+    func deleteSelectedItem() {
+        guard let workspacePath else {
+            print("Cannot delete: workspace path is nil")
+            return
+        }
+
+        do {
+            if let selectedCard, let selectedProject {
+                let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+                try workspaceService.deleteCard(
+                    slug: selectedCard.slug,
+                    projectPath: projectPath
+                )
+                self.selectedCard = nil
+                loadCards()
+            } else if let selectedProject {
+                let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+                try workspaceService.deleteProject(at: projectPath)
+                self.selectedProject = nil
+                loadProjects()
+            }
+        } catch {
+            print("Failed to delete: \(error)")
+        }
+    }
+
+    /// Requests focus on the search field.
+    func requestSearchFocus() {
+        self.focusSearch = true
     }
 }

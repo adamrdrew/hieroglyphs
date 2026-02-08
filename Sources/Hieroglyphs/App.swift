@@ -28,15 +28,50 @@ struct HieroglyphsApp: App {
 
     var body: some Scene {
         Window("Hieroglyphs", id: "main") {
-            MainWindow()
-                .environment(viewModel)
-                .environment(\.workspaceService, workspaceService)
-                .environment(\.fileWatcher, fileWatcher)
-                .environment(\.tagReconciler, tagReconciler)
-                .environment(\.searchService, searchService)
-                .onAppear {
-                    viewModel.loadWorkspace()
+            Group {
+                if viewModel.workspacePath == nil {
+                    WelcomeView()
+                } else {
+                    MainWindow()
                 }
+            }
+            .environment(viewModel)
+            .environment(\.workspaceService, workspaceService)
+            .environment(\.fileWatcher, fileWatcher)
+            .environment(\.tagReconciler, tagReconciler)
+            .environment(\.searchService, searchService)
+            .onAppear {
+                viewModel.loadWorkspace()
+            }
+        }
+        .commands {
+            CommandGroup(after: .newItem) {
+                Button("New Project") {
+                    viewModel.showNewProjectSheet()
+                }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+
+                Button("New Card") {
+                    viewModel.showNewCardSheet()
+                }
+                .keyboardShortcut("n", modifiers: .command)
+                .disabled(viewModel.selectedProject == nil)
+            }
+
+            CommandGroup(after: .pasteboard) {
+                Button("Delete") {
+                    viewModel.deleteSelectedItem()
+                }
+                .keyboardShortcut(.delete, modifiers: .command)
+                .disabled(viewModel.selectedProject == nil && viewModel.selectedCard == nil)
+
+                Divider()
+
+                Button("Find") {
+                    viewModel.requestSearchFocus()
+                }
+                .keyboardShortcut("f", modifiers: .command)
+            }
         }
     }
 }
