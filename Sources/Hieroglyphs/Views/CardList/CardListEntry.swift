@@ -10,8 +10,16 @@ struct CardListEntry: View {
                 .foregroundStyle( typeColor)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(card.title)
+                Text(card.title.uppercased())
                     .font(.headline)
+
+                if !card.body.isEmpty {
+                    Text(strippedBody)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
 
                 HStack(spacing: 8) {
                     Text(statusLabel)
@@ -55,6 +63,21 @@ struct CardListEntry: View {
         case .note:
             return "note.text"
         }
+    }
+
+    private var strippedBody: String {
+        card.body
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "#", with: "")
+            .replacingOccurrences(of: "**", with: "")
+            .replacingOccurrences(of: "__", with: "")
+            .replacingOccurrences(of: "*", with: "")
+            .replacingOccurrences(of: "_", with: "")
+            .replacingOccurrences(of: "`", with: "")
+            .replacingOccurrences(of: "> ", with: "")
+            .replacingOccurrences(of: "- ", with: "")
+            .split(separator: " ")
+            .joined(separator: " ")
     }
 
     private var statusLabel: String {
