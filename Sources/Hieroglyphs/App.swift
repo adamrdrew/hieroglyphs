@@ -43,6 +43,13 @@ struct HieroglyphsApp: App {
             .onAppear {
                 viewModel.loadWorkspace()
             }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: NSApplication.willTerminateNotification
+                )
+            ) { _ in
+                viewModel.flushPendingCardUpdates()
+            }
         }
         .commands {
             CommandGroup(after: .newItem) {

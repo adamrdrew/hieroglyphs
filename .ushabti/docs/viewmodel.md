@@ -307,7 +307,7 @@ viewModel.createCard(
 
 **Signature:** `func updateCard(_ card: Card)`
 
-**Purpose:** Update an existing card and reload the card list.
+**Purpose:** Update an existing card and reload the card list with immediate write.
 
 **Parameters:**
 - `card` — The card to update (with modified fields)
@@ -318,8 +318,9 @@ viewModel.createCard(
 2. Guard check `workspacePath` is not nil (log error and return if nil)
 3. Construct project path from workspace path and selected project slug
 4. Call `workspaceService.updateCard(card, projectPath: projectPath)` to write changes to disk
-5. Call `loadCards()` to reload card list (reflects updated card)
-6. If any step throws, catch error and log to console
+5. Clear `lastDebouncedWritePath` to reset file watcher guard
+6. Call `loadCards()` to reload card list (reflects updated card)
+7. If any step throws, catch error and log to console
 
 **Error Handling:**
 
@@ -334,20 +335,109 @@ Failed to update card: cardNotFound
 
 **Usage:**
 
-Called from `CardDetail` on every field change:
+Called from `CardDetail` for immediate writes (discrete actions like picker changes, tag operations):
 
 ```swift
-func saveCard() {
+func saveCard(debounced: Bool = false) {
     guard let editableCard else { return }
-    viewModel.updateCard(editableCard)
+    if debounced {
+        viewModel.updateCardDebounced(editableCard)
+    } else {
+        viewModel.updateCard(editableCard)
+    }
 }
 ```
 
 **Notes:**
-- Immediate writes on every field change (no debouncing in v1)
+- Immediate writes for discrete actions (picker changes, tag add/remove)
+- Use `updateCardDebounced(_:)` for continuous typing (title, body) to avoid lag
 - Reloads entire card list after update (inefficient but simple; future optimization may update card in place)
 - If workspace path or selected project is nil, operation fails silently (logs error)
 - WorkspaceService preserves unknown frontmatter fields per L02
+
+### updateCardDebounced(_:)
+
+**Signature:** `func updateCardDebounced(_ card: Card)`
+
+**Purpose:** Update an existing card with debouncing for continuous edits.
+
+**Parameters:**
+- `card` — The card to update (with modified fields)
+
+**Behavior:**
+
+1. Store card in `pendingCardUpdate` property
+2. Schedule debounced action with 1.5 second delay
+3. On delayed execution:
+   - Guard check for pendingCardUpdate, selectedProject, workspacePath
+   - Construct card path from workspace and project/card slugs
+   - Set `lastDebouncedWritePath` to card path for file watcher guard
+   - Call `updateCard(card)` to write to disk
+   - Clear `pendingCardUpdate`
+4. If called again before delay expires, previous schedule is canceled and new delay starts
+
+**Usage:**
+
+Called from `CardDetail` for continuous typing in title and body fields:
+
+```swift
+CardBodyEditor(
+    content: bodyBinding,
+    onUpdate: { saveCard(debounced: true) }
+)
+```
+
+```swift
+CardMetadataEditor(
+    card: editableCardBinding,
+    onUpdate: saveCard
+)
+// titleBinding calls onUpdate(true) for debounced save
+```
+
+**Notes:**
+- Coalesces rapid updates into single write after 1.5 second delay
+- Prevents typing lag by avoiding synchronous disk I/O on every keystroke
+- Use `flushPendingCardUpdates()` to force immediate write before card deselection or app termination
+- File watcher guard prevents reloading currently edited card when debounced write triggers
+
+### flushPendingCardUpdates()
+
+**Signature:** `func flushPendingCardUpdates()`
+
+**Purpose:** Flush pending debounced card updates immediately.
+
+**Behavior:**
+
+1. Call `cardUpdateDebouncer.flush()` to execute pending action immediately
+2. If pending action exists, it executes synchronously
+3. Pending action writes card to disk via `updateCard()`
+
+**Usage:**
+
+Called before card deselection or app termination to ensure all edits persist:
+
+```swift
+.onChange(of: viewModel.selectedCard) { _, newCard in
+    viewModel.flushPendingCardUpdates()
+    editableCard = newCard
+}
+```
+
+```swift
+.onReceive(
+    NotificationCenter.default.publisher(
+        for: NSApplication.willTerminateNotification
+    )
+) { _ in
+    viewModel.flushPendingCardUpdates()
+}
+```
+
+**Notes:**
+- Ensures no data loss when user switches cards or quits app
+- Safe to call even if no pending update exists
+- Executes synchronously to guarantee persistence before next operation
 
 ### startWatching()
 

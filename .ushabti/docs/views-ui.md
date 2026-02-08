@@ -842,7 +842,7 @@ struct CardDetail: View {
                     CardMetadataEditor(card: editableCardBinding, onUpdate: saveCard)
                         .frame(height: 300)
                     Divider()
-                    CardBodyEditor(content: bodyBinding, onUpdate: saveCard)
+                    CardBodyEditor(content: bodyBinding, onUpdate: { saveCard(debounced: true) })
                 }
                 .navigationTitle(editableCard.title)
             } else {
@@ -853,6 +853,10 @@ struct CardDetail: View {
                 )
             }
         }
+        .onChange(of: viewModel.selectedCard) { _, newCard in
+            viewModel.flushPendingCardUpdates()
+            editableCard = newCard
+        }
     }
 }
 ```
@@ -862,20 +866,38 @@ struct CardDetail: View {
 1. **Empty State:** Shows `ContentUnavailableView` when `selectedCard` is nil
 2. **Two-Section Layout:** CardMetadataEditor (fixed 300pt height) at top, CardBodyEditor (fills remaining space) below
 3. **Local Edit State:** `editableCard` syncs with `viewModel.selectedCard` but allows local edits before saving
-4. **Auto-Save:** All field changes call `viewModel.updateCard()` immediately via `onUpdate` callback
-5. **Navigation Title:** Shows card title in detail column navigation bar
+4. **Dual Save Paths:** Debounced saves for continuous typing (title, body), immediate saves for discrete actions (pickers, tags)
+5. **Flush on Deselection:** Pending writes flushed before loading new card
+6. **Navigation Title:** Shows card title in detail column navigation bar
 
 **Behavior:**
 
 - When user selects a card in CardList, `editableCard` is set from `viewModel.selectedCard`
+- Pending debounced writes are flushed before loading new card
 - User edits metadata fields or markdown body
-- Each edit triggers `saveCard()` which calls `viewModel.updateCard(editableCard)`
-- ViewModel writes card to disk via WorkspaceService and reloads card list
-- Changes persist immediately (no explicit Save button required)
+- Title and body edits trigger `saveCard(debounced: true)` for debounced writes (1.5s delay)
+- Picker and tag edits trigger `saveCard(debounced: false)` for immediate writes
+- ViewModel writes card to disk via WorkspaceService
+- Changes persist (no explicit Save button required)
+
+**saveCard(debounced:) Implementation:**
+
+```swift
+private func saveCard(debounced: Bool = false) {
+    guard let editableCard else { return }
+    if debounced {
+        viewModel.updateCardDebounced(editableCard)
+    } else {
+        viewModel.updateCard(editableCard)
+    }
+}
+```
 
 **Notes:**
 
-- Immediate writes on every field change (no debouncing in v1; future optimization may add batching)
+- Debounced writes for continuous typing (title, body) prevent lag
+- Immediate writes for discrete actions (picker changes, tag operations) ensure responsive UI
+- Flush on card deselection ensures no data loss when switching cards
 - Empty state follows TakeNote patterns (ContentUnavailableView with icon and description)
 - Navigation title updates when card title is edited
 
@@ -890,7 +912,7 @@ struct CardDetail: View {
 ```swift
 struct CardMetadataEditor: View {
     @Binding var card: Card
-    let onUpdate: () -> Void
+    let onUpdate: (Bool) -> Void
     @State private var newTag = ""
 
     var body: some View {
@@ -915,12 +937,12 @@ struct CardMetadataEditor: View {
 
 **Key Features:**
 
-1. **Title Field:** Plain TextField bound to card title
-2. **Type Picker:** Menu picker with all CardType cases (task, bug, feature, note)
-3. **Status Picker:** Menu picker with all CardStatus cases (backlog, todo, in-progress, done, archived)
-4. **Priority Picker:** Menu picker with all Priority cases (low, medium, high, critical)
-5. **Tag Chips:** FlowLayout displays tags as TagChipView chips with delete buttons
-6. **Add Tag:** TextField with submit-on-Enter and Plus button to add new tags
+1. **Title Field:** Plain TextField bound to card title (debounced saves)
+2. **Type Picker:** Menu picker with all CardType cases (immediate saves)
+3. **Status Picker:** Menu picker with all CardStatus cases (immediate saves)
+4. **Priority Picker:** Menu picker with all Priority cases (immediate saves)
+5. **Tag Chips:** FlowLayout displays tags as TagChipView chips with delete buttons (immediate saves)
+6. **Add Tag:** TextField with submit-on-Enter and Plus button to add new tags (immediate saves)
 7. **Label Formatting:** Enum raw values formatted for display (hyphens → spaces, capitalized)
 
 **Field Bindings:**
@@ -928,13 +950,21 @@ struct CardMetadataEditor: View {
 Each field uses a custom Binding that:
 1. Gets the current card property value
 2. Sets by creating a new Card with the updated property
-3. Calls `onUpdate()` callback after each change
+3. Calls `onUpdate(debounced)` callback after each change
+   - Title field calls `onUpdate(true)` for debounced save
+   - Picker fields call `onUpdate(false)` for immediate save
 
 **Tag Editing:**
 
-- `addTag()`: Validates input, checks for duplicates, appends to card.tags array
-- `removeTag()`: Filters tag from card.tags array
-- Both operations create new Card instance and call `onUpdate()`
+- `addTag()`: Validates input, checks for duplicates, appends to card.tags array, calls `onUpdate(false)` for immediate save
+- `removeTag()`: Filters tag from card.tags array, calls `onUpdate(false)` for immediate save
+- Both operations create new Card instance
+
+**Save Behavior:**
+
+- **Title:** Debounced (1.5s delay) to prevent lag during continuous typing
+- **Type, Status, Priority pickers:** Immediate save (discrete actions)
+- **Tag add/remove:** Immediate save (discrete actions)
 
 **FlowLayout:**
 
@@ -943,7 +973,9 @@ Custom Layout implementation that wraps tag chips horizontally and creates new r
 **Notes:**
 
 - Card is immutable (struct), so all edits create new Card instances
-- `onUpdate()` called after every field change to trigger immediate save
+- `onUpdate(Bool)` signature distinguishes debounced vs immediate saves
+- Title uses debounced saves to prevent typing lag
+- Pickers and tags use immediate saves as they are discrete user actions
 - Tags support Enter key and button click for adding
 - Duplicate tag check prevents adding same tag twice
 
@@ -995,9 +1027,10 @@ struct CardBodyEditor: View {
    - Uses LanguageConfiguration.markdown() static method
    - Configuration copied from TakeNote
 
-4. **Auto-Save:**
+4. **Debounced Auto-Save:**
    - `contentBinding` calls `onUpdate()` when text changes
-   - Changes write to disk immediately via ViewModel
+   - CardDetail passes debounced callback to avoid typing lag
+   - Changes write to disk after 1.5s delay via ViewModel
 
 **Preview Mode Details:**
 
@@ -1012,12 +1045,26 @@ struct CardBodyEditor: View {
 - Layout configured via environment value (no minimap, wrap text)
 - Escape key (macOS-only via `.onExitCommand`) returns to preview
 
+**Save Behavior:**
+
+CardDetail instantiates with debounced callback:
+
+```swift
+CardBodyEditor(
+    content: bodyBinding,
+    onUpdate: { saveCard(debounced: true) }
+)
+```
+
+This prevents typing lag by batching rapid keystrokes into single write after delay.
+
 **Notes:**
 
 - Pattern copied directly from TakeNote's NoteEditor (lines 224-296)
 - Preview/edit toggle is local state (not persisted)
 - GeometryReader ensures proper sizing within parent VStack
 - Uses environment value for CodeEditor layout configuration (non-deprecated API)
+- Debounced saves prevent synchronous disk I/O on every keystroke
 
 ## TagChipView
 

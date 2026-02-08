@@ -3,10 +3,10 @@ import SwiftUI
 /// Edits card frontmatter metadata fields.
 ///
 /// Displays editable fields for title, type, status, priority, and tags.
-/// All changes trigger the onUpdate callback to save to disk.
+/// Title changes use debounced saves. Picker and tag changes use immediate saves.
 struct CardMetadataEditor: View {
     @Binding var card: Card
-    let onUpdate: () -> Void
+    let onUpdate: (Bool) -> Void
 
     @State private var newTag = ""
 
@@ -87,7 +87,7 @@ struct CardMetadataEditor: View {
                     slug: card.slug,
                     body: card.body
                 )
-                onUpdate()
+                onUpdate(true)
             }
         )
     }
@@ -108,7 +108,7 @@ struct CardMetadataEditor: View {
                     slug: card.slug,
                     body: card.body
                 )
-                onUpdate()
+                onUpdate(false)
             }
         )
     }
@@ -129,7 +129,7 @@ struct CardMetadataEditor: View {
                     slug: card.slug,
                     body: card.body
                 )
-                onUpdate()
+                onUpdate(false)
             }
         )
     }
@@ -150,7 +150,7 @@ struct CardMetadataEditor: View {
                     slug: card.slug,
                     body: card.body
                 )
-                onUpdate()
+                onUpdate(false)
             }
         )
     }
@@ -180,7 +180,7 @@ struct CardMetadataEditor: View {
             body: card.body
         )
         newTag = ""
-        onUpdate()
+        onUpdate(false)
     }
 
     private func removeTag(_ tag: String) {
@@ -196,7 +196,7 @@ struct CardMetadataEditor: View {
             slug: card.slug,
             body: card.body
         )
-        onUpdate()
+        onUpdate(false)
     }
 }
 

@@ -34,6 +34,10 @@ final class HieroglyphsVM {
     private let tagReconciler: TagReconciling?
     private let searchService: SearchProviding?
 
+    private let cardUpdateDebouncer = Debouncer(delay: 1.5)
+    private var pendingCardUpdate: Card?
+    private var lastDebouncedWritePath: String?
+
     init(
         workspaceService: WorkspaceProviding,
         fileWatcher: FileWatching? = nil,
@@ -197,6 +201,9 @@ final class HieroglyphsVM {
 
     /// Updates an existing card and reloads the card list.
     ///
+    /// Writes immediately to disk. Use for discrete actions (picker changes,
+    /// tag operations) that should persist immediately.
+    ///
     /// - Parameter card: The card to update
     func updateCard(_ card: Card) {
         guard let selectedProject else {
@@ -212,10 +219,42 @@ final class HieroglyphsVM {
         do {
             let projectPath = "\(workspacePath)/\(selectedProject.slug)"
             try workspaceService.updateCard(card, projectPath: projectPath)
+            lastDebouncedWritePath = nil
             loadCards()
         } catch {
             print("Failed to update card: \(error)")
         }
+    }
+
+    /// Updates an existing card with debouncing for continuous edits.
+    ///
+    /// Schedules write to occur after delay. Repeated calls coalesce into single
+    /// write. Use for continuous typing (title, body) to avoid lag.
+    ///
+    /// - Parameter card: The card to update
+    func updateCardDebounced(_ card: Card) {
+        pendingCardUpdate = card
+
+        cardUpdateDebouncer.schedule { [weak self] in
+            guard let self else { return }
+            guard let card = self.pendingCardUpdate else { return }
+            guard let selectedProject = self.selectedProject else { return }
+            guard let workspacePath = self.workspacePath else { return }
+
+            let cardPath = "\(workspacePath)/\(selectedProject.slug)/cards/\(card.slug)/card.md"
+            self.lastDebouncedWritePath = cardPath
+
+            self.updateCard(card)
+            self.pendingCardUpdate = nil
+        }
+    }
+
+    /// Flushes pending debounced card updates immediately.
+    ///
+    /// Call before card deselection or app termination to ensure all edits
+    /// are persisted to disk.
+    func flushPendingCardUpdates() {
+        cardUpdateDebouncer.flush()
     }
 
     /// Starts watching workspace for external file changes.
@@ -248,6 +287,12 @@ final class HieroglyphsVM {
         } else if path.contains("/cards/") || path.contains("/card.md") {
             if let selectedProject,
                path.contains("/\(selectedProject.slug)/") {
+                if let lastWritePath = lastDebouncedWritePath,
+                   path == lastWritePath {
+                    lastDebouncedWritePath = nil
+                    reconcileCardTags(at: path)
+                    return
+                }
                 loadCards()
             }
             reconcileCardTags(at: path)

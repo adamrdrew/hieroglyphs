@@ -348,6 +348,86 @@ final class HieroglyphsVMTests: XCTestCase {
         XCTAssertFalse(mockService.updateCardWasCalled)
     }
 
+    // MARK: - updateCardDebounced() Tests
+
+    @MainActor
+    func testUpdateCardDebouncedCoalescesMultipleCalls() async throws {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnLoadProjects = false
+        mockService.shouldThrowOnLoadCards = false
+        mockService.shouldThrowOnUpdateCard = false
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+        viewModel.selectProject(viewModel.projects.first)
+        viewModel.loadCards()
+
+        let cardToUpdate = viewModel.cards[0]
+
+        mockService.updateCardWasCalled = false
+
+        viewModel.updateCardDebounced(cardToUpdate)
+        viewModel.updateCardDebounced(cardToUpdate)
+        viewModel.updateCardDebounced(cardToUpdate)
+
+        XCTAssertFalse(
+            mockService.updateCardWasCalled,
+            "Service should not be called immediately"
+        )
+
+        try await Task.sleep(for: .seconds(2.0))
+
+        XCTAssertTrue(
+            mockService.updateCardWasCalled,
+            "Service should be called after delay"
+        )
+        XCTAssertEqual(
+            mockService.lastUpdatedCard?.id,
+            cardToUpdate.id,
+            "Most recent card should be updated"
+        )
+    }
+
+    @MainActor
+    func testFlushPendingCardUpdatesExecutesImmediately() async throws {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnLoadProjects = false
+        mockService.shouldThrowOnLoadCards = false
+        mockService.shouldThrowOnUpdateCard = false
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+        viewModel.selectProject(viewModel.projects.first)
+        viewModel.loadCards()
+
+        let cardToUpdate = viewModel.cards[0]
+
+        mockService.updateCardWasCalled = false
+
+        viewModel.updateCardDebounced(cardToUpdate)
+
+        XCTAssertFalse(
+            mockService.updateCardWasCalled,
+            "Service should not be called before flush"
+        )
+
+        viewModel.flushPendingCardUpdates()
+
+        XCTAssertTrue(
+            mockService.updateCardWasCalled,
+            "Service should be called immediately on flush"
+        )
+
+        try await Task.sleep(for: .seconds(2.0))
+
+        XCTAssertTrue(
+            mockService.updateCardWasCalled,
+            "Service should remain called after delay"
+        )
+    }
+
     // MARK: - File Watching Tests
 
     @MainActor

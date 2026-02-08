@@ -23,7 +23,7 @@ struct CardDetail: View {
 
                     CardBodyEditor(
                         content: bodyBinding,
-                        onUpdate: saveCard
+                        onUpdate: { saveCard(debounced: true) }
                     )
                 }
                 .navigationTitle(editableCard.title)
@@ -36,6 +36,7 @@ struct CardDetail: View {
             }
         }
         .onChange(of: viewModel.selectedCard) { _, newCard in
+            viewModel.flushPendingCardUpdates()
             editableCard = newCard
         }
         .onAppear {
@@ -84,8 +85,12 @@ struct CardDetail: View {
         )
     }
 
-    private func saveCard() {
+    private func saveCard(debounced: Bool = false) {
         guard let editableCard else { return }
-        viewModel.updateCard(editableCard)
+        if debounced {
+            viewModel.updateCardDebounced(editableCard)
+        } else {
+            viewModel.updateCard(editableCard)
+        }
     }
 }
