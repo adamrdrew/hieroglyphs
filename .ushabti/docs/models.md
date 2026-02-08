@@ -33,6 +33,7 @@ Models support L09 (Sandi Metz: plain data types separate from persistence) and 
 - `created: Date` — ISO8601 timestamp of project creation
 - `updated: Date` — ISO8601 timestamp of last update
 - `slug: String` — Filesystem-safe slug used as directory name (e.g., `my-project`)
+- `sourceDirectory: String?` — Optional path to project source directory (typically `.ushabti/phases/` directory)
 
 **Conformances:** `Identifiable`, `Codable`, `Equatable`, `Hashable`
 
@@ -55,8 +56,11 @@ tags:
 created: 2026-01-15T10:30:00Z
 updated: 2026-01-20T14:22:00Z
 slug: my-project
+source_directory: /Users/alice/code/my-project/.ushabti/phases
 ---
 ```
+
+Note: `source_directory` is optional and only appears in frontmatter when set.
 
 ## Card
 

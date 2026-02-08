@@ -95,7 +95,13 @@ final class HieroglyphsVM {
     ///   - title: Project title
     ///   - description: Project description
     ///   - tags: Project tags
-    func createProject(title: String, description: String, tags: [String]) {
+    ///   - sourceDirectory: Optional path to source directory
+    func createProject(
+        title: String,
+        description: String,
+        tags: [String],
+        sourceDirectory: String? = nil
+    ) {
         guard let workspacePath else {
             print("Cannot create project: workspace path is nil")
             return
@@ -106,6 +112,7 @@ final class HieroglyphsVM {
                 title: title,
                 description: description,
                 tags: tags,
+                sourceDirectory: sourceDirectory,
                 at: workspacePath
             )
 
@@ -115,6 +122,30 @@ final class HieroglyphsVM {
             self.projects = reloadedProjects
         } catch {
             print("Failed to create project: \(error)")
+        }
+    }
+
+    /// Updates an existing project and reloads the project list.
+    ///
+    /// - Parameter project: The updated project model
+    func updateProject(_ project: Project) {
+        guard let workspacePath else {
+            print("Cannot update project: workspace path is nil")
+            return
+        }
+
+        do {
+            try workspaceService.updateProject(project, at: workspacePath)
+            let reloadedProjects = try workspaceService.loadProjects(
+                from: workspacePath
+            )
+            self.projects = reloadedProjects
+
+            if let updatedProject = reloadedProjects.first(where: { $0.id == project.id }) {
+                self.selectedProject = updatedProject
+            }
+        } catch {
+            print("Failed to update project: \(error)")
         }
     }
 

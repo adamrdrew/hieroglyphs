@@ -9,4 +9,5 @@ struct Project: Identifiable, Codable, Equatable, Hashable {
     let created: Date
     let updated: Date
     let slug: String
+    let sourceDirectory: String?
 }

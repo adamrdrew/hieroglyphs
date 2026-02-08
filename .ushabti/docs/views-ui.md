@@ -271,6 +271,7 @@ struct SidebarProjectEntry: View {
     let workspaceService: WorkspaceProviding
 
     @State private var cardCounts: [CardStatus: Int] = [:]
+    @State private var showingEditSheet = false
 
     var body: some View {
         HStack {
@@ -303,6 +304,8 @@ struct SidebarProjectEntry: View {
 2. **Title:** Project title in body font
 3. **Card Count Summary:** Card counts grouped by status (e.g., "3 todo • 2 in-progress")
 4. **On-Demand Loading:** Loads cards via `workspaceService` in `.onAppear`
+5. **Context Menu:** Right-click shows "Edit Project" option
+6. **Edit Sheet:** Presents EditProjectSheet when "Edit Project" is clicked
 
 **Card Count Computation:**
 
@@ -365,10 +368,151 @@ private var cardCountSummary: String {
 - `"5 backlog"`
 - `""` (empty if no cards)
 
+**Context Menu:**
+
+```swift
+.contextMenu {
+    Button {
+        showingEditSheet = true
+    } label: {
+        Label("Edit Project", systemImage: "pencil.circle")
+    }
+}
+.sheet(isPresented: $showingEditSheet) {
+    EditProjectSheet(project: project)
+}
+```
+
 **Notes:**
 - Card counts are loaded on-demand per project (inefficient but simple; future optimization may cache in ViewModel)
 - Counts are stored in `@State` and recomputed on every `.onAppear`
 - Errors are logged to console; counts remain empty on error
+- Right-click context menu provides access to project editing
+
+## EditProjectSheet
+
+**File:** `Sources/Hieroglyphs/Views/Sidebar/EditProjectSheet.swift`
+
+**Purpose:** Modal sheet for editing an existing project.
+
+**Structure:**
+
+```swift
+struct EditProjectSheet: View {
+    @Environment(HieroglyphsVM.self) private var viewModel
+    @Environment(\.dismiss) private var dismiss
+
+    let project: Project
+
+    @State private var title = ""
+    @State private var description = ""
+    @State private var tags = ""
+    @State private var sourceDirectory: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Project Details") { /* ... */ }
+                Section("Tags") { /* ... */ }
+                Section("Source Directory") { /* ... */ }
+            }
+            .navigationTitle("Edit Project")
+            .toolbar { /* Cancel and Save buttons */ }
+            .onAppear {
+                populateFields()
+            }
+        }
+    }
+}
+```
+
+**Key Features:**
+
+1. **Pre-populated Fields:** All fields populated from project on appear
+2. **Title Field:** Required text field (Save button disabled if empty)
+3. **Description Field:** Multi-line text field with vertical axis and line limits
+4. **Tags Field:** Comma-separated text field for tag input
+5. **Source Directory:** NSOpenPanel-based directory picker with Clear button
+6. **Cancel Button:** Dismisses sheet without saving
+7. **Save Button:** Calls `viewModel.updateProject()` and dismisses (disabled if title is empty)
+
+**Source Directory Picker:**
+
+```swift
+Section("Source Directory") {
+    HStack {
+        VStack(alignment: .leading, spacing: 4) {
+            if let sourceDirectory = sourceDirectory {
+                Text(sourceDirectory)
+                    .font(.caption)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+            } else {
+                Text("None")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        Spacer()
+        if sourceDirectory != nil {
+            Button("Clear") {
+                self.sourceDirectory = nil
+            }
+            .buttonStyle(.borderless)
+        }
+        Button("Select Folder...") {
+            selectSourceDirectory()
+        }
+        .buttonStyle(.borderedProminent)
+    }
+}
+```
+
+**Directory Selection:**
+
+- Uses NSOpenPanel for native macOS directory picker
+- `canChooseFiles = false` — Only directories selectable
+- `canChooseDirectories = true` — Directories enabled
+- `allowsMultipleSelection = false` — Single selection only
+- `canCreateDirectories = false` — User cannot create new folders
+
+**Save Logic:**
+
+```swift
+private func saveProject() {
+    let parsedTags = tags
+        .split(separator: ",")
+        .map { $0.trimmingCharacters(in: .whitespaces) }
+        .filter { !$0.isEmpty }
+
+    let updatedProject = Project(
+        id: project.id,
+        title: title,
+        description: description,
+        tags: parsedTags,
+        created: project.created,
+        updated: Date(),
+        slug: project.slug,
+        sourceDirectory: sourceDirectory
+    )
+
+    viewModel.updateProject(updatedProject)
+    dismiss()
+}
+```
+
+**Behavior:**
+1. Parse tags by splitting on comma, trimming whitespace, and filtering empty strings
+2. Create updated Project instance with edited values (preserves id, created, slug)
+3. Call `viewModel.updateProject()` to persist changes
+4. Dismiss sheet (ViewModel handles project list refresh and selection update)
+
+**Notes:**
+- Mirrors NewProjectSheet structure for consistency
+- Pre-populates all fields including sourceDirectory
+- Allows adding, changing, or removing source directory
+- No slug editing (slug is immutable)
+- No error UI (errors logged to console by ViewModel)
 
 ## NewProjectSheet
 
@@ -386,6 +530,7 @@ struct NewProjectSheet: View {
     @State private var title = ""
     @State private var description = ""
     @State private var tags = ""
+    @State private var sourceDirectory: String?
 
     var body: some View {
         NavigationStack {
@@ -398,6 +543,34 @@ struct NewProjectSheet: View {
 
                 Section("Tags") {
                     TextField("Comma-separated tags", text: $tags)
+                }
+
+                Section("Source Directory") {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            if let sourceDirectory = sourceDirectory {
+                                Text(sourceDirectory)
+                                    .font(.caption)
+                                    .lineLimit(2)
+                                    .truncationMode(.middle)
+                            } else {
+                                Text("None")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        if sourceDirectory != nil {
+                            Button("Clear") {
+                                self.sourceDirectory = nil
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                        Button("Select Folder...") {
+                            selectSourceDirectory()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
                 }
             }
             .navigationTitle("New Project")
@@ -429,8 +602,9 @@ struct NewProjectSheet: View {
 3. **Title Field:** Required text field (Save button disabled if empty)
 4. **Description Field:** Multi-line text field with vertical axis and line limits
 5. **Tags Field:** Comma-separated text field for tag input
-6. **Cancel Button:** Dismisses sheet without saving
-7. **Save Button:** Calls `saveProject()` and dismisses (disabled if title is empty)
+6. **Source Directory:** NSOpenPanel-based directory picker with Clear button (optional)
+7. **Cancel Button:** Dismisses sheet without saving
+8. **Save Button:** Calls `saveProject()` and dismisses (disabled if title is empty)
 
 **Save Logic:**
 
@@ -444,22 +618,43 @@ private func saveProject() {
     viewModel.createProject(
         title: title,
         description: description,
-        tags: parsedTags
+        tags: parsedTags,
+        sourceDirectory: sourceDirectory
     )
 
     dismiss()
 }
 ```
 
+**Directory Selection:**
+
+```swift
+private func selectSourceDirectory() {
+    let panel = NSOpenPanel()
+    panel.canChooseFiles = false
+    panel.canChooseDirectories = true
+    panel.allowsMultipleSelection = false
+    panel.canCreateDirectories = false
+    panel.message = "Select the source directory for this project"
+    panel.prompt = "Select"
+
+    let response = panel.runModal()
+    if response == .OK, let url = panel.url {
+        sourceDirectory = url.path
+    }
+}
+```
+
 **Behavior:**
 1. Parse tags by splitting on comma, trimming whitespace, and filtering empty strings
-2. Call `viewModel.createProject()` with parsed inputs
+2. Call `viewModel.createProject()` with parsed inputs including optional sourceDirectory
 3. Dismiss sheet (ViewModel handles project creation and list refresh)
 
 **Notes:**
 - No error UI (errors logged to console by ViewModel)
 - No slug collision detection (future enhancement)
 - Tags are simple comma-separated strings (future: tag picker UI)
+- Source directory is optional (omitted from frontmatter if nil)
 
 ## CardList
 

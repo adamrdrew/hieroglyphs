@@ -10,6 +10,7 @@ struct SidebarProjectEntry: View {
     let workspaceService: WorkspaceProviding
 
     @State private var cardCounts: [CardStatus: Int] = [:]
+    @State private var showingEditSheet = false
 
     var body: some View {
         HStack {
@@ -26,6 +27,16 @@ struct SidebarProjectEntry: View {
                         .foregroundStyle(.secondary)
                 }
             }
+        }
+        .contextMenu {
+            Button {
+                showingEditSheet = true
+            } label: {
+                Label("Edit Project", systemImage: "pencil.circle")
+            }
+        }
+        .sheet(isPresented: $showingEditSheet) {
+            EditProjectSheet(project: project)
         }
         .onAppear {
             loadCardCounts()

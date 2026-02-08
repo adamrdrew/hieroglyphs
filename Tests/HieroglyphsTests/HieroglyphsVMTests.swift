@@ -995,7 +995,8 @@ final class MockWorkspaceService: WorkspaceProviding {
                 tags: [],
                 created: Date(),
                 updated: Date(),
-                slug: "mock-project-1"
+                slug: "mock-project-1",
+                sourceDirectory: nil
             ),
             Project(
                 id: UUID(),
@@ -1004,7 +1005,8 @@ final class MockWorkspaceService: WorkspaceProviding {
                 tags: [],
                 created: Date(),
                 updated: Date(),
-                slug: "mock-project-2"
+                slug: "mock-project-2",
+                sourceDirectory: nil
             )
         ]
     }
@@ -1062,6 +1064,7 @@ final class MockWorkspaceService: WorkspaceProviding {
         title: String,
         description: String,
         tags: [String],
+        sourceDirectory: String?,
         at workspacePath: String
     ) throws -> Project {
         if shouldThrowOnCreateProject {
@@ -1075,7 +1078,8 @@ final class MockWorkspaceService: WorkspaceProviding {
             tags: tags,
             created: Date(),
             updated: Date(),
-            slug: title.lowercased().replacingOccurrences(of: " ", with: "-")
+            slug: title.lowercased().replacingOccurrences(of: " ", with: "-"),
+            sourceDirectory: sourceDirectory
         )
 
         mockProjects.append(newProject)

@@ -55,7 +55,8 @@ final class WorkspaceServiceTests: XCTestCase {
         description: String = "",
         tags: [String] = [],
         created: String = "2026-01-01T10:00:00Z",
-        updated: String = "2026-01-02T10:00:00Z"
+        updated: String = "2026-01-02T10:00:00Z",
+        sourceDirectory: String? = nil
     ) throws {
         let projectDir = workspaceURL.appendingPathComponent(slug)
         try fileManager.createDirectory(
@@ -64,6 +65,7 @@ final class WorkspaceServiceTests: XCTestCase {
         )
 
         let tagsYAML = tags.isEmpty ? "[]" : "\n  - " + tags.joined(separator: "\n  - ")
+        let sourceDirectoryLine = sourceDirectory.map { "\nsource_directory: \($0)" } ?? ""
         let projectContent = """
         ---
         id: \(id)
@@ -71,7 +73,7 @@ final class WorkspaceServiceTests: XCTestCase {
         description: \(description)
         tags: \(tagsYAML)
         created: \(created)
-        updated: \(updated)
+        updated: \(updated)\(sourceDirectoryLine)
         ---
 
         Project body content.
@@ -280,7 +282,8 @@ final class WorkspaceServiceTests: XCTestCase {
             tags: [],
             created: Date(),
             updated: Date(),
-            slug: "test-project"
+            slug: "test-project",
+            sourceDirectory: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -307,7 +310,8 @@ final class WorkspaceServiceTests: XCTestCase {
             tags: [],
             created: Date(),
             updated: Date(),
-            slug: "empty-project"
+            slug: "empty-project",
+            sourceDirectory: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -347,7 +351,8 @@ final class WorkspaceServiceTests: XCTestCase {
             tags: [],
             created: Date(),
             updated: Date(),
-            slug: "test-project"
+            slug: "test-project",
+            sourceDirectory: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -425,7 +430,8 @@ final class WorkspaceServiceTests: XCTestCase {
             tags: [],
             created: Date(),
             updated: Date(),
-            slug: "test-project"
+            slug: "test-project",
+            sourceDirectory: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -510,7 +516,8 @@ final class WorkspaceServiceTests: XCTestCase {
             tags: [],
             created: Date(),
             updated: Date(),
-            slug: "test-project"
+            slug: "test-project",
+            sourceDirectory: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -544,7 +551,8 @@ final class WorkspaceServiceTests: XCTestCase {
             tags: [],
             created: Date(),
             updated: Date(),
-            slug: "test-project"
+            slug: "test-project",
+            sourceDirectory: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -624,6 +632,7 @@ final class WorkspaceServiceTests: XCTestCase {
             title: "New Project",
             description: "A test project",
             tags: ["test", "demo"],
+            sourceDirectory: nil,
             at: workspaceURL.path
         )
 
@@ -653,6 +662,7 @@ final class WorkspaceServiceTests: XCTestCase {
             title: "My Test Project!!!",
             description: "",
             tags: [],
+            sourceDirectory: nil,
             at: workspaceURL.path
         )
 
@@ -671,6 +681,7 @@ final class WorkspaceServiceTests: XCTestCase {
             title: "Timestamped Project",
             description: "",
             tags: [],
+            sourceDirectory: nil,
             at: workspaceURL.path
         )
         let afterCreate = Date()
@@ -688,6 +699,7 @@ final class WorkspaceServiceTests: XCTestCase {
             title: "Frontmatter Test",
             description: "Testing frontmatter",
             tags: ["yaml", "test"],
+            sourceDirectory: nil,
             at: workspaceURL.path
         )
 
@@ -881,7 +893,8 @@ final class WorkspaceServiceTests: XCTestCase {
             tags: ["new", "updated"],
             created: Date(),
             updated: Date(),
-            slug: "update-test"
+            slug: "update-test",
+            sourceDirectory: nil
         )
 
         try service.updateProject(updatedProject, at: workspaceURL.path)
@@ -929,7 +942,8 @@ final class WorkspaceServiceTests: XCTestCase {
             tags: ["new"],
             created: Date(),
             updated: Date(),
-            slug: "preserve-test"
+            slug: "preserve-test",
+            sourceDirectory: nil
         )
 
         try service.updateProject(updatedProject, at: workspaceURL.path)
@@ -962,7 +976,8 @@ final class WorkspaceServiceTests: XCTestCase {
             tags: [],
             created: ISO8601DateFormatter().date(from: "2026-01-01T10:00:00Z")!,
             updated: Date(),
-            slug: "timestamp-test"
+            slug: "timestamp-test",
+            sourceDirectory: nil
         )
 
         try service.updateProject(project, at: workspaceURL.path)
@@ -996,7 +1011,8 @@ final class WorkspaceServiceTests: XCTestCase {
             tags: [],
             created: Date(),
             updated: Date(),
-            slug: "nonexistent"
+            slug: "nonexistent",
+            sourceDirectory: nil
         )
 
         XCTAssertThrowsError(try service.updateProject(project, at: workspaceURL.path)) { error in
@@ -1253,5 +1269,196 @@ final class WorkspaceServiceTests: XCTestCase {
                 XCTFail("Expected cardNotFound error")
             }
         }
+    }
+
+    // MARK: - source_directory Tests
+
+    func testCreateProjectWithSourceDirectory() throws {
+        try createFixtureWorkspace()
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let sourceDir = "/Users/test/code/project"
+        let project = try service.createProject(
+            title: "Project with Source",
+            description: "Has source directory",
+            tags: [],
+            sourceDirectory: sourceDir,
+            at: workspaceURL.path
+        )
+
+        XCTAssertEqual(project.sourceDirectory, sourceDir)
+
+        let projectFilePath = workspaceURL
+            .appendingPathComponent(project.slug)
+            .appendingPathComponent("project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+
+        XCTAssertTrue(content.contains("source_directory: \(sourceDir)"))
+    }
+
+    func testCreateProjectWithoutSourceDirectory() throws {
+        try createFixtureWorkspace()
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let project = try service.createProject(
+            title: "Project without Source",
+            description: "No source directory",
+            tags: [],
+            sourceDirectory: nil,
+            at: workspaceURL.path
+        )
+
+        XCTAssertNil(project.sourceDirectory)
+
+        let projectFilePath = workspaceURL
+            .appendingPathComponent(project.slug)
+            .appendingPathComponent("project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+
+        XCTAssertFalse(content.contains("source_directory"))
+    }
+
+    func testLoadProjectWithSourceDirectory() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "with-source",
+            id: "12345678-1234-1234-1234-123456789012",
+            title: "With Source",
+            sourceDirectory: "/path/to/source"
+        )
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let projects = try service.loadProjects(from: workspaceURL.path)
+
+        XCTAssertEqual(projects.count, 1)
+        let project = projects[0]
+        XCTAssertEqual(project.sourceDirectory, "/path/to/source")
+    }
+
+    func testLoadProjectWithoutSourceDirectory() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "without-source",
+            id: "98765432-9876-9876-9876-987654321098",
+            title: "Without Source"
+        )
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let projects = try service.loadProjects(from: workspaceURL.path)
+
+        XCTAssertEqual(projects.count, 1)
+        let project = projects[0]
+        XCTAssertNil(project.sourceDirectory)
+    }
+
+    func testUpdateProjectToAddSourceDirectory() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "add-source",
+            id: "aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb",
+            title: "Add Source"
+        )
+
+        let service = WorkspaceService(fileManager: fileManager)
+
+        let updatedProject = Project(
+            id: UUID(uuidString: "aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb")!,
+            title: "Add Source",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "add-source",
+            sourceDirectory: "/new/source/path"
+        )
+
+        try service.updateProject(updatedProject, at: workspaceURL.path)
+
+        let projectFilePath = workspaceURL
+            .appendingPathComponent("add-source/project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+        let parsed = try FrontmatterParser.parse(content)
+
+        XCTAssertEqual(parsed.frontmatter["source_directory"] as? String, "/new/source/path")
+    }
+
+    func testUpdateProjectToRemoveSourceDirectory() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "remove-source",
+            id: "cccccccc-4444-5555-6666-dddddddddddd",
+            title: "Remove Source",
+            sourceDirectory: "/old/source/path"
+        )
+
+        let service = WorkspaceService(fileManager: fileManager)
+
+        let updatedProject = Project(
+            id: UUID(uuidString: "cccccccc-4444-5555-6666-dddddddddddd")!,
+            title: "Remove Source",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "remove-source",
+            sourceDirectory: nil
+        )
+
+        try service.updateProject(updatedProject, at: workspaceURL.path)
+
+        let projectFilePath = workspaceURL
+            .appendingPathComponent("remove-source/project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+        let parsed = try FrontmatterParser.parse(content)
+
+        XCTAssertNil(parsed.frontmatter["source_directory"])
+    }
+
+    func testUpdateProjectPreservesSourceDirectoryWithUnknownFields() throws {
+        try createFixtureWorkspace()
+
+        let projectDir = workspaceURL.appendingPathComponent("preserve-all")
+        try fileManager.createDirectory(at: projectDir, withIntermediateDirectories: true)
+
+        let originalContent = """
+        ---
+        id: eeeeeeee-7777-8888-9999-ffffffffffff
+        title: Original
+        description: Test
+        tags: []
+        created: 2026-01-01T10:00:00Z
+        updated: 2026-01-01T10:00:00Z
+        slug: preserve-all
+        source_directory: /original/source
+        custom_field: custom_value
+        ---
+        """
+        try originalContent.write(
+            to: projectDir.appendingPathComponent("project.md"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let updatedProject = Project(
+            id: UUID(uuidString: "eeeeeeee-7777-8888-9999-ffffffffffff")!,
+            title: "Updated",
+            description: "Changed",
+            tags: ["new"],
+            created: Date(),
+            updated: Date(),
+            slug: "preserve-all",
+            sourceDirectory: "/updated/source"
+        )
+
+        try service.updateProject(updatedProject, at: workspaceURL.path)
+
+        let projectFilePath = projectDir.appendingPathComponent("project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+        let parsed = try FrontmatterParser.parse(content)
+
+        XCTAssertEqual(parsed.frontmatter["title"] as? String, "Updated")
+        XCTAssertEqual(parsed.frontmatter["source_directory"] as? String, "/updated/source")
+        XCTAssertEqual(parsed.frontmatter["custom_field"] as? String, "custom_value")
     }
 }

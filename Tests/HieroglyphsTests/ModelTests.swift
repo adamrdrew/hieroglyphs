@@ -106,7 +106,8 @@ final class ModelTests: XCTestCase {
             tags: ["test", "sample"],
             created: created,
             updated: updated,
-            slug: "test-project"
+            slug: "test-project",
+            sourceDirectory: nil
         )
 
         XCTAssertEqual(project.id, projectId)
@@ -130,7 +131,8 @@ final class ModelTests: XCTestCase {
             tags: ["tag"],
             created: created,
             updated: updated,
-            slug: "test"
+            slug: "test",
+            sourceDirectory: nil
         )
 
         let project2 = Project(
@@ -140,7 +142,8 @@ final class ModelTests: XCTestCase {
             tags: ["tag"],
             created: created,
             updated: updated,
-            slug: "test"
+            slug: "test",
+            sourceDirectory: nil
         )
 
         XCTAssertEqual(project1, project2)
@@ -158,7 +161,8 @@ final class ModelTests: XCTestCase {
             tags: ["test"],
             created: created,
             updated: updated,
-            slug: "test-project"
+            slug: "test-project",
+            sourceDirectory: nil
         )
 
         let encoder = JSONEncoder()
@@ -180,7 +184,8 @@ final class ModelTests: XCTestCase {
             tags: [],
             created: Date(),
             updated: Date(),
-            slug: "test"
+            slug: "test",
+            sourceDirectory: nil
         )
 
         XCTAssertEqual(project.id, projectId)

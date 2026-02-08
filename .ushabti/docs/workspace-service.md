@@ -113,6 +113,7 @@ workspacePath: /Users/alice/Hieroglyphs
 - `created` (defaults to current date if missing or invalid)
 - `updated` (defaults to current date if missing or invalid)
 - `slug` (derived from directory name, not read from frontmatter)
+- `source_directory` (defaults to `nil` if missing)
 
 ### loadCards(from:for:)
 
@@ -197,9 +198,9 @@ workspacePath: /Users/alice/Hieroglyphs
 
 **Notes:** These files document workspace structure and frontmatter schema for external tools and LLMs.
 
-### createProject(title:description:tags:at:)
+### createProject(title:description:tags:sourceDirectory:at:)
 
-**Signature:** `func createProject(title: String, description: String, tags: [String], at workspacePath: String) throws -> Project`
+**Signature:** `func createProject(title: String, description: String, tags: [String], sourceDirectory: String?, at workspacePath: String) throws -> Project`
 
 **Purpose:** Create a new project with directory and frontmatter file.
 
@@ -207,6 +208,7 @@ workspacePath: /Users/alice/Hieroglyphs
 - `title` — Project title
 - `description` — Project description
 - `tags` — Array of tag strings
+- `sourceDirectory` — Optional path to project source directory
 - `workspacePath` — Absolute path to workspace directory
 
 **Returns:** The created `Project` model.
@@ -220,12 +222,12 @@ workspacePath: /Users/alice/Hieroglyphs
 2. Create project directory at `{workspacePath}/{slug}/`
 3. Generate new UUID for `id`
 4. Set `created` and `updated` to current date
-5. Build frontmatter dictionary with all fields
+5. Build frontmatter dictionary with all fields (includes `source_directory` only if non-nil)
 6. Serialize frontmatter + empty body via `FrontmatterParser`
 7. Write to `{workspacePath}/{slug}/project.md`
 8. Return `Project` model
 
-**Notes:** Uses atomic write (`atomically: true`) to ensure file is written completely or not at all.
+**Notes:** Uses atomic write (`atomically: true`) to ensure file is written completely or not at all. The `source_directory` field is only written to frontmatter when non-nil.
 
 ### createCard(title:type:status:priority:tags:body:projectPath:)
 
@@ -283,10 +285,11 @@ workspacePath: /Users/alice/Hieroglyphs
 4. Parse frontmatter via `FrontmatterParser`
 5. Merge updated fields into existing frontmatter dictionary (preserving unknown fields)
 6. Update `updated` timestamp to current date
-7. Serialize frontmatter + body via `FrontmatterParser`
-8. Write atomically to file
+7. Write `source_directory` to frontmatter if non-nil, remove it if nil
+8. Serialize frontmatter + body via `FrontmatterParser`
+9. Write atomically to file
 
-**Notes:** This method implements L02 (Preserve Unknown Fields) by reading existing frontmatter, merging updated fields, and keeping unknown fields intact.
+**Notes:** This method implements L02 (Preserve Unknown Fields) by reading existing frontmatter, merging updated fields, and keeping unknown fields intact. The `source_directory` field is written when non-nil and removed when nil.
 
 ### updateCard(_:projectPath:)
 

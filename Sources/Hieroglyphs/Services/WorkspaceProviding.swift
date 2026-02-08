@@ -68,6 +68,7 @@ protocol WorkspaceProviding {
     ///   - title: Project title
     ///   - description: Project description
     ///   - tags: Project tags
+    ///   - sourceDirectory: Optional path to source directory
     ///   - workspacePath: Absolute path to the workspace directory
     /// - Returns: The created Project model
     /// - Throws: If directory creation or file writing fails
@@ -75,6 +76,7 @@ protocol WorkspaceProviding {
         title: String,
         description: String,
         tags: [String],
+        sourceDirectory: String?,
         at workspacePath: String
     ) throws -> Project
 

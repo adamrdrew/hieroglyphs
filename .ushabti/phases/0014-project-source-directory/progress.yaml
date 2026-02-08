@@ -1,0 +1,101 @@
+phase:
+  id: 0014
+  slug: project-source-directory
+  title: Project Source Directory Field and Edit Capability
+  status: complete
+
+steps:
+  - id: S001
+    title: Add sourceDirectory to Project model
+    implemented: true
+    reviewed: true
+    notes: "Added sourceDirectory: String? field to Project struct. Updated parseProject to read source_directory from frontmatter (defaults to nil). Updated createProject to pass nil for sourceDirectory."
+    touched:
+      - Sources/Hieroglyphs/Models/Project.swift
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S002
+    title: Update WorkspaceService.parseProject to read source_directory
+    implemented: true
+    reviewed: true
+    notes: "Modified parseProject to read optional source_directory field from frontmatter. Defaults to nil if field is absent. Passes sourceDirectory to Project initializer."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S003
+    title: Update WorkspaceService.createProject to write source_directory
+    implemented: true
+    reviewed: true
+    notes: "Added sourceDirectory parameter to createProject protocol and implementation. Includes source_directory in frontmatter only when non-nil. Updated ViewModel.createProject to accept and pass sourceDirectory parameter (defaults to nil)."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceProviding.swift
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S004
+    title: Update WorkspaceService.updateProject to write source_directory
+    implemented: true
+    reviewed: true
+    notes: "Modified updateProject to write source_directory when non-nil and remove it when nil. Unknown fields remain preserved per L02."
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+
+  - id: S005
+    title: Add directory picker to NewProjectSheet
+    implemented: true
+    reviewed: true
+    notes: "Added sourceDirectory state, Source Directory section with picker UI, NSOpenPanel integration for directory selection, Clear button when directory is set, and passes sourceDirectory to viewModel.createProject."
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/NewProjectSheet.swift
+
+  - id: S006
+    title: Create EditProjectSheet view
+    implemented: true
+    reviewed: true
+    notes: "Created EditProjectSheet mirroring NewProjectSheet structure. Pre-populates all fields from project on appear. Includes same directory picker as NewProjectSheet. Calls viewModel.updateProject on save."
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/EditProjectSheet.swift
+
+  - id: S007
+    title: Add context menu to SidebarProjectEntry
+    implemented: true
+    reviewed: true
+    notes: "Added showingEditSheet state, contextMenu with Edit Project option (pencil.circle icon), and sheet presentation of EditProjectSheet."
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/SidebarProjectEntry.swift
+
+  - id: S008
+    title: Update ViewModel.createProject signature
+    implemented: true
+    reviewed: true
+    notes: "Already completed in S003. Added sourceDirectory parameter to ViewModel.createProject with default value nil. Parameter is passed through to WorkspaceService."
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S009
+    title: Add ViewModel.updateProject method
+    implemented: true
+    reviewed: true
+    notes: "Added updateProject method to HieroglyphsVM. Calls workspaceService.updateProject, reloads project list, and updates selectedProject if it matches the updated project."
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S010
+    title: Write tests for source_directory handling
+    implemented: true
+    reviewed: true
+    notes: "Added 7 new tests: creating project with/without source directory, loading project with/without source directory, updating project to add/remove source directory, and preserving source directory with unknown fields. Updated existing Project initializations throughout test suite."
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+      - Tests/HieroglyphsTests/ModelTests.swift
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+
+  - id: S011
+    title: Update documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated models.md to document sourceDirectory field with example. Updated workspace-service.md to document source_directory parameter in createProject signature and behavior. Updated views-ui.md to document EditProjectSheet, source directory picker in NewProjectSheet, and context menu in SidebarProjectEntry."
+    touched:
+      - .ushabti/docs/models.md
+      - .ushabti/docs/workspace-service.md
+      - .ushabti/docs/views-ui.md

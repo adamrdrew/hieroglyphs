@@ -1,13 +1,15 @@
 import SwiftUI
 import AppKit
 
-/// Sheet for creating a new project.
+/// Sheet for editing an existing project.
 ///
-/// Provides input fields for project title, description, and tags.
-/// Validates that title is non-empty before enabling save.
-struct NewProjectSheet: View {
+/// Mirrors NewProjectSheet structure but pre-populates fields from
+/// an existing project. Calls ViewModel.updateProject on save.
+struct EditProjectSheet: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @Environment(\.dismiss) private var dismiss
+
+    let project: Project
 
     @State private var title = ""
     @State private var description = ""
@@ -55,7 +57,7 @@ struct NewProjectSheet: View {
                     }
                 }
             }
-            .navigationTitle("New Project")
+            .navigationTitle("Edit Project")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -70,23 +72,39 @@ struct NewProjectSheet: View {
                     .disabled(title.isEmpty)
                 }
             }
+            .onAppear {
+                populateFields()
+            }
         }
     }
 
-    /// Parses tags and creates the project.
+    /// Pre-populates form fields from the project.
+    private func populateFields() {
+        title = project.title
+        description = project.description
+        tags = project.tags.joined(separator: ", ")
+        sourceDirectory = project.sourceDirectory
+    }
+
+    /// Parses tags and updates the project.
     private func saveProject() {
         let parsedTags = tags
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
 
-        viewModel.createProject(
+        let updatedProject = Project(
+            id: project.id,
             title: title,
             description: description,
             tags: parsedTags,
+            created: project.created,
+            updated: Date(),
+            slug: project.slug,
             sourceDirectory: sourceDirectory
         )
 
+        viewModel.updateProject(updatedProject)
         dismiss()
     }
 

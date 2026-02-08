@@ -149,6 +149,8 @@ final class WorkspaceService: WorkspaceProviding {
             updated = Date()
         }
 
+        let sourceDirectory = frontmatter["source_directory"] as? String
+
         return Project(
             id: id,
             title: title,
@@ -156,7 +158,8 @@ final class WorkspaceService: WorkspaceProviding {
             tags: tags,
             created: created,
             updated: updated,
-            slug: slug
+            slug: slug,
+            sourceDirectory: sourceDirectory
         )
     }
 
@@ -380,6 +383,7 @@ When working with this workspace:
         title: String,
         description: String,
         tags: [String],
+        sourceDirectory: String?,
         at workspacePath: String
     ) throws -> Project {
         let slug = SlugGenerator.generateSlug(from: title)
@@ -401,7 +405,7 @@ When working with this workspace:
         let created = now
         let updated = now
 
-        let frontmatter: [String: Any] = [
+        var frontmatter: [String: Any] = [
             "id": id.uuidString,
             "title": title,
             "description": description,
@@ -410,6 +414,10 @@ When working with this workspace:
             "updated": formatDate(updated),
             "slug": slug
         ]
+
+        if let sourceDirectory = sourceDirectory {
+            frontmatter["source_directory"] = sourceDirectory
+        }
 
         let markdown = try FrontmatterParser.serialize(
             frontmatter: frontmatter,
@@ -431,7 +439,8 @@ When working with this workspace:
             tags: tags,
             created: created,
             updated: updated,
-            slug: slug
+            slug: slug,
+            sourceDirectory: sourceDirectory
         )
     }
 
@@ -536,6 +545,12 @@ When working with this workspace:
         frontmatter["created"] = formatDate(project.created)
         frontmatter["updated"] = formatDate(Date())
         frontmatter["slug"] = project.slug
+
+        if let sourceDirectory = project.sourceDirectory {
+            frontmatter["source_directory"] = sourceDirectory
+        } else {
+            frontmatter.removeValue(forKey: "source_directory")
+        }
 
         let markdown = try FrontmatterParser.serialize(
             frontmatter: frontmatter,
