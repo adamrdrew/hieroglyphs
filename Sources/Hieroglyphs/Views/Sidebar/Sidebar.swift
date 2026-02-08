@@ -13,15 +13,17 @@ struct SidebarCardsItem: View {
     @State private var onAppearCardCounts: [CardStatus: Int] = [:]
 
     var body: some View {
-        HStack {
-            Text("Cards")
+        VStack(alignment: .leading) {
+            Label("Cards", systemImage: "lanyardcard")
 
             if !cardCountSummary.isEmpty {
                 Text(cardCountSummary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .padding(.leading, 10)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .onAppear {
             loadCardCounts()
         }
@@ -120,10 +122,10 @@ struct Sidebar: View {
                                 )
                                 .tag(SidebarSection.cards(project))
 
-                                Text("Plans")
+                                Label("Plans", systemImage: "flowchart")
                                     .tag(SidebarSection.plans(project))
 
-                                Text("Phases")
+                                Label("Phases", systemImage: "list.number")
                                     .tag(SidebarSection.phases(project))
                             } label: {
                                 SidebarProjectEntry(

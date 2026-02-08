@@ -11,7 +11,7 @@ struct CardListEntry: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(card.title)
-                    .font(.body)
+                    .font(.headline)
 
                 HStack(spacing: 8) {
                     Text(statusLabel)
