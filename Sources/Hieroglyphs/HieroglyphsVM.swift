@@ -1,6 +1,18 @@
 import SwiftUI
 import Observation
 
+/// Represents a selectable section in the sidebar.
+///
+/// Each section corresponds to a project and a specific view type
+/// (cards, plans, or phases). This enables hierarchical navigation where
+/// selecting a section determines both the project context and which
+/// middle-column view to display.
+enum SidebarSection: Hashable {
+    case cards(Project)
+    case plans(Project)
+    case phases(Project)
+}
+
 /// ViewModel coordinating workspace state and UI selection.
 ///
 /// Acts as the central coordinator between WorkspaceService and UI views.
@@ -11,7 +23,24 @@ import Observation
 final class HieroglyphsVM {
     var workspacePath: String?
     var projects: [Project] = []
-    var selectedProject: Project?
+    var selectedSection: SidebarSection?
+
+    /// Computed property that extracts the project from any section variant.
+    ///
+    /// Returns the associated project for cards, plans, or phases sections.
+    /// Returns nil if no section is selected.
+    var selectedProject: Project? {
+        switch selectedSection {
+        case .cards(let project):
+            return project
+        case .plans(let project):
+            return project
+        case .phases(let project):
+            return project
+        case .none:
+            return nil
+        }
+    }
 
     var cards: [Card] = []
     var selectedCard: Card?
@@ -141,19 +170,27 @@ final class HieroglyphsVM {
             )
             self.projects = reloadedProjects
 
-            if let updatedProject = reloadedProjects.first(where: { $0.id == project.id }) {
-                self.selectedProject = updatedProject
+            if let updatedProject = reloadedProjects.first(where: { $0.id == project.id }),
+               let currentSection = selectedSection {
+                switch currentSection {
+                case .cards:
+                    self.selectedSection = .cards(updatedProject)
+                case .plans:
+                    self.selectedSection = .plans(updatedProject)
+                case .phases:
+                    self.selectedSection = .phases(updatedProject)
+                }
             }
         } catch {
             print("Failed to update project: \(error)")
         }
     }
 
-    /// Updates the selected project.
+    /// Updates the selected section.
     ///
-    /// - Parameter project: The project to select
-    func selectProject(_ project: Project?) {
-        self.selectedProject = project
+    /// - Parameter section: The section to select
+    func selectSection(_ section: SidebarSection?) {
+        self.selectedSection = section
     }
 
     /// Loads cards for the currently selected project.
@@ -466,7 +503,7 @@ final class HieroglyphsVM {
         guard let slug else { return }
 
         if let project = projects.first(where: { $0.slug == slug }) {
-            self.selectedProject = project
+            self.selectedSection = .cards(project)
         }
     }
 
@@ -474,7 +511,7 @@ final class HieroglyphsVM {
         guard let projectSlug, let cardSlug else { return }
 
         if let project = projects.first(where: { $0.slug == projectSlug }) {
-            self.selectedProject = project
+            self.selectedSection = .cards(project)
             loadCards()
 
             if let card = cards.first(where: { $0.slug == cardSlug }) {
@@ -515,7 +552,7 @@ final class HieroglyphsVM {
             } else if let selectedProject {
                 let projectPath = "\(workspacePath)/\(selectedProject.slug)"
                 try workspaceService.deleteProject(at: projectPath)
-                self.selectedProject = nil
+                self.selectedSection = nil
                 loadProjects()
             }
         } catch {

@@ -1,5 +1,79 @@
 import SwiftUI
 
+/// Displays a "Cards" section item with card count summary.
+///
+/// Loads cards for the project and displays count grouped by status.
+struct SidebarCardsItem: View {
+    let project: Project
+    let workspacePath: String
+    let workspaceService: WorkspaceProviding
+
+    @State private var cardCounts: [CardStatus: Int] = [:]
+
+    var body: some View {
+        HStack {
+            Text("Cards")
+
+            if !cardCountSummary.isEmpty {
+                Text(cardCountSummary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .onAppear {
+            loadCardCounts()
+        }
+    }
+
+    private var cardCountSummary: String {
+        let nonZeroCounts = cardCounts
+            .filter { $0.value > 0 }
+            .sorted { first, second in
+                statusOrder(first.key) < statusOrder(second.key)
+            }
+
+        return nonZeroCounts
+            .map { status, count in
+                let label = formatStatusLabel(status)
+                return "\(count) \(label)"
+            }
+            .joined(separator: " • ")
+    }
+
+    private func loadCardCounts() {
+        do {
+            let projectPath = "\(workspacePath)/\(project.slug)"
+            let cards = try workspaceService.loadCards(
+                from: projectPath,
+                for: project
+            )
+
+            var counts: [CardStatus: Int] = [:]
+            for card in cards {
+                counts[card.status, default: 0] += 1
+            }
+
+            cardCounts = counts
+        } catch {
+            print("Failed to load cards for project \(project.slug): \(error)")
+        }
+    }
+
+    private func formatStatusLabel(_ status: CardStatus) -> String {
+        return status.rawValue.replacingOccurrences(of: "-", with: " ")
+    }
+
+    private func statusOrder(_ status: CardStatus) -> Int {
+        switch status {
+        case .backlog: return 0
+        case .todo: return 1
+        case .inProgress: return 2
+        case .done: return 3
+        case .archived: return 4
+        }
+    }
+}
+
 /// Displays the project list in the sidebar with selection support.
 ///
 /// Shows all projects from the workspace with card count summaries.
@@ -19,15 +93,29 @@ struct Sidebar: View {
                     description: Text("Create a project to get started.")
                 )
             } else {
-                List(selection: $bindableViewModel.selectedProject) {
+                List(selection: $bindableViewModel.selectedSection) {
                     ForEach(viewModel.projects) { project in
                         if let workspacePath = viewModel.workspacePath {
-                            SidebarProjectEntry(
-                                project: project,
-                                workspacePath: workspacePath,
-                                workspaceService: workspaceService
-                            )
-                            .tag(project)
+                            DisclosureGroup {
+                                SidebarCardsItem(
+                                    project: project,
+                                    workspacePath: workspacePath,
+                                    workspaceService: workspaceService
+                                )
+                                .tag(SidebarSection.cards(project))
+
+                                Text("Plans")
+                                    .tag(SidebarSection.plans(project))
+
+                                Text("Phases")
+                                    .tag(SidebarSection.phases(project))
+                            } label: {
+                                SidebarProjectEntry(
+                                    project: project,
+                                    workspacePath: workspacePath,
+                                    workspaceService: workspaceService
+                                )
+                            }
                         }
                     }
                 }

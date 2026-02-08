@@ -14,12 +14,25 @@ The ViewModel supports L01 (Filesystem as Source of Truth by delegating to servi
 
 ## HieroglyphsVM Class
 
-**Purpose:** Coordinate workspace state, project list, and selected project for UI binding.
+**Purpose:** Coordinate workspace state, project list, and selected section for UI binding.
+
+**Selection Model:**
+
+The ViewModel uses a hierarchical selection model via `SidebarSection` enum:
+
+```swift
+enum SidebarSection: Hashable {
+    case cards(Project)
+    case plans(Project)
+    case phases(Project)
+}
+```
 
 **State Properties:**
 - `workspacePath: String?` — Absolute path to workspace directory (nil if not loaded)
 - `projects: [Project]` — Array of loaded projects (empty if not loaded or no projects exist)
-- `selectedProject: Project?` — Currently selected project in sidebar (nil if none selected)
+- `selectedSection: SidebarSection?` — Currently selected section in sidebar (nil if none selected)
+- `selectedProject: Project?` — Computed property extracting project from selectedSection (nil if none selected)
 - `cards: [Card]` — Array of loaded cards for selected project (empty if not loaded or no cards exist)
 - `selectedCard: Card?` — Currently selected card in card list (nil if none selected)
 - `searchText: String` — Search query for filtering cards by title
@@ -179,34 +192,36 @@ viewModel.createProject(
 - Reloads entire project list after creation (inefficient but simple; future optimization may add new project to list directly)
 - If workspace path is nil, operation fails silently (logs error)
 
-### selectProject(_:)
+### selectSection(_:)
 
-**Signature:** `func selectProject(_ project: Project?)`
+**Signature:** `func selectSection(_ section: SidebarSection?)`
 
-**Purpose:** Update selected project state.
+**Purpose:** Update selected section state.
 
 **Parameters:**
-- `project` — The project to select (nil to deselect)
+- `section` — The section to select (nil to deselect)
 
 **Behavior:**
 
-1. Set `self.selectedProject = project`
+1. Set `self.selectedSection = section`
+2. Computed `selectedProject` property automatically reflects the associated project
 
 **Usage:**
 
 Called implicitly via SwiftUI binding in `Sidebar`:
 
 ```swift
-List(selection: $bindableViewModel.selectedProject) {
-    // ...
+List(selection: $bindableViewModel.selectedSection) {
+    // Each section is tagged with SidebarSection enum case
 }
 ```
 
-SwiftUI automatically calls `selectProject(_:)` when user clicks a project row.
+SwiftUI automatically calls `selectSection(_:)` when user clicks a section row.
 
 **Notes:**
 - This is a simple setter with no side effects
 - Selection state is ephemeral (not persisted across app launches)
+- Computed `selectedProject` extracts project from any section case (cards, plans, or phases)
 - Future phases may persist selection to UserDefaults
 
 ### loadCards()

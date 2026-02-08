@@ -102,33 +102,102 @@ final class HieroglyphsVMTests: XCTestCase {
         XCTAssertEqual(viewModel.projects.count, initialCount)
     }
 
-    // MARK: - selectProject() Tests
+    // MARK: - selectSection() and selectedProject Tests
 
     @MainActor
-    func testSelectProject() {
+    func testSelectSectionCards() {
         let mockService = MockWorkspaceService()
         let viewModel = HieroglyphsVM(workspaceService: mockService)
         viewModel.loadWorkspace()
 
+        XCTAssertNil(viewModel.selectedSection)
         XCTAssertNil(viewModel.selectedProject)
 
-        let firstProject = viewModel.projects.first
-        viewModel.selectProject(firstProject)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
 
+        viewModel.selectSection(.cards(firstProject))
+
+        XCTAssertNotNil(viewModel.selectedSection)
         XCTAssertEqual(viewModel.selectedProject, firstProject)
     }
 
     @MainActor
-    func testSelectProjectNil() {
+    func testSelectSectionPlans() {
         let mockService = MockWorkspaceService()
         let viewModel = HieroglyphsVM(workspaceService: mockService)
         viewModel.loadWorkspace()
 
-        viewModel.selectProject(viewModel.projects.first)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+
+        viewModel.selectSection(.plans(firstProject))
+
+        XCTAssertNotNil(viewModel.selectedSection)
+        XCTAssertEqual(viewModel.selectedProject, firstProject)
+    }
+
+    @MainActor
+    func testSelectSectionPhases() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+
+        viewModel.selectSection(.phases(firstProject))
+
+        XCTAssertNotNil(viewModel.selectedSection)
+        XCTAssertEqual(viewModel.selectedProject, firstProject)
+    }
+
+    @MainActor
+    func testSelectSectionNil() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+
+        viewModel.selectSection(.cards(firstProject))
+        XCTAssertNotNil(viewModel.selectedSection)
         XCTAssertNotNil(viewModel.selectedProject)
 
-        viewModel.selectProject(nil)
+        viewModel.selectSection(nil)
+        XCTAssertNil(viewModel.selectedSection)
         XCTAssertNil(viewModel.selectedProject)
+    }
+
+    @MainActor
+    func testComputedSelectedProjectExtractsFromAllSectionTypes() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+
+        guard let project1 = viewModel.projects.first,
+              let project2 = viewModel.projects.last else {
+            XCTFail("Not enough projects available")
+            return
+        }
+
+        viewModel.selectSection(.cards(project1))
+        XCTAssertEqual(viewModel.selectedProject?.id, project1.id)
+
+        viewModel.selectSection(.plans(project2))
+        XCTAssertEqual(viewModel.selectedProject?.id, project2.id)
+
+        viewModel.selectSection(.phases(project1))
+        XCTAssertEqual(viewModel.selectedProject?.id, project1.id)
     }
 
     // MARK: - loadCards() Tests
@@ -142,7 +211,11 @@ final class HieroglyphsVMTests: XCTestCase {
 
         let viewModel = HieroglyphsVM(workspaceService: mockService)
         viewModel.loadWorkspace()
-        viewModel.selectProject(viewModel.projects.first)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
 
         viewModel.loadCards()
 
@@ -173,7 +246,11 @@ final class HieroglyphsVMTests: XCTestCase {
 
         let viewModel = HieroglyphsVM(workspaceService: mockService)
         viewModel.loadWorkspace()
-        viewModel.selectProject(viewModel.projects.first)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
 
         viewModel.loadCards()
 
@@ -192,7 +269,11 @@ final class HieroglyphsVMTests: XCTestCase {
 
         let viewModel = HieroglyphsVM(workspaceService: mockService)
         viewModel.loadWorkspace()
-        viewModel.selectProject(viewModel.projects.first)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
 
         viewModel.loadCards()
         let initialCount = viewModel.cards.count
@@ -241,7 +322,11 @@ final class HieroglyphsVMTests: XCTestCase {
 
         let viewModel = HieroglyphsVM(workspaceService: mockService)
         viewModel.loadWorkspace()
-        viewModel.selectProject(viewModel.projects.first)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
 
         viewModel.loadCards()
         let initialCount = viewModel.cards.count
@@ -270,7 +355,11 @@ final class HieroglyphsVMTests: XCTestCase {
 
         let viewModel = HieroglyphsVM(workspaceService: mockService)
         viewModel.loadWorkspace()
-        viewModel.selectProject(viewModel.projects.first)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
 
         viewModel.loadCards()
         XCTAssertFalse(viewModel.cards.isEmpty)
@@ -360,7 +449,11 @@ final class HieroglyphsVMTests: XCTestCase {
 
         let viewModel = HieroglyphsVM(workspaceService: mockService)
         viewModel.loadWorkspace()
-        viewModel.selectProject(viewModel.projects.first)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
         viewModel.loadCards()
 
         let cardToUpdate = viewModel.cards[0]
@@ -399,7 +492,11 @@ final class HieroglyphsVMTests: XCTestCase {
 
         let viewModel = HieroglyphsVM(workspaceService: mockService)
         viewModel.loadWorkspace()
-        viewModel.selectProject(viewModel.projects.first)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
         viewModel.loadCards()
 
         let cardToUpdate = viewModel.cards[0]
@@ -513,7 +610,11 @@ final class HieroglyphsVMTests: XCTestCase {
             fileWatcher: mockWatcher
         )
         viewModel.loadWorkspace()
-        viewModel.selectProject(viewModel.projects.first)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
         viewModel.loadCards()
 
         let initialCardCount = viewModel.cards.count
@@ -543,7 +644,11 @@ final class HieroglyphsVMTests: XCTestCase {
             fileWatcher: mockWatcher
         )
         viewModel.loadWorkspace()
-        viewModel.selectProject(viewModel.projects.first)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
         viewModel.loadCards()
 
         let initialCardCount = viewModel.cards.count
@@ -598,7 +703,11 @@ final class HieroglyphsVMTests: XCTestCase {
             tagReconciler: mockReconciler
         )
         viewModel.loadWorkspace()
-        viewModel.selectProject(viewModel.projects.first)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
         viewModel.loadCards()
 
         guard let selectedProject = viewModel.selectedProject else {
@@ -860,7 +969,11 @@ final class HieroglyphsVMTests: XCTestCase {
 
         let viewModel = HieroglyphsVM(workspaceService: mockService)
         viewModel.loadWorkspace()
-        viewModel.selectProject(viewModel.projects.first)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
         viewModel.loadCards()
 
         let cardToDelete = viewModel.cards.first
@@ -881,7 +994,11 @@ final class HieroglyphsVMTests: XCTestCase {
 
         let viewModel = HieroglyphsVM(workspaceService: mockService)
         viewModel.loadWorkspace()
-        viewModel.selectProject(viewModel.projects.first)
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
 
         XCTAssertNotNil(viewModel.selectedProject)
         XCTAssertNil(viewModel.selectedCard)

@@ -1,0 +1,63 @@
+phase:
+  id: 0015
+  slug: hierarchical-sidebar-navigation
+  title: "Hierarchical Sidebar Navigation"
+  status: complete
+
+steps:
+  - id: S001
+    title: "Define SidebarSection enum and update ViewModel selection model"
+    implemented: true
+    reviewed: true
+    notes: "Added SidebarSection enum with three cases. Replaced selectedProject stored property with selectedSection. Added computed selectedProject property. Updated updateProject, selectSection (renamed from selectProject), navigateToProject, navigateToCard, and deleteSelectedItem methods to work with selectedSection."
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S002
+    title: "Refactor Sidebar to use DisclosureGroup with child items"
+    implemented: true
+    reviewed: true
+    notes: "Refactored Sidebar to wrap each project in a DisclosureGroup. Added three child items (Cards, Plans, Phases) each tagged with appropriate SidebarSection case. Changed List selection binding from selectedProject to selectedSection. Simplified SidebarProjectEntry to display only icon and title (removed card count summary logic)."
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift
+      - Sources/Hieroglyphs/Views/Sidebar/SidebarProjectEntry.swift
+
+  - id: S003
+    title: "Add card count summary to Cards child item"
+    implemented: true
+    reviewed: true
+    notes: "Created SidebarCardsItem view that displays 'Cards' label with card count summary. Moved card loading and counting logic from SidebarProjectEntry to this new view. Card counts load on-demand when disclosure group is expanded. Summary formatting matches original pattern (bullet-separated status counts)."
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift
+
+  - id: S004
+    title: "Update MainWindow to switch middle column based on selectedSection"
+    implemented: true
+    reviewed: true
+    notes: "Created PlansPlaceholder and PhasesPlaceholder views using ContentUnavailableView. Updated MainWindow to switch middle column content based on viewModel.selectedSection. Cards shows CardList, Plans shows PlansPlaceholder, Phases shows PhasesPlaceholder, nil shows empty state."
+    touched:
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+      - Sources/Hieroglyphs/Views/PlansPlaceholder.swift
+      - Sources/Hieroglyphs/Views/PhasesPlaceholder.swift
+
+  - id: S005
+    title: "Update CardList to read selectedProject from computed property"
+    implemented: true
+    reviewed: true
+    notes: "Verified that CardList already references viewModel.selectedProject throughout (lines 12, 30, 46). The computed property correctly extracts project from selectedSection. The onChange(of: selectedProject) modifier will trigger when the underlying project changes, even when switching sections. No code changes required."
+    touched: []
+
+  - id: S006
+    title: "Update tests for new selection model"
+    implemented: true
+    reviewed: true
+    notes: "Replaced selectProject() tests with selectSection() tests covering all three section types (cards, plans, phases). Added tests for computed selectedProject property extraction from all section variants. Updated all test methods that called selectProject() to use selectSection(.cards(project)) instead. All 160 tests pass."
+    touched:
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+
+  - id: S007
+    title: "Manual testing and regression check"
+    implemented: true
+    reviewed: true
+    notes: "Verified all acceptance criteria: SidebarSection enum defined, ViewModel refactored, Sidebar uses DisclosureGroup with three child items, card counts display on Cards item, MainWindow switches content based on selectedSection, placeholder views created, CardList works correctly, tests pass (160/160), no dead code, no unused symbols. Build completes successfully."
+    touched: []

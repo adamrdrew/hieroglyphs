@@ -106,21 +106,40 @@ struct WelcomeView: View {
 
 **File:** `Sources/Hieroglyphs/Views/MainWindow.swift`
 
-**Purpose:** Root view with three-column NavigationSplitView scaffold.
+**Purpose:** Root view with three-column NavigationSplitView scaffold and section-based middle column routing.
 
 **Structure:**
 
 ```swift
 struct MainWindow: View {
+    @Environment(HieroglyphsVM.self) private var viewModel
     @State private var preferredCompactColumn: NavigationSplitViewColumn = .sidebar
 
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $preferredCompactColumn) {
             Sidebar()
         } content: {
-            CardList()
+            middleColumnContent
         } detail: {
             CardDetail()
+        }
+    }
+
+    @ViewBuilder
+    private var middleColumnContent: some View {
+        switch viewModel.selectedSection {
+        case .cards:
+            CardList()
+        case .plans:
+            PlansPlaceholder()
+        case .phases:
+            PhasesPlaceholder()
+        case .none:
+            ContentUnavailableView(
+                "Select a Project",
+                systemImage: "folder",
+                description: Text("Choose a project section from the sidebar to get started.")
+            )
         }
     }
 }
@@ -128,8 +147,12 @@ struct MainWindow: View {
 
 **Notes:**
 - Three-column layout per L10 (TakeNote consistency)
-- Sidebar column displays project list with card count summaries
-- Content column displays searchable, filterable card list
+- Sidebar column displays hierarchical project list with sections (Cards, Plans, Phases)
+- Content column switches based on `viewModel.selectedSection` value
+  - `.cards` → displays `CardList` (searchable, filterable card list)
+  - `.plans` → displays `PlansPlaceholder` (future feature)
+  - `.phases` → displays `PhasesPlaceholder` (future feature)
+  - `nil` → displays empty state prompting user to select a section
 - Detail column displays card editor (metadata + click-to-edit markdown)
 - `preferredCompactColumn` controls which column shows on small windows (defaults to sidebar)
 - Shown when `viewModel.workspacePath != nil` (conditional rendering in App.swift)
@@ -181,7 +204,7 @@ App.swift defines menu bar commands using `.commands()` modifier:
 
 **File:** `Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift`
 
-**Purpose:** Display project list with selection support and New Project button.
+**Purpose:** Display hierarchical project list with section selection support and New Project button.
 
 **Structure:**
 
@@ -201,33 +224,27 @@ struct Sidebar: View {
                     description: Text("Create a project to get started.")
                 )
             } else {
-                List(selection: $bindableViewModel.selectedProject) {
+                List(selection: $bindableViewModel.selectedSection) {
                     ForEach(viewModel.projects) { project in
                         if let workspacePath = viewModel.workspacePath {
-                            SidebarProjectEntry(
-                                project: project,
-                                workspacePath: workspacePath,
-                                workspaceService: workspaceService
-                            )
-                            .tag(project)
+                            DisclosureGroup {
+                                SidebarCardsItem(...)
+                                    .tag(SidebarSection.cards(project))
+                                Text("Plans")
+                                    .tag(SidebarSection.plans(project))
+                                Text("Phases")
+                                    .tag(SidebarSection.phases(project))
+                            } label: {
+                                SidebarProjectEntry(...)
+                            }
                         }
                     }
                 }
                 .listStyle(.sidebar)
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    viewModel.showNewProjectSheet()
-                } label: {
-                    Label("New Project", systemImage: "plus")
-                }
-            }
-        }
-        .sheet(isPresented: $bindableViewModel.showingNewProjectSheet) {
-            NewProjectSheet()
-        }
+        .toolbar { /* ... */ }
+        .sheet { /* ... */ }
     }
 }
 ```
@@ -235,15 +252,26 @@ struct Sidebar: View {
 **Key Features:**
 
 1. **Empty State:** Shows `ContentUnavailableView` when no projects exist
-2. **List with Selection:** `List(selection:)` binds to `viewModel.selectedProject` for two-way selection state
-3. **ForEach Projects:** Iterates over `viewModel.projects` to render project rows
-4. **SidebarProjectEntry:** Renders each project row with title and card count
-5. **Toolbar Button:** "New Project" button with SF Symbol `plus` icon
-6. **Sheet Presentation:** Shows `NewProjectSheet` modal when button clicked (bound to ViewModel state)
+2. **Hierarchical Navigation:** Each project wraps in a `DisclosureGroup` with three child sections
+3. **List with Selection:** `List(selection:)` binds to `viewModel.selectedSection` for section-based selection
+4. **Three Sections Per Project:** Cards (with count), Plans, and Phases
+5. **SidebarCardsItem:** Displays "Cards" with card count summary (on-demand loading)
+6. **SidebarProjectEntry:** Disclosure group label showing project icon and title
+7. **Toolbar Button:** "New Project" button with SF Symbol `plus` icon
+8. **Sheet Presentation:** Shows `NewProjectSheet` modal when button clicked
+
+**Selection Model:**
+
+Selection is managed via `SidebarSection` enum:
+- `.cards(Project)` — Displays card list in middle column
+- `.plans(Project)` — Displays plans placeholder in middle column
+- `.phases(Project)` — Displays phases placeholder in middle column
+
+Each child item is tagged with the appropriate section case for selection tracking.
 
 **Environment Dependencies:**
-- `HieroglyphsVM` — For accessing projects, selected project state, and sheet state
-- `workspaceService` — Passed to `SidebarProjectEntry` for loading cards
+- `HieroglyphsVM` — For accessing projects, selected section state, and sheet state
+- `workspaceService` — Passed to child views for loading data
 
 **Sheet State Management:**
 - Sheet presentation is controlled by `viewModel.showingNewProjectSheet` (not local state)
@@ -253,14 +281,57 @@ struct Sidebar: View {
 **Notes:**
 - Uses `.sidebar` list style for macOS-native appearance
 - `@Bindable` wrapper enables binding to `@Observable` properties
-- `.tag(project)` enables selection tracking by project identity
+- `.tag(SidebarSection.*)` enables selection tracking by section identity
+- Card counts load on-demand when disclosure group is expanded
 - Empty state shows when workspace has no projects
+
+## SidebarCardsItem
+
+**File:** `Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift` (inline definition)
+
+**Purpose:** Display "Cards" section item with card count summary.
+
+**Structure:**
+
+```swift
+struct SidebarCardsItem: View {
+    let project: Project
+    let workspacePath: String
+    let workspaceService: WorkspaceProviding
+
+    @State private var cardCounts: [CardStatus: Int] = [:]
+
+    var body: some View {
+        HStack {
+            Text("Cards")
+            if !cardCountSummary.isEmpty {
+                Text(cardCountSummary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .onAppear { loadCardCounts() }
+    }
+}
+```
+
+**Key Features:**
+
+1. **Card Count Summary:** Displays counts grouped by status (e.g., "3 todo • 2 in progress")
+2. **On-Demand Loading:** Loads cards via workspaceService in `.onAppear`
+3. **Formatted Display:** Uses bullet separator, replaces hyphens with spaces in status labels
+4. **Status Ordering:** Displays in workflow order (backlog, todo, in-progress, done, archived)
+
+**Notes:**
+- Mirrors the original `SidebarProjectEntry` card counting logic
+- Loads cards independently for each project when disclosure group is expanded
+- Errors are logged to console; counts remain empty on error
 
 ## SidebarProjectEntry
 
 **File:** `Sources/Hieroglyphs/Views/Sidebar/SidebarProjectEntry.swift`
 
-**Purpose:** Display single project row with title and card count summary.
+**Purpose:** Display project title and icon as disclosure group label.
 
 **Structure:**
 
@@ -270,7 +341,6 @@ struct SidebarProjectEntry: View {
     let workspacePath: String
     let workspaceService: WorkspaceProviding
 
-    @State private var cardCounts: [CardStatus: Int] = [:]
     @State private var showingEditSheet = false
 
     var body: some View {
@@ -278,23 +348,20 @@ struct SidebarProjectEntry: View {
             Image(systemName: "folder.fill")
                 .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(project.title)
-                    .font(.body)
-
-                if !cardCountSummary.isEmpty {
-                    Text(cardCountSummary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            Text(project.title)
+                .font(.body)
+        }
+        .contextMenu {
+            Button {
+                showingEditSheet = true
+            } label: {
+                Label("Edit Project", systemImage: "pencil.circle")
             }
         }
-        .onAppear {
-            loadCardCounts()
+        .sheet(isPresented: $showingEditSheet) {
+            EditProjectSheet(project: project)
         }
     }
-
-    // ... helper methods
 }
 ```
 
@@ -302,10 +369,13 @@ struct SidebarProjectEntry: View {
 
 1. **Icon:** `folder.fill` SF Symbol with secondary color
 2. **Title:** Project title in body font
-3. **Card Count Summary:** Card counts grouped by status (e.g., "3 todo • 2 in-progress")
-4. **On-Demand Loading:** Loads cards via `workspaceService` in `.onAppear`
-5. **Context Menu:** Right-click shows "Edit Project" option
-6. **Edit Sheet:** Presents EditProjectSheet when "Edit Project" is clicked
+3. **Context Menu:** Right-click shows "Edit Project" option
+4. **Edit Sheet:** Presents EditProjectSheet when "Edit Project" is clicked
+
+**Notes:**
+- Serves as label for `DisclosureGroup` in sidebar
+- Card count summary is displayed on the "Cards" child item (via `SidebarCardsItem`), not here
+- Simplified from previous version which included card counting logic
 
 **Card Count Computation:**
 
@@ -1310,14 +1380,66 @@ Used in `CardMetadataEditor` within a `FlowLayout` to display all card tags. Eac
 - Reusable across any tag display context
 - Visual style matches TakeNote patterns (rounded, secondary color)
 
+## PlansPlaceholder
+
+**File:** `Sources/Hieroglyphs/Views/PlansPlaceholder.swift`
+
+**Purpose:** Placeholder view for Plans section.
+
+**Structure:**
+
+```swift
+struct PlansPlaceholder: View {
+    var body: some View {
+        ContentUnavailableView(
+            "Plans",
+            systemImage: "list.bullet.clipboard",
+            description: Text("Plans view coming soon")
+        )
+    }
+}
+```
+
+**Notes:**
+- Displayed when Plans section is selected in sidebar
+- Plans functionality is planned for a future phase
+- Uses `list.bullet.clipboard` SF Symbol
+
+## PhasesPlaceholder
+
+**File:** `Sources/Hieroglyphs/Views/PhasesPlaceholder.swift`
+
+**Purpose:** Placeholder view for Phases section.
+
+**Structure:**
+
+```swift
+struct PhasesPlaceholder: View {
+    var body: some View {
+        ContentUnavailableView(
+            "Phases",
+            systemImage: "folder.badge.gearshape",
+            description: Text("Phases view coming soon")
+        )
+    }
+}
+```
+
+**Notes:**
+- Displayed when Phases section is selected in sidebar
+- Phases functionality is planned for a future phase
+- Uses `folder.badge.gearshape` SF Symbol
+
 ## Future View Components
 
 **Planned components not yet implemented:**
 
-1. **ProjectSettingsSheet:** Form for editing project metadata
-2. **WorkspaceOnboardingView:** Onboarding flow for creating initial workspace
-3. **Filter/Sort Toolbar Integration:** Integrate CardFilterBar and CardSortPopover into CardList toolbar
-4. **Search Results View:** Display SpotlightService results with navigation to matched items
+1. **PlansView:** Actual Plans view to replace PlansPlaceholder
+2. **PhasesView:** Actual Phases view to replace PhasesPlaceholder
+3. **ProjectSettingsSheet:** Form for editing project metadata (already exists as EditProjectSheet)
+4. **WorkspaceOnboardingView:** Onboarding flow for creating initial workspace
+5. **Filter/Sort Toolbar Integration:** Integrate CardFilterBar and CardSortPopover into CardList toolbar
+6. **Search Results View:** Display SpotlightService results with navigation to matched items
 
 ## View Testing Strategy
 
