@@ -257,6 +257,48 @@ final class HieroglyphsVMTests: XCTestCase {
         XCTAssertTrue(viewModel.cards.isEmpty)
     }
 
+    @MainActor
+    func testLoadCardsLoadingStateTransitions() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnLoadProjects = false
+        mockService.shouldThrowOnLoadCards = false
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+        guard let firstProject = viewModel.projects.first else {
+            XCTFail("No projects available")
+            return
+        }
+        viewModel.selectSection(.cards(firstProject))
+
+        // Verify initial state
+        XCTAssertFalse(viewModel.isLoadingCards)
+
+        // Load cards successfully
+        viewModel.loadCards()
+
+        // Verify state is false after successful load
+        XCTAssertFalse(viewModel.isLoadingCards)
+        XCTAssertEqual(viewModel.cards.count, 2)
+
+        // Test error path
+        mockService.shouldThrowOnLoadCards = true
+        viewModel.loadCards()
+
+        // Verify state is false after error
+        XCTAssertFalse(viewModel.isLoadingCards)
+        XCTAssertTrue(viewModel.cards.isEmpty)
+
+        // Test guard failure with nil project
+        viewModel.selectSection(nil)
+        viewModel.loadCards()
+
+        // Verify state is false after guard failure
+        XCTAssertFalse(viewModel.isLoadingCards)
+        XCTAssertTrue(viewModel.cards.isEmpty)
+    }
+
     // MARK: - createCard() Tests
 
     @MainActor

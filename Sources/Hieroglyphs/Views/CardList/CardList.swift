@@ -11,6 +11,8 @@ struct CardList: View {
         Group {
             if viewModel.selectedProject == nil {
                 emptyProjectState
+            } else if viewModel.isLoadingCards && viewModel.cards.isEmpty {
+                loadingState
             } else if viewModel.cards.isEmpty {
                 emptyCardsState
             } else {
@@ -65,6 +67,15 @@ struct CardList: View {
             systemImage: "note.text",
             description: Text("Create a card to get started.")
         )
+    }
+
+    private var loadingState: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+                .controlSize(.large)
+            Text("Loading cards...")
+                .foregroundStyle(.secondary)
+        }
     }
 
     private var filteredAndSortedCards: [Card] {

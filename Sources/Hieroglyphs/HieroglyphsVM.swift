@@ -45,6 +45,12 @@ final class HieroglyphsVM {
     var cards: [Card] = []
     var selectedCard: Card?
 
+    /// Tracks whether cards are currently loading from disk.
+    ///
+    /// Used to prevent empty state flicker when switching between projects.
+    /// When true, CardList shows a loading indicator instead of empty state.
+    var isLoadingCards: Bool = false
+
     var searchText: String = ""
     var filterStatus: Set<CardStatus> = []
     var filterType: Set<CardType> = []
@@ -198,14 +204,18 @@ final class HieroglyphsVM {
     /// Reads all cards from the selected project's cards/ directory and updates
     /// the cards property. On error, logs to console and leaves cards empty.
     func loadCards() {
+        isLoadingCards = true
+
         guard let selectedProject else {
             self.cards = []
+            isLoadingCards = false
             return
         }
 
         guard let workspacePath else {
             print("Cannot load cards: workspace path is nil")
             self.cards = []
+            isLoadingCards = false
             return
         }
 
@@ -216,9 +226,11 @@ final class HieroglyphsVM {
                 for: selectedProject
             )
             self.cards = loadedCards
+            isLoadingCards = false
         } catch {
             print("Failed to load cards: \(error)")
             self.cards = []
+            isLoadingCards = false
         }
     }
 
