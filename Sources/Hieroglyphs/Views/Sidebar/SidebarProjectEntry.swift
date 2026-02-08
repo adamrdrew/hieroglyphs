@@ -14,7 +14,7 @@ struct SidebarProjectEntry: View {
     var body: some View {
         HStack {
             Image(systemName: "folder.fill")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.orange)
 
             Text(project.title)
                 .font(.body)
