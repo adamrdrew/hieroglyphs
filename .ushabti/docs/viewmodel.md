@@ -28,6 +28,9 @@ The ViewModel supports L01 (Filesystem as Source of Truth by delegating to servi
 - `filterPriority: Set<Priority>` — Active priority filters (empty set = show all)
 - `sortBy: CardSortOption` — Sort criteria (created, updated, priority, status, title)
 - `sortOrder: SortOrder` — Sort direction (forward = ascending, reverse = descending)
+- `showingNewProjectSheet: Bool` — Controls New Project sheet presentation (false = hidden)
+- `showingNewCardSheet: Bool` — Controls New Card sheet presentation (false = hidden)
+- `focusSearch: Bool` — Triggers search field focus when set to true (resets to false after use)
 
 **Service Dependencies:**
 - `workspaceService: WorkspaceProviding` — Injected service for I/O operations
@@ -51,6 +54,45 @@ init(
 - ViewModel is created in `App.swift` and injected via `.environment(viewModel)`
 
 ## Methods
+
+### initializeWorkspace(at:)
+
+**Signature:** `func initializeWorkspace(at: String)`
+
+**Purpose:** Initialize a new workspace at the specified path.
+
+**Parameters:**
+- `at` — Absolute path to workspace directory to create
+
+**Behavior:**
+
+1. Call `workspaceService.createWorkspace(at:configDirectory:)` to create workspace directory and config file
+2. Call `workspaceService.initializeWorkspaceFiles(at:)` to generate CLAUDE.md and AGENT.md
+3. Call `loadWorkspace()` to load newly created workspace
+4. If any step throws, catch error and log to console
+
+**Error Handling:**
+
+Errors are logged to console via `print()`. Workspace path remains nil and projects remain empty on error.
+
+**Example error output:**
+```
+Failed to initialize workspace: directoryCreationFailed(...)
+```
+
+**Usage:**
+
+Called from `WelcomeView` when user selects workspace folder:
+
+```swift
+viewModel.initializeWorkspace(at: selectedURL.path)
+```
+
+**Notes:**
+- Only called on first launch when no config exists
+- Creates config at `~/.hieroglyphs/config.yaml`
+- Generates instructional files (CLAUDE.md, AGENT.md) in workspace root
+- Automatically loads workspace after successful initialization
 
 ### loadWorkspace()
 
@@ -570,16 +612,95 @@ class MockWorkspaceService: WorkspaceProviding {
 - Tests use `@MainActor` to match ViewModel's main-thread isolation
 - MockWorkspaceService tracks updateCard calls and last updated card for verification
 
+### showNewProjectSheet()
+
+**Signature:** `func showNewProjectSheet()`
+
+**Purpose:** Show the New Project sheet.
+
+**Behavior:** Sets `showingNewProjectSheet` to true, which triggers sheet presentation in Sidebar view.
+
+**Usage:** Called from menu command (Cmd+Shift+N) or toolbar button click.
+
+### showNewCardSheet()
+
+**Signature:** `func showNewCardSheet()`
+
+**Purpose:** Show the New Card sheet.
+
+**Behavior:** Sets `showingNewCardSheet` to true, which triggers sheet presentation in CardList view.
+
+**Usage:** Called from menu command (Cmd+N) or toolbar button click.
+
+### deleteSelectedItem()
+
+**Signature:** `func deleteSelectedItem()`
+
+**Purpose:** Delete the currently selected card or project.
+
+**Behavior:**
+
+1. Guard check `workspacePath` is not nil (log error and return if nil)
+2. If `selectedCard` is not nil:
+   - Call `workspaceService.deleteCard(slug:projectPath:)` to move card to Trash
+   - Set `selectedCard` to nil
+   - Call `loadCards()` to reload card list
+3. Else if `selectedProject` is not nil:
+   - Call `workspaceService.deleteProject(at:)` to move project to Trash
+   - Set `selectedProject` to nil
+   - Call `loadProjects()` to reload project list
+4. If any step throws, catch error and log to console
+
+**Error Handling:**
+
+Errors are logged to console via `print()`. Item is not deleted on error.
+
+**Example error output:**
+```
+Cannot delete: workspace path is nil
+Failed to delete: projectNotFound
+```
+
+**Usage:**
+
+Called from menu command (Cmd+Delete):
+
+```swift
+Button("Delete") {
+    viewModel.deleteSelectedItem()
+}
+.keyboardShortcut(.delete, modifiers: .command)
+```
+
+**Notes:**
+- Deletes card if both card and project are selected
+- Deletes project only if no card is selected
+- Does nothing if neither card nor project is selected
+- Uses macOS Trash (reversible deletion)
+
+### requestSearchFocus()
+
+**Signature:** `func requestSearchFocus()`
+
+**Purpose:** Request focus on the search field.
+
+**Behavior:** Sets `focusSearch` to true, which triggers focus change in CardList view. CardList resets flag to false after focusing.
+
+**Usage:** Called from menu command (Cmd+F).
+
+**Notes:**
+- Flag is reset to false by CardList after use (one-shot trigger)
+- Uses `.searchable(isPresented:)` modifier to control search field visibility
+
 ## Future Enhancements
 
 **Planned features not yet implemented:**
 
-1. **Workspace creation UI:** If config does not exist, show onboarding flow to create workspace
-2. **Error UI:** Display user-facing error messages instead of console logging
-3. **Slug collision detection:** Check for existing projects/cards with same slug before creating
-4. **Project editing:** Add `updateProject(_:)` method to ViewModel
-5. **Selection persistence:** Persist selectedProject and selectedCard to UserDefaults and restore on launch
-6. **Optimistic updates:** Add new project/card to list immediately without reloading (with rollback on error)
-7. **Filter persistence:** Persist filter/sort state to UserDefaults
-8. **Debounced updates:** Add debouncing for updateCard() to reduce write frequency
-9. **Search UI:** Wire performSearch to `.searchable()` modifier and display searchResults in UI
+1. **Error UI:** Display user-facing error messages instead of console logging
+2. **Slug collision detection:** Check for existing projects/cards with same slug before creating
+3. **Project editing:** Add `updateProject(_:)` method to ViewModel
+4. **Selection persistence:** Persist selectedProject and selectedCard to UserDefaults and restore on launch
+5. **Optimistic updates:** Add new project/card to list immediately without reloading (with rollback on error)
+6. **Filter persistence:** Persist filter/sort state to UserDefaults
+7. **Debounced updates:** Add debouncing for updateCard() to reduce write frequency
+8. **Search UI:** Wire performSearch to `.searchable()` modifier and display searchResults in UI

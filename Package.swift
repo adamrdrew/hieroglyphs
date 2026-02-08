@@ -20,6 +20,12 @@ let package = Package(
                 .product(name: "CodeEditorView", package: "CodeEditorView"),
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
                 .product(name: "Yams", package: "Yams")
+            ],
+            exclude: [
+                "Resources/Info.plist"
+            ],
+            resources: [
+                .copy("Resources/AppIcon.icns")
             ]
         ),
         .testTarget(

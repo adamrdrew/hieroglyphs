@@ -697,6 +697,164 @@ final class HieroglyphsVMTests: XCTestCase {
 
         XCTAssertNil(viewModel.selectedProject)
     }
+
+    // MARK: - initializeWorkspace() Tests
+
+    @MainActor
+    func testInitializeWorkspaceSuccess() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnCreateWorkspace = false
+        mockService.shouldThrowOnInitializeWorkspaceFiles = false
+        mockService.shouldThrowOnLoadConfig = false
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        XCTAssertNil(viewModel.workspacePath)
+
+        viewModel.initializeWorkspace(at: "/new/workspace")
+
+        XCTAssertEqual(viewModel.workspacePath, "/mock/workspace")
+        XCTAssertFalse(viewModel.projects.isEmpty)
+    }
+
+    @MainActor
+    func testInitializeWorkspaceCreateFailure() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnCreateWorkspace = true
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        viewModel.initializeWorkspace(at: "/new/workspace")
+
+        XCTAssertNil(viewModel.workspacePath)
+        XCTAssertTrue(viewModel.projects.isEmpty)
+    }
+
+    @MainActor
+    func testInitializeWorkspaceFilesFailure() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnCreateWorkspace = false
+        mockService.shouldThrowOnInitializeWorkspaceFiles = true
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        viewModel.initializeWorkspace(at: "/new/workspace")
+
+        XCTAssertNil(viewModel.workspacePath)
+        XCTAssertTrue(viewModel.projects.isEmpty)
+    }
+
+    // MARK: - Sheet Presentation Tests
+
+    @MainActor
+    func testShowNewProjectSheet() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        XCTAssertFalse(viewModel.showingNewProjectSheet)
+
+        viewModel.showNewProjectSheet()
+
+        XCTAssertTrue(viewModel.showingNewProjectSheet)
+    }
+
+    @MainActor
+    func testShowNewCardSheet() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        XCTAssertFalse(viewModel.showingNewCardSheet)
+
+        viewModel.showNewCardSheet()
+
+        XCTAssertTrue(viewModel.showingNewCardSheet)
+    }
+
+    // MARK: - deleteSelectedItem() Tests
+
+    @MainActor
+    func testDeleteSelectedCard() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnLoadCards = false
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+        viewModel.selectProject(viewModel.projects.first)
+        viewModel.loadCards()
+
+        let cardToDelete = viewModel.cards.first
+        viewModel.selectedCard = cardToDelete
+
+        XCTAssertNotNil(viewModel.selectedCard)
+
+        viewModel.deleteSelectedItem()
+
+        XCTAssertNil(viewModel.selectedCard)
+        XCTAssertTrue(mockService.deleteCardWasCalled)
+    }
+
+    @MainActor
+    func testDeleteSelectedProject() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnLoadConfig = false
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+        viewModel.selectProject(viewModel.projects.first)
+
+        XCTAssertNotNil(viewModel.selectedProject)
+        XCTAssertNil(viewModel.selectedCard)
+
+        viewModel.deleteSelectedItem()
+
+        XCTAssertNil(viewModel.selectedProject)
+        XCTAssertTrue(mockService.deleteProjectWasCalled)
+    }
+
+    @MainActor
+    func testDeleteSelectedItemWithNilWorkspacePath() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        XCTAssertNil(viewModel.workspacePath)
+
+        viewModel.deleteSelectedItem()
+
+        XCTAssertFalse(mockService.deleteCardWasCalled)
+        XCTAssertFalse(mockService.deleteProjectWasCalled)
+    }
+
+    @MainActor
+    func testDeleteSelectedItemWithNothingSelected() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnLoadConfig = false
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+
+        XCTAssertNil(viewModel.selectedProject)
+        XCTAssertNil(viewModel.selectedCard)
+
+        viewModel.deleteSelectedItem()
+
+        XCTAssertFalse(mockService.deleteCardWasCalled)
+        XCTAssertFalse(mockService.deleteProjectWasCalled)
+    }
+
+    // MARK: - requestSearchFocus() Tests
+
+    @MainActor
+    func testRequestSearchFocus() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        XCTAssertFalse(viewModel.focusSearch)
+
+        viewModel.requestSearchFocus()
+
+        XCTAssertTrue(viewModel.focusSearch)
+    }
 }
 
 // MARK: - Mock Workspace Service
@@ -725,9 +883,13 @@ final class MockWorkspaceService: WorkspaceProviding {
     var shouldThrowOnCreateProject = false
     var shouldThrowOnCreateCard = false
     var shouldThrowOnUpdateCard = false
+    var shouldThrowOnCreateWorkspace = false
+    var shouldThrowOnInitializeWorkspaceFiles = false
 
     var updateCardWasCalled = false
     var lastUpdatedCard: Card?
+    var deleteCardWasCalled = false
+    var deleteProjectWasCalled = false
 
     private var mockProjects: [Project] = []
     private var mockCards: [Card] = []
@@ -801,11 +963,19 @@ final class MockWorkspaceService: WorkspaceProviding {
     }
 
     func createWorkspace(at path: String, configDirectory: String?) throws {
-        // Not used in these tests
+        if shouldThrowOnCreateWorkspace {
+            throw WorkspaceService.WorkspaceError.directoryCreationFailed(
+                NSError(domain: "MockWorkspaceService", code: 1)
+            )
+        }
     }
 
     func initializeWorkspaceFiles(at workspacePath: String) throws {
-        // Not used in these tests
+        if shouldThrowOnInitializeWorkspaceFiles {
+            throw WorkspaceService.WorkspaceError.fileWriteFailed(
+                NSError(domain: "MockWorkspaceService", code: 2)
+            )
+        }
     }
 
     func createProject(
@@ -877,11 +1047,11 @@ final class MockWorkspaceService: WorkspaceProviding {
     }
 
     func deleteProject(at projectPath: String) throws {
-        // Not used in these tests
+        deleteProjectWasCalled = true
     }
 
     func deleteCard(slug: String, projectPath: String) throws {
-        // Not used in these tests
+        deleteCardWasCalled = true
     }
 }
 

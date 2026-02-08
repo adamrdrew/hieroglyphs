@@ -3,8 +3,7 @@ import SwiftUI
 /// Middle column view displaying filtered, sorted, searchable card list.
 struct CardList: View {
     @Environment(HieroglyphsVM.self) private var viewModel
-
-    @State private var showingNewCardSheet = false
+    @State private var isSearchPresented: Bool = false
 
     var body: some View {
         @Bindable var bindableViewModel = viewModel
@@ -22,23 +21,32 @@ struct CardList: View {
                     }
                 }
                 .listStyle(.plain)
-                .searchable(text: $bindableViewModel.searchText)
+                .searchable(
+                    text: $bindableViewModel.searchText,
+                    isPresented: $isSearchPresented
+                )
             }
         }
         .onChange(of: viewModel.selectedProject) { _, _ in
             viewModel.loadCards()
         }
+        .onChange(of: viewModel.focusSearch) { _, newValue in
+            if newValue {
+                isSearchPresented = true
+                viewModel.focusSearch = false
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    showingNewCardSheet = true
+                    viewModel.showNewCardSheet()
                 } label: {
                     Label("New Card", systemImage: "plus")
                 }
                 .disabled(viewModel.selectedProject == nil)
             }
         }
-        .sheet(isPresented: $showingNewCardSheet) {
+        .sheet(isPresented: $bindableViewModel.showingNewCardSheet) {
             NewCardSheet()
         }
     }

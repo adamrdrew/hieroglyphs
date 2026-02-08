@@ -17,6 +17,8 @@ Views follow L10 (Design Language Consistency with TakeNote), L09 (Small, Focuse
 ```
 Sources/Hieroglyphs/Views/
 ├── MainWindow.swift              # Root three-column NavigationSplitView
+├── Welcome/                      # Welcome screen components
+│   └── WelcomeView.swift         # First-launch workspace setup
 ├── Sidebar/                      # Sidebar feature components
 │   ├── Sidebar.swift             # Project list with toolbar
 │   ├── SidebarProjectEntry.swift # Individual project row
@@ -35,7 +37,70 @@ Sources/Hieroglyphs/Views/
     └── TagChipView.swift         # Pill-shaped tag chip with delete
 ```
 
-**Organization:** Views are grouped by feature (Sidebar, CardList, Detail). Each view is in its own file with focused responsibility.
+**Organization:** Views are grouped by feature (Welcome, Sidebar, CardList, Detail). Each view is in its own file with focused responsibility.
+
+## WelcomeView
+
+**File:** `Sources/Hieroglyphs/Views/Welcome/WelcomeView.swift`
+
+**Purpose:** First-launch screen for workspace initialization.
+
+**Structure:**
+
+```swift
+struct WelcomeView: View {
+    @Environment(HieroglyphsVM.self) private var viewModel
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "folder.fill.badge.plus")
+            Text("Welcome to Hieroglyphs")
+            Text("Description...")
+            Button { chooseWorkspaceFolder() } label: {
+                Label("Choose Workspace Folder", systemImage: "folder")
+            }
+        }
+    }
+
+    private func chooseWorkspaceFolder() {
+        let panel = NSOpenPanel()
+        // ... configure panel ...
+        let response = panel.runModal()
+        guard response == .OK, let url = panel.url else { return }
+        viewModel.initializeWorkspace(at: url.path)
+    }
+}
+```
+
+**Key Features:**
+
+1. **Icon:** Large folder.fill.badge.plus SF Symbol
+2. **Title:** "Welcome to Hieroglyphs" in large title font
+3. **Description:** Brief explanation of the app's purpose
+4. **Button:** "Choose Workspace Folder" button with folder icon
+5. **NSOpenPanel:** macOS native directory picker (AppKit integration)
+
+**Directory Picker Configuration:**
+- `canChooseFiles = false` — Only directories selectable
+- `canChooseDirectories = true` — Directories enabled
+- `allowsMultipleSelection = false` — Single selection only
+- `canCreateDirectories = true` — User can create new folders
+- Custom message and prompt text
+
+**Behavior:**
+
+1. User clicks "Choose Workspace Folder" button
+2. NSOpenPanel presents with directory selection UI
+3. User selects or creates a directory and clicks "Choose"
+4. `viewModel.initializeWorkspace(at:)` is called with selected path
+5. ViewModel creates workspace, generates files, and loads workspace
+6. App.swift observes `workspacePath` change and transitions to MainWindow
+
+**Notes:**
+- Shown when `viewModel.workspacePath == nil` (conditional rendering in App.swift)
+- Uses AppKit's NSOpenPanel for directory selection (no SwiftUI equivalent)
+- Minimum frame size ensures comfortable layout (500x400)
+- After initialization, view is replaced by MainWindow automatically
 
 ## MainWindow
 
@@ -67,6 +132,50 @@ struct MainWindow: View {
 - Content column displays searchable, filterable card list
 - Detail column displays card editor (metadata + click-to-edit markdown)
 - `preferredCompactColumn` controls which column shows on small windows (defaults to sidebar)
+- Shown when `viewModel.workspacePath != nil` (conditional rendering in App.swift)
+
+**App.swift Conditional Rendering:**
+
+```swift
+Window("Hieroglyphs", id: "main") {
+    Group {
+        if viewModel.workspacePath == nil {
+            WelcomeView()
+        } else {
+            MainWindow()
+        }
+    }
+    .environment(viewModel)
+    .onAppear {
+        viewModel.loadWorkspace()
+    }
+}
+```
+
+**First Launch Flow:**
+1. App launches and calls `viewModel.loadWorkspace()` on window appear
+2. If config does not exist, `loadWorkspace()` fails and `workspacePath` remains nil
+3. Conditional shows `WelcomeView` when `workspacePath == nil`
+4. User selects workspace folder in WelcomeView
+5. ViewModel initializes workspace and sets `workspacePath`
+6. Conditional switches to `MainWindow` when `workspacePath != nil`
+7. Workspace is loaded and projects appear in Sidebar
+
+**Menu Commands:**
+
+App.swift defines menu bar commands using `.commands()` modifier:
+
+- **File Menu:**
+  - New Project (Cmd+Shift+N) — Calls `viewModel.showNewProjectSheet()`
+  - New Card (Cmd+N) — Calls `viewModel.showNewCardSheet()` (disabled when no project selected)
+- **Edit Menu:**
+  - Delete (Cmd+Delete) — Calls `viewModel.deleteSelectedItem()` (disabled when nothing selected)
+  - Find (Cmd+F) — Calls `viewModel.requestSearchFocus()`
+
+**Notes:**
+- Commands trigger ViewModel methods that update observable state
+- Sheet presentation is coordinated through ViewModel (not local view state)
+- Delete and New Card commands are disabled based on selection state
 
 ## Sidebar
 
@@ -81,34 +190,42 @@ struct Sidebar: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @Environment(\.workspaceService) private var workspaceService
 
-    @State private var showingNewProjectSheet = false
-
     var body: some View {
         @Bindable var bindableViewModel = viewModel
 
-        List(selection: $bindableViewModel.selectedProject) {
-            ForEach(viewModel.projects) { project in
-                if let workspacePath = viewModel.workspacePath {
-                    SidebarProjectEntry(
-                        project: project,
-                        workspacePath: workspacePath,
-                        workspaceService: workspaceService
-                    )
-                    .tag(project)
+        Group {
+            if viewModel.projects.isEmpty {
+                ContentUnavailableView(
+                    "No Projects",
+                    systemImage: "folder",
+                    description: Text("Create a project to get started.")
+                )
+            } else {
+                List(selection: $bindableViewModel.selectedProject) {
+                    ForEach(viewModel.projects) { project in
+                        if let workspacePath = viewModel.workspacePath {
+                            SidebarProjectEntry(
+                                project: project,
+                                workspacePath: workspacePath,
+                                workspaceService: workspaceService
+                            )
+                            .tag(project)
+                        }
+                    }
                 }
+                .listStyle(.sidebar)
             }
         }
-        .listStyle(.sidebar)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    showingNewProjectSheet = true
+                    viewModel.showNewProjectSheet()
                 } label: {
                     Label("New Project", systemImage: "plus")
                 }
             }
         }
-        .sheet(isPresented: $showingNewProjectSheet) {
+        .sheet(isPresented: $bindableViewModel.showingNewProjectSheet) {
             NewProjectSheet()
         }
     }
@@ -117,20 +234,27 @@ struct Sidebar: View {
 
 **Key Features:**
 
-1. **List with Selection:** `List(selection:)` binds to `viewModel.selectedProject` for two-way selection state
-2. **ForEach Projects:** Iterates over `viewModel.projects` to render project rows
-3. **SidebarProjectEntry:** Renders each project row with title and card count
-4. **Toolbar Button:** "New Project" button with SF Symbol `plus` icon
-5. **Sheet Presentation:** Shows `NewProjectSheet` modal when button clicked
+1. **Empty State:** Shows `ContentUnavailableView` when no projects exist
+2. **List with Selection:** `List(selection:)` binds to `viewModel.selectedProject` for two-way selection state
+3. **ForEach Projects:** Iterates over `viewModel.projects` to render project rows
+4. **SidebarProjectEntry:** Renders each project row with title and card count
+5. **Toolbar Button:** "New Project" button with SF Symbol `plus` icon
+6. **Sheet Presentation:** Shows `NewProjectSheet` modal when button clicked (bound to ViewModel state)
 
 **Environment Dependencies:**
-- `HieroglyphsVM` — For accessing projects and selected project state
+- `HieroglyphsVM` — For accessing projects, selected project state, and sheet state
 - `workspaceService` — Passed to `SidebarProjectEntry` for loading cards
+
+**Sheet State Management:**
+- Sheet presentation is controlled by `viewModel.showingNewProjectSheet` (not local state)
+- Button calls `viewModel.showNewProjectSheet()` to trigger sheet
+- Enables menu commands (Cmd+Shift+N) to open sheet from anywhere
 
 **Notes:**
 - Uses `.sidebar` list style for macOS-native appearance
 - `@Bindable` wrapper enables binding to `@Observable` properties
 - `.tag(project)` enables selection tracking by project identity
+- Empty state shows when workspace has no projects
 
 ## SidebarProjectEntry
 
@@ -394,7 +518,9 @@ struct CardList: View {
 3. **Search:** `.searchable()` modifier filters cards by title (case-insensitive substring match)
 4. **Filtering and Sorting:** Computed property `filteredAndSortedCards` applies all filters and sort criteria
 5. **Auto-Load:** `.onChange` modifier calls `loadCards()` when selected project changes
-6. **Toolbar Button:** "New Card" button opens NewCardSheet (disabled when no project selected)
+6. **Search Focus:** Menu command (Cmd+F) can focus search field via ViewModel state
+7. **Toolbar Button:** "New Card" button opens NewCardSheet (disabled when no project selected)
+8. **Sheet Presentation:** Bound to ViewModel state (enables menu commands)
 
 **Filter and Sort Logic:**
 

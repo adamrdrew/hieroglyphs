@@ -8,34 +8,42 @@ struct Sidebar: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @Environment(\.workspaceService) private var workspaceService
 
-    @State private var showingNewProjectSheet = false
-
     var body: some View {
         @Bindable var bindableViewModel = viewModel
 
-        List(selection: $bindableViewModel.selectedProject) {
-            ForEach(viewModel.projects) { project in
-                if let workspacePath = viewModel.workspacePath {
-                    SidebarProjectEntry(
-                        project: project,
-                        workspacePath: workspacePath,
-                        workspaceService: workspaceService
-                    )
-                    .tag(project)
+        Group {
+            if viewModel.projects.isEmpty {
+                ContentUnavailableView(
+                    "No Projects",
+                    systemImage: "folder",
+                    description: Text("Create a project to get started.")
+                )
+            } else {
+                List(selection: $bindableViewModel.selectedProject) {
+                    ForEach(viewModel.projects) { project in
+                        if let workspacePath = viewModel.workspacePath {
+                            SidebarProjectEntry(
+                                project: project,
+                                workspacePath: workspacePath,
+                                workspaceService: workspaceService
+                            )
+                            .tag(project)
+                        }
+                    }
                 }
+                .listStyle(.sidebar)
             }
         }
-        .listStyle(.sidebar)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    showingNewProjectSheet = true
+                    viewModel.showNewProjectSheet()
                 } label: {
                     Label("New Project", systemImage: "plus")
                 }
             }
         }
-        .sheet(isPresented: $showingNewProjectSheet) {
+        .sheet(isPresented: $bindableViewModel.showingNewProjectSheet) {
             NewProjectSheet()
         }
     }
