@@ -29,7 +29,7 @@ struct CardList: View {
                 )
             }
         }
-        .onChange(of: viewModel.selectedProject) { _, _ in
+        .onChange(of: viewModel.selectedProject, initial: true) { _, _ in
             viewModel.loadCards()
         }
         .onChange(of: viewModel.focusSearch) { _, newValue in
