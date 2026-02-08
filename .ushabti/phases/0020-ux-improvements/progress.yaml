@@ -1,0 +1,55 @@
+phase:
+  id: "0020"
+  slug: ux-improvements
+  title: UX Improvements
+  status: planned
+
+steps:
+  - id: S001
+    title: Wire Filter Bar into CardList Toolbar
+    implemented: false
+    reviewed: false
+    notes: ""
+    touched: []
+
+  - id: S002
+    title: Wire Sort Popover into CardList Toolbar
+    implemented: false
+    reviewed: false
+    notes: ""
+    touched: []
+
+  - id: S003
+    title: Add Card Management Buttons to Plan Detail
+    implemented: false
+    reviewed: false
+    notes: ""
+    touched: []
+
+  - id: S004
+    title: Add Filtering to Card Selection Sheet
+    implemented: false
+    reviewed: false
+    notes: ""
+    touched: []
+
+  - id: S005
+    title: Generalize Plan Status Cascade to All Statuses
+    implemented: false
+    reviewed: false
+    notes: ""
+    touched: []
+
+  - id: S006
+    title: Add Tests for New Public Methods
+    implemented: false
+    reviewed: false
+    notes: ""
+    touched: []
+
+  - id: S007
+    title: Update Documentation
+    implemented: false
+    reviewed: false
+    notes: ""
+    touched: []
