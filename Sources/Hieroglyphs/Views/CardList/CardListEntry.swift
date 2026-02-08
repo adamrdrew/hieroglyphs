@@ -7,7 +7,7 @@ struct CardListEntry: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: typeIcon)
-                .foregroundStyle(.secondary)
+                .foregroundStyle( typeColor)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(card.title)
@@ -16,7 +16,7 @@ struct CardListEntry: View {
                 HStack(spacing: 8) {
                     Text(statusLabel)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(statusColor)
 
                     if priorityIndicatorIcon != nil {
                         Image(systemName: priorityIndicatorIcon!)
@@ -29,6 +29,19 @@ struct CardListEntry: View {
             Spacer()
         }
         .padding(.vertical, 4)
+    }
+
+    private var typeColor : Color {
+        switch card.type {
+        case .task:
+            return .blue
+        case .bug:
+            return .red
+        case .feature:
+            return .yellow
+        case .note:
+            return .pink
+        }
     }
 
     private var typeIcon: String {
@@ -46,6 +59,23 @@ struct CardListEntry: View {
 
     private var statusLabel: String {
         card.status.rawValue.replacingOccurrences(of: "-", with: " ")
+    }
+
+    private var statusColor: Color {
+        switch card.status {
+        case .backlog:
+            return .gray
+        case .triage:
+            return .orange
+        case .todo:
+            return .blue
+        case .inProgress:
+            return .purple
+        case .done:
+            return .green
+        case .archived:
+            return .secondary
+        }
     }
 
     private var priorityIndicatorIcon: String? {
