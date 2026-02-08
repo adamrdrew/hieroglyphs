@@ -54,6 +54,9 @@ final class HieroglyphsVM {
     var phases: [Phase] = []
     var selectedPhase: Phase?
 
+    var plans: [Plan] = []
+    var selectedPlan: Plan?
+
     var searchText: String = ""
     var filterStatus: Set<CardStatus> = []
     var filterType: Set<CardType> = []
@@ -72,6 +75,7 @@ final class HieroglyphsVM {
     private let tagReconciler: TagReconciling?
     private let searchService: SearchProviding?
     private let phaseService: PhaseProviding?
+    private let planService: PlanProviding?
 
     private let cardUpdateDebouncer = Debouncer(delay: 1.5)
     private var pendingCardUpdate: Card?
@@ -82,13 +86,15 @@ final class HieroglyphsVM {
         fileWatcher: FileWatching? = nil,
         tagReconciler: TagReconciling? = nil,
         searchService: SearchProviding? = nil,
-        phaseService: PhaseProviding? = nil
+        phaseService: PhaseProviding? = nil,
+        planService: PlanProviding? = nil
     ) {
         self.workspaceService = workspaceService
         self.fileWatcher = fileWatcher
         self.tagReconciler = tagReconciler
         self.searchService = searchService
         self.phaseService = phaseService
+        self.planService = planService
     }
 
     /// Initializes a new workspace at the specified path.
@@ -209,14 +215,17 @@ final class HieroglyphsVM {
 
         switch section {
         case .cards:
+            self.selectedPlan = nil
             self.selectedPhase = nil
         case .plans:
             self.selectedCard = nil
             self.selectedPhase = nil
         case .phases:
             self.selectedCard = nil
+            self.selectedPlan = nil
         case .none:
             self.selectedCard = nil
+            self.selectedPlan = nil
             self.selectedPhase = nil
         }
     }
@@ -286,6 +295,216 @@ final class HieroglyphsVM {
         } catch {
             print("Failed to load phases: \(error)")
             self.phases = []
+        }
+    }
+
+    func loadPlans() {
+        guard let selectedProject else {
+            self.plans = []
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot load plans: workspace path is nil")
+            self.plans = []
+            return
+        }
+
+        guard let planService else {
+            print("Cannot load plans: plan service is nil")
+            self.plans = []
+            return
+        }
+
+        let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+        let previousSlug = selectedPlan?.slug
+
+        do {
+            let loadedPlans = try planService.loadPlans(projectPath: projectPath)
+            self.plans = loadedPlans
+
+            if let previousSlug {
+                self.selectedPlan = loadedPlans.first { $0.slug == previousSlug }
+            }
+        } catch {
+            print("Failed to load plans: \(error)")
+            self.plans = []
+        }
+    }
+
+    func createPlan(title: String, number: Int) {
+        guard let selectedProject else {
+            print("Cannot create plan: no project selected")
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot create plan: workspace path is nil")
+            return
+        }
+
+        guard let planService else {
+            print("Cannot create plan: plan service is nil")
+            return
+        }
+
+        let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+
+        do {
+            _ = try planService.createPlan(
+                title: title,
+                number: number,
+                projectPath: projectPath
+            )
+            loadPlans()
+        } catch {
+            print("Failed to create plan: \(error)")
+        }
+    }
+
+    func updatePlan(_ plan: Plan) {
+        guard let selectedProject else {
+            print("Cannot update plan: no project selected")
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot update plan: workspace path is nil")
+            return
+        }
+
+        guard let planService else {
+            print("Cannot update plan: plan service is nil")
+            return
+        }
+
+        let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+
+        do {
+            try planService.updatePlan(plan, projectPath: projectPath)
+            loadPlans()
+        } catch {
+            print("Failed to update plan: \(error)")
+        }
+    }
+
+    func addCardToPlan(cardSlug: String, planSlug: String) {
+        guard let selectedProject else {
+            print("Cannot add card to plan: no project selected")
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot add card to plan: workspace path is nil")
+            return
+        }
+
+        guard let planService else {
+            print("Cannot add card to plan: plan service is nil")
+            return
+        }
+
+        let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+
+        do {
+            try planService.addCardToPlan(
+                cardSlug: cardSlug,
+                planSlug: planSlug,
+                projectPath: projectPath
+            )
+            loadPlans()
+        } catch {
+            print("Failed to add card to plan: \(error)")
+        }
+    }
+
+    func removeCardFromPlan(cardSlug: String, planSlug: String) {
+        guard let selectedProject else {
+            print("Cannot remove card from plan: no project selected")
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot remove card from plan: workspace path is nil")
+            return
+        }
+
+        guard let planService else {
+            print("Cannot remove card from plan: plan service is nil")
+            return
+        }
+
+        let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+
+        do {
+            try planService.removeCardFromPlan(
+                cardSlug: cardSlug,
+                planSlug: planSlug,
+                projectPath: projectPath
+            )
+            loadPlans()
+        } catch {
+            print("Failed to remove card from plan: \(error)")
+        }
+    }
+
+    func updatePlanStatus(plan: Plan, status: PlanStatus) {
+        guard let selectedProject else {
+            print("Cannot update plan status: no project selected")
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot update plan status: workspace path is nil")
+            return
+        }
+
+        guard let planService else {
+            print("Cannot update plan status: plan service is nil")
+            return
+        }
+
+        let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+
+        do {
+            try planService.updatePlanStatus(
+                plan: plan,
+                status: status,
+                projectPath: projectPath
+            )
+            loadPlans()
+            loadCards()
+        } catch {
+            print("Failed to update plan status: \(error)")
+        }
+    }
+
+    func writePhasePrompt(planSlug: String, content: String) {
+        guard let selectedProject else {
+            print("Cannot write phase prompt: no project selected")
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot write phase prompt: workspace path is nil")
+            return
+        }
+
+        guard let planService else {
+            print("Cannot write phase prompt: plan service is nil")
+            return
+        }
+
+        let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+
+        do {
+            try planService.writePhasePrompt(
+                planSlug: planSlug,
+                content: content,
+                projectPath: projectPath
+            )
+        } catch {
+            print("Failed to write phase prompt: \(error)")
         }
     }
 
@@ -431,6 +650,11 @@ final class HieroglyphsVM {
                 loadCards()
             }
             reconcileCardTags(at: path)
+        } else if path.contains("/plans/") && (path.contains("/plan.yaml") || path.contains("/PHASE_PROMPT.md")) {
+            if let selectedProject,
+               path.contains("/\(selectedProject.slug)/") {
+                loadPlans()
+            }
         }
     }
 

@@ -235,11 +235,58 @@ Additional markdown content here.
 - Overseer marks `reviewed: true` after verification
 - Steps are displayed as a checklist in PhaseDetail view
 
+## Plan
+
+**Location:** `Sources/Hieroglyphs/Models/Plan.swift`
+
+**Purpose:** Represents a plan with metadata and linked cards.
+
+**Fields:**
+- `id: UUID` — Unique identifier for the plan
+- `title: String` — Human-readable plan title
+- `number: Int` — Plan number (used in slug)
+- `slug: String` — Filesystem-safe slug: `{NNNN}-{kebab-case-title}`
+- `status: PlanStatus` — Current plan status (planning, ready, done)
+- `created: Date` — ISO8601 timestamp of plan creation
+- `updated: Date` — ISO8601 timestamp of last update
+- `linkedCardSlugs: [String]` — Array of card slugs (derived from symlinks, not persisted)
+- `phasePrompt: String` — Content of PHASE_PROMPT.md file
+
+**Conformances:** `Identifiable`, `Codable`, `Equatable`, `Hashable`
+
+**Notes:**
+- Plans are stored in `{workspacePath}/{projectSlug}/plans/{plan-slug}/`
+- `slug` format is `{NNNN}-{kebab-case-title}` where NNNN is zero-padded number (e.g., `0001-initial-setup`)
+- `linkedCardSlugs` is derived by enumerating symlinks in the plan directory, not stored in plan.yaml
+- `phasePrompt` is read from PHASE_PROMPT.md file
+- Plans are displayed in PlanList and PlanDetail views
+
+## PlanStatus
+
+**Location:** `Sources/Hieroglyphs/Models/PlanStatus.swift`
+
+**Purpose:** Enum representing the current status of a plan.
+
+**Cases:**
+- `planning` — Plan is being designed and cards are being added
+- `ready` — Plan is complete and ready for execution
+- `done` — Plan has been executed and all work is complete
+
+**Conformances:** `String`, `Codable`, `CaseIterable`
+
+**Notes:**
+- Raw values are lowercase strings matching enum case names
+- Stored in plan.yaml `status` field as raw string (e.g., `status: planning`)
+- Status progression: planning → ready → done
+- When status becomes `done`, all linked cards have their status updated to `done`
+
 ## Model Relationships
 
 - **WorkspaceConfig → Projects:** Workspace path points to directory containing project subdirectories
 - **Project → Cards:** Each project has a `cards/` subdirectory containing card subdirectories
-- **Project.slug and Card.slug:** Used to construct filesystem paths
+- **Project → Plans:** Each project has a `plans/` subdirectory containing plan subdirectories
+- **Plan → Cards:** Plans link to cards via symlinks in the plan directory
+- **Project.slug, Card.slug, Plan.slug:** Used to construct filesystem paths
 
 **Directory structure:**
 
@@ -250,6 +297,11 @@ Additional markdown content here.
     cards/
       {card-slug}/
         card.md         ← Card frontmatter + body
+    plans/
+      {plan-slug}/
+        plan.yaml       ← Plan metadata
+        PHASE_PROMPT.md ← Phase prompt content
+        {card-slug}     ← Symlink to ../../cards/{card-slug}/
 ```
 
 ## Date Handling

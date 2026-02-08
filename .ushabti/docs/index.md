@@ -20,5 +20,6 @@ A macOS-native markdown-based project management tool built with SwiftUI. Manage
 - [Spotlight Search](spotlight-search.md) — NSMetadataQuery integration for content, title, and tag search
 - [Tag Reconciliation](tag-reconciliation.md) — One-way tag projection from frontmatter to extended attributes
 - [Phases View](phases-view.md) — Read-only Ushabti phase integration showing phase status, intent, steps, and review notes
+- [Plans System](plans-system.md) — Plans group cards via symlinks and generate Ushabti phase prompts
 - [Testing Strategy](testing.md) — Test organization, coverage requirements, and running tests
 - [Filesystem Structure](filesystem-structure.md) — On-disk layout, file formats, and naming conventions

@@ -1,0 +1,132 @@
+phase:
+  id: 18
+  slug: 0018-plans
+  title: Plans
+  status: complete
+
+steps:
+  - id: S001
+    title: Define Plan and PlanStatus models
+    implemented: true
+    reviewed: true
+    notes: "Created Plan and PlanStatus models following existing model patterns"
+    touched:
+      - Sources/Hieroglyphs/Models/Plan.swift
+      - Sources/Hieroglyphs/Models/PlanStatus.swift
+
+  - id: S002
+    title: Define PlanProviding protocol
+    implemented: true
+    reviewed: true
+    notes: "Created PlanProviding protocol with all required methods"
+    touched:
+      - Sources/Hieroglyphs/Services/PlanProviding.swift
+
+  - id: S003
+    title: Implement PlanService
+    implemented: true
+    reviewed: true
+    notes: "Implemented PlanService with all methods following WorkspaceService patterns. Uses Yams for YAML operations and handles dangling symlinks gracefully."
+    touched:
+      - Sources/Hieroglyphs/Services/PlanService.swift
+
+  - id: S004
+    title: Add PlanService environment key
+    implemented: true
+    reviewed: true
+    notes: "Created PlanServiceEnvironmentKey following WorkspaceServiceEnvironmentKey pattern"
+    touched:
+      - Sources/Hieroglyphs/Services/PlanServiceEnvironmentKey.swift
+
+  - id: S005
+    title: Integrate PlanService into App and ViewModel
+    implemented: true
+    reviewed: true
+    notes: "Added PlanService injection in App.swift and all plan-related state and methods in HieroglyphsVM"
+    touched:
+      - Sources/Hieroglyphs/App.swift
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S006
+    title: Create PlanList view
+    implemented: true
+    reviewed: true
+    notes: "Created PlanList view following PhaseList and CardList patterns"
+    touched:
+      - Sources/Hieroglyphs/Views/PlanList/PlanList.swift
+
+  - id: S007
+    title: Create PlanListEntry view
+    implemented: true
+    reviewed: true
+    notes: "Created PlanListEntry view following PhaseListEntry pattern with status icons and card count"
+    touched:
+      - Sources/Hieroglyphs/Views/PlanList/PlanListEntry.swift
+
+  - id: S008
+    title: Create NewPlanSheet view
+    implemented: true
+    reviewed: true
+    notes: "Created NewPlanSheet view following NewCardSheet pattern"
+    touched:
+      - Sources/Hieroglyphs/Views/PlanList/NewPlanSheet.swift
+
+  - id: S009
+    title: Create PlanDetail view
+    implemented: true
+    reviewed: true
+    notes: "Created PlanDetail view with plan metadata, linked cards list, phase prompt editor, and placeholder for generation button"
+    touched:
+      - Sources/Hieroglyphs/Views/PlanDetail/PlanDetail.swift
+
+  - id: S010
+    title: Create AddCardToPlanSheet view
+    implemented: true
+    reviewed: true
+    notes: "Created AddCardToPlanSheet view that shows available cards (not already linked) with selection and add functionality"
+    touched:
+      - Sources/Hieroglyphs/Views/PlanDetail/AddCardToPlanSheet.swift
+
+  - id: S011
+    title: Wire Plans into MainWindow
+    implemented: true
+    reviewed: true
+    notes: "Updated MainWindow to show PlanList for plans section and PlanDetail when a plan is selected. Removed PlansPlaceholder."
+    touched:
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+
+  - id: S012
+    title: Update FileWatcher to monitor plans
+    implemented: true
+    reviewed: true
+    notes: "Updated HieroglyphsVM handleFileChange to detect changes in plans/ directories and reload plans when plan.yaml or PHASE_PROMPT.md changes"
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S013
+    title: Write PlanService tests
+    implemented: true
+    reviewed: true
+    notes: "Created comprehensive PlanServiceTests covering all public methods with 14 test cases. All tests pass."
+    touched:
+      - Tests/HieroglyphsTests/PlanServiceTests.swift
+
+  - id: S014
+    title: Update documentation
+    implemented: true
+    reviewed: true
+    notes: "Created comprehensive plans-system.md documentation. Updated index.md, filesystem-structure.md, and models.md with plans information."
+    touched:
+      - .ushabti/docs/plans-system.md
+      - .ushabti/docs/index.md
+      - .ushabti/docs/filesystem-structure.md
+      - .ushabti/docs/models.md
+
+  - id: S015
+    title: Remove dead code (PlansPlaceholder)
+    implemented: true
+    reviewed: true
+    notes: "PlansPlaceholder.swift deleted. Documentation updated to remove stale references."
+    touched:
+      - Sources/Hieroglyphs/Views/PlansPlaceholder.swift
+      - .ushabti/docs/views-ui.md

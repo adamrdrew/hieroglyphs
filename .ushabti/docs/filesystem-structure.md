@@ -37,11 +37,17 @@ workspacePath: /Users/alice/Hieroglyphs
 ├── AGENT.md                  # Agent workflow instructions (generated)
 ├── project-slug-1/           # Project directory (slug from title)
 │   ├── project.md            # Project frontmatter
-│   └── cards/                # Cards subdirectory
-│       ├── card-slug-1/      # Card directory (slug from title)
-│       │   └── card.md       # Card frontmatter + body
-│       └── card-slug-2/
-│           └── card.md
+│   ├── cards/                # Cards subdirectory
+│   │   ├── card-slug-1/      # Card directory (slug from title)
+│   │   │   └── card.md       # Card frontmatter + body
+│   │   └── card-slug-2/
+│   │       └── card.md
+│   └── plans/                # Plans subdirectory
+│       └── 0001-plan-slug/   # Plan directory (number + slug)
+│           ├── plan.yaml     # Plan metadata
+│           ├── PHASE_PROMPT.md  # Phase prompt content
+│           ├── card-slug-1   # Symlink → ../../cards/card-slug-1/
+│           └── card-slug-2   # Symlink → ../../cards/card-slug-2/
 └── project-slug-2/
     ├── project.md
     └── cards/
@@ -54,6 +60,8 @@ workspacePath: /Users/alice/Hieroglyphs
 - Each project contains `project.md` file with frontmatter
 - Cards live in `{project}/cards/{card-slug}/card.md`
 - Card directories are nested (directory per card, not flat file structure)
+- Plans live in `{project}/plans/{NNNN}-{slug}/` with plan.yaml, PHASE_PROMPT.md, and card symlinks
+- Plan symlinks are relative: `../../cards/{card-slug}/`
 
 ## Project Files
 
@@ -158,6 +166,100 @@ Additional markdown content here with **formatting**, _emphasis_, and [links](ht
 - `slug` field must match directory name exactly
 - Unknown fields are preserved per L02
 - Empty body is allowed (card may have only frontmatter)
+
+## Plan Files
+
+### plan.yaml
+
+**Location:** `{workspacePath}/{project-slug}/plans/{plan-slug}/plan.yaml`
+
+**Purpose:** Store plan metadata in YAML format.
+
+**Format:** YAML file with plan fields (no body content).
+
+**Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | UUID string | Yes | Unique identifier |
+| `title` | String | Yes | Human-readable title |
+| `number` | Int | Yes | Plan number |
+| `slug` | String | Yes | Filesystem-safe slug (must match directory name) |
+| `status` | String enum | No | Plan status: `planning`, `ready`, `done` (defaults to `planning`) |
+| `created` | ISO8601 date string | No | Creation timestamp (defaults to current date) |
+| `updated` | ISO8601 date string | No | Last update timestamp (defaults to current date) |
+
+**Example:**
+
+```yaml
+id: 123e4567-e89b-12d3-a456-426614174000
+title: Initial Setup
+number: 1
+slug: 0001-initial-setup
+status: planning
+created: 2026-01-15T10:30:00Z
+updated: 2026-01-20T14:22:00Z
+```
+
+**Notes:**
+- `slug` field must match directory name exactly
+- Unknown fields are preserved per L02
+- Linked cards are represented as symlinks in the plan directory, not stored in plan.yaml
+
+### PHASE_PROMPT.md
+
+**Location:** `{workspacePath}/{project-slug}/plans/{plan-slug}/PHASE_PROMPT.md`
+
+**Purpose:** Store user-editable phase prompt content for Ushabti integration.
+
+**Format:** Plain markdown file.
+
+**Content:** User-defined markdown content describing the phase goals, scope, and constraints for Ushabti Scribe to plan implementation.
+
+**Example:**
+
+```markdown
+# Phase Prompt: Initial Setup
+
+## Goal
+
+Set up the project repository and build infrastructure.
+
+## Scope
+
+- Initialize Git repository
+- Configure Swift Package Manager
+- Add CI/CD pipeline
+
+## Out of Scope
+
+- Documentation
+- Testing infrastructure
+```
+
+**Notes:**
+- Initially empty when plan is created
+- Editable in Hieroglyphs PlanDetail view
+- Used by Ushabti Scribe to generate phase plans (future enhancement)
+
+### Card Symlinks
+
+Plans use relative symlinks to link to cards. Each symlink in the plan directory points to a card directory in the project's cards/ subdirectory.
+
+**Format:** `{plan-directory}/{card-slug}` → `../../cards/{card-slug}/`
+
+**Example:**
+
+```
+/Users/alice/Hieroglyphs/my-project/plans/0001-initial-setup/card-1
+  → ../../cards/card-1/
+```
+
+**Notes:**
+- Symlinks are relative (two levels up, then into cards directory)
+- Enables workspace portability (moving workspace preserves symlinks)
+- Dangling symlinks (card deleted) are tolerated and shown as "Missing" in UI
+- Card deletion does not automatically remove symlinks from plans
 
 ## Instructional Files
 

@@ -146,7 +146,7 @@ struct MainWindow: View {
         case .cards:
             CardList()
         case .plans:
-            PlansPlaceholder()
+            PlanList()
         case .phases:
             PhaseList()
         case .none:
@@ -165,8 +165,8 @@ struct MainWindow: View {
 - Sidebar column displays hierarchical project list with sections (Cards, Plans, Phases)
 - Content column switches based on `viewModel.selectedSection` value
   - `.cards` → displays `CardList` (searchable, filterable card list)
-  - `.plans` → displays `PlansPlaceholder` (future feature)
-  - `.phases` → displays `PhasesPlaceholder` (future feature)
+  - `.plans` → displays `PlanList` (list of plans with linked cards)
+  - `.phases` → displays `PhaseList` (list of Ushabti phases)
   - `nil` → displays empty state prompting user to select a section
 - Detail column displays card editor (metadata + click-to-edit markdown)
 - `preferredCompactColumn` controls which column shows on small windows (defaults to sidebar)
@@ -1395,30 +1395,134 @@ Used in `CardMetadataEditor` within a `FlowLayout` to display all card tags. Eac
 - Reusable across any tag display context
 - Visual style matches TakeNote patterns (rounded, secondary color)
 
-## PlansPlaceholder
+## PlanList
 
-**File:** `Sources/Hieroglyphs/Views/PlansPlaceholder.swift`
+**File:** `Sources/Hieroglyphs/Views/PlanList/PlanList.swift`
 
-**Purpose:** Placeholder view for Plans section.
+**Purpose:** Middle column view that displays all plans for the selected project.
 
 **Structure:**
 
 ```swift
-struct PlansPlaceholder: View {
+struct PlanList: View {
+    @Environment(HieroglyphsVM.self) private var viewModel
+    @State private var showNewPlanSheet = false
+
     var body: some View {
-        ContentUnavailableView(
-            "Plans",
-            systemImage: "list.bullet.clipboard",
-            description: Text("Plans view coming soon")
-        )
+        Group {
+            if viewModel.selectedProject == nil {
+                ContentUnavailableView(
+                    "No Project Selected",
+                    systemImage: "folder",
+                    description: Text("Select a project from the sidebar to view its plans.")
+                )
+            } else if viewModel.plans.isEmpty {
+                ContentUnavailableView(
+                    "No Plans",
+                    systemImage: "list.bullet.clipboard",
+                    description: Text("Create a plan to group cards and prepare for implementation.")
+                )
+            } else {
+                List(selection: $viewModel.selectedPlan) {
+                    ForEach(viewModel.plans) { plan in
+                        PlanListEntry(plan: plan)
+                            .tag(plan)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Plans")
+        .toolbar {
+            Button("New Plan") {
+                showNewPlanSheet = true
+            }
+        }
+        .sheet(isPresented: $showNewPlanSheet) {
+            NewPlanSheet(isPresented: $showNewPlanSheet)
+        }
+        .onChange(of: viewModel.selectedProject) {
+            viewModel.loadPlans()
+            viewModel.loadCards()
+        }
     }
 }
 ```
 
 **Notes:**
 - Displayed when Plans section is selected in sidebar
-- Plans functionality is planned for a future phase
-- Uses `list.bullet.clipboard` SF Symbol
+- Three states: no project selected, no plans exist, plans list
+- Toolbar button shows NewPlanSheet for creating plans
+- Auto-loads plans when selectedProject changes
+- Selection binding to `viewModel.selectedPlan`
+
+## PlanListEntry
+
+**File:** `Sources/Hieroglyphs/Views/PlanList/PlanListEntry.swift`
+
+**Purpose:** Individual plan row displayed in PlanList.
+
+**Structure:**
+- Plan number and title
+- Status badge (planning/ready/done) with color-coded icon
+- Linked card count
+
+**Notes:**
+- Follows PhaseListEntry pattern
+- Status icons: planning (gray), ready (blue), done (green)
+
+## NewPlanSheet
+
+**File:** `Sources/Hieroglyphs/Views/PlanList/NewPlanSheet.swift`
+
+**Purpose:** Modal sheet for creating a new plan.
+
+**Fields:**
+- Plan title (text field, required)
+- Plan number (integer field, required)
+
+**Notes:**
+- Save button calls `viewModel.createPlan(title:number:)`
+- Validates required fields (disables Save if empty)
+- Follows NewCardSheet pattern
+
+## PlanDetail
+
+**File:** `Sources/Hieroglyphs/Views/PlanDetail/PlanDetail.swift`
+
+**Purpose:** Detail column view for selected plan.
+
+**Sections:**
+1. Plan metadata (number, title, status picker)
+2. Linked cards list with title/status/priority
+3. PHASE_PROMPT.md content editor
+
+**Features:**
+- Status picker updates plan immediately
+- Add Card button shows AddCardToPlanSheet
+- Remove Card action in context menu on linked cards
+- Dangling symlinks shown as "Missing: card-slug" with warning icon
+- PHASE_PROMPT.md editable via TextEditor with immediate writes
+- "Generate Phase Prompt" button (disabled placeholder for future)
+
+**Notes:**
+- Two states: no plan selected (ContentUnavailableView) or plan selected
+- Handles dangling symlinks gracefully
+
+## AddCardToPlanSheet
+
+**File:** `Sources/Hieroglyphs/Views/PlanDetail/AddCardToPlanSheet.swift`
+
+**Purpose:** Modal sheet for adding a card to a plan.
+
+**Behavior:**
+- Lists available cards (cards not already linked to plan)
+- Select card and click Add
+- Calls `viewModel.addCardToPlan(cardSlug:planSlug:)`
+- Dismisses sheet on success
+
+**Notes:**
+- Loads cards on appear
+- Filters out cards already linked to selected plan
 
 ## PhasesPlaceholder
 
@@ -1449,12 +1553,11 @@ struct PhasesPlaceholder: View {
 
 **Planned components not yet implemented:**
 
-1. **PlansView:** Actual Plans view to replace PlansPlaceholder
-2. **PhasesView:** Actual Phases view to replace PhasesPlaceholder
-3. **ProjectSettingsSheet:** Form for editing project metadata (already exists as EditProjectSheet)
-4. **WorkspaceOnboardingView:** Onboarding flow for creating initial workspace
-5. **Filter/Sort Toolbar Integration:** Integrate CardFilterBar and CardSortPopover into CardList toolbar
-6. **Search Results View:** Display SpotlightService results with navigation to matched items
+1. **ProjectSettingsSheet:** Form for editing project metadata (already exists as EditProjectSheet)
+2. **WorkspaceOnboardingView:** Onboarding flow for creating initial workspace
+3. **Filter/Sort Toolbar Integration:** Integrate CardFilterBar and CardSortPopover into CardList toolbar
+4. **Search Results View:** Display SpotlightService results with navigation to matched items
+5. **Phase Prompt Generation UI:** Functional "Generate Phase Prompt" button for Plans
 
 ## View Testing Strategy
 

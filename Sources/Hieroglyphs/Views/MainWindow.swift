@@ -20,7 +20,7 @@ struct MainWindow: View {
         case .cards:
             CardList()
         case .plans:
-            PlansPlaceholder()
+            PlanList()
         case .phases:
             PhaseList()
         case .none:
@@ -35,10 +35,18 @@ struct MainWindow: View {
     @ViewBuilder
     private var detailColumnContent: some View {
         switch viewModel.selectedSection {
+        case .cards:
+            CardDetail()
+        case .plans:
+            PlanDetail()
         case .phases:
             PhaseDetail()
-        case .cards, .plans, .none:
-            CardDetail()
+        case .none:
+            ContentUnavailableView(
+                "Select a Project",
+                systemImage: "folder",
+                description: Text("Choose a project section from the sidebar to get started.")
+            )
         }
     }
 }
