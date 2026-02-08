@@ -34,9 +34,10 @@ struct MainWindow: View {
 
     @ViewBuilder
     private var detailColumnContent: some View {
-        if viewModel.selectedPhase != nil {
+        switch viewModel.selectedSection {
+        case .phases:
             PhaseDetail()
-        } else {
+        case .cards, .plans, .none:
             CardDetail()
         }
     }

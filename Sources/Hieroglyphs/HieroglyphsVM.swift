@@ -200,9 +200,25 @@ final class HieroglyphsVM {
 
     /// Updates the selected section.
     ///
+    /// Clears cross-section selection state to ensure detail column displays
+    /// content consistent with the selected section type.
+    ///
     /// - Parameter section: The section to select
     func selectSection(_ section: SidebarSection?) {
         self.selectedSection = section
+
+        switch section {
+        case .cards:
+            self.selectedPhase = nil
+        case .plans:
+            self.selectedCard = nil
+            self.selectedPhase = nil
+        case .phases:
+            self.selectedCard = nil
+        case .none:
+            self.selectedCard = nil
+            self.selectedPhase = nil
+        }
     }
 
     /// Loads cards for the currently selected project.

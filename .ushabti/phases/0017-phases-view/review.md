@@ -2,13 +2,15 @@
 
 **Reviewer:** Ushabti Overseer
 **Date:** 2026-02-08
-**Status:** GREEN
+**Status:** YELLOW
 
 ## Summary
 
-Phase 0017 is complete and verified. All acceptance criteria are satisfied. All steps are implemented correctly. Tests pass. Laws and style are honored. Documentation is reconciled.
+Phase 0017 was initially verified GREEN, but a state management bug was discovered during manual testing that requires correction before the phase can be considered complete. The bug affects navigation between sections (Phases and Cards) and creates a poor user experience when switching context.
 
 The Phases View integration successfully brings Ushabti phase visibility into Hieroglyphs. Implementation is clean, testable, and maintainable. Read-only design preserves workflow integrity. Error handling is robust. Empty states guide users appropriately.
+
+**Issue:** A critical state management defect requires correction before shipping.
 
 ## Acceptance Criteria Review
 
@@ -140,10 +142,133 @@ Style guidelines followed with justified deviations:
 
 These are enhancements, not deficiencies. Current implementation is complete and correct for the defined scope.
 
+## State Management Bug
+
+**Bug Report:** When a user opens a phase (phase detail shows in right panel), then switches to select a card in the sidebar, the phase detail stays visible in the right panel instead of showing the card detail.
+
+**Root Cause Analysis:**
+
+The bug exists in `/Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/MainWindow.swift` at lines 36-42:
+
+```swift
+@ViewBuilder
+private var detailColumnContent: some View {
+    if viewModel.selectedPhase != nil {
+        PhaseDetail()
+    } else {
+        CardDetail()
+    }
+}
+```
+
+**The Problem:**
+
+1. When a user selects a phase, `viewModel.selectedPhase` is set to a non-nil value
+2. The detail column correctly shows `PhaseDetail()`
+3. When the user switches from `.phases(project)` to `.cards(project)` in the sidebar, `selectedSection` changes but `selectedPhase` is never cleared
+4. Because `selectedPhase != nil` is still true, the detail column continues to show `PhaseDetail()` even though the middle column is now showing `CardList()`
+5. This creates a broken state where the middle and detail columns are out of sync with each other and with the selected section
+
+**Expected Behavior:**
+
+- When the user switches from Phases section to Cards section, `selectedPhase` should be cleared to nil
+- When the user switches from Cards section to Phases section, `selectedCard` should be cleared to nil
+- The detail column logic should respect which section is currently active, not just check which selection variable is non-nil
+
+**Required Fix:**
+
+Option A (Recommended): Update `HieroglyphsVM.selectSection(_:)` method to clear cross-section selection state:
+
+```swift
+func selectSection(_ section: SidebarSection?) {
+    self.selectedSection = section
+
+    // Clear selections when switching between section types
+    if let section {
+        switch section {
+        case .cards:
+            self.selectedPhase = nil
+        case .plans:
+            self.selectedPhase = nil
+            self.selectedCard = nil
+        case .phases:
+            self.selectedCard = nil
+        }
+    } else {
+        // Clear all selections when no section selected
+        self.selectedCard = nil
+        self.selectedPhase = nil
+    }
+}
+```
+
+Option B (Alternative): Update `MainWindow.detailColumnContent` to check both selection state and current section:
+
+```swift
+@ViewBuilder
+private var detailColumnContent: some View {
+    switch viewModel.selectedSection {
+    case .phases where viewModel.selectedPhase != nil:
+        PhaseDetail()
+    case .cards, .plans, .none:
+        CardDetail()
+    default:
+        CardDetail()
+    }
+}
+```
+
+**Recommendation:** Option A is cleaner and more maintainable. It keeps the ViewModel responsible for managing coherent state transitions. The detail column logic remains simple and declarative.
+
+**Severity:** This is a required fix before shipping. While not a data-loss bug, it creates a confusing and broken user experience that violates basic navigation expectations.
+
+## S014 Fix Verification
+
+**Date:** 2026-02-08
+**Status:** VERIFIED AND CORRECT
+
+The state management bug has been fixed. The fix is in `/Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/MainWindow.swift` at lines 36-43.
+
+**The Fix:**
+
+Changed `detailColumnContent` from checking `selectedPhase != nil` to switching on `selectedSection`:
+
+```swift
+@ViewBuilder
+private var detailColumnContent: some View {
+    switch viewModel.selectedSection {
+    case .phases:
+        PhaseDetail()
+    case .cards, .plans, .none:
+        CardDetail()
+    }
+}
+```
+
+**Why This Works:**
+
+The sidebar uses `List(selection: $bindableViewModel.selectedSection)` at line 96 of Sidebar.swift. This creates a two-way binding that updates `selectedSection` directly when the user clicks, bypassing the `selectSection()` method entirely.
+
+By switching on `selectedSection` instead of checking selection state variables (`selectedPhase`, `selectedCard`), the detail column now correctly responds to section changes regardless of which item-level selection is active.
+
+**Note on selectSection() Method:**
+
+The clearing logic added to `selectSection()` in HieroglyphsVM (lines 207-222) is dead code when selection happens via the sidebar. However, it remains correct defensive programming for any future code paths that might call `selectSection()` directly.
+
+**Verification:**
+
+- [x] Code review confirms fix is correct
+- [x] All 178 tests pass (0 failures)
+- [x] Manual verification by user confirms bug is resolved
+- [x] Build compiles successfully
+- [x] No new lint violations introduced
+
+The fix is minimal, correct, and solves the root cause of the issue.
+
 ## Verdict
 
 **Phase 0017 is GREEN.**
 
-All acceptance criteria satisfied. All steps implemented and reviewed. All 178 tests pass. Laws honored. Style followed with justified deviations. Documentation reconciled.
+All acceptance criteria satisfied. All tests pass (178 tests, 0 failures). Laws honored. Style followed with justified deviations. Documentation reconciled. State management bug fixed and verified.
 
-Stone set true. Work measured and found correct. Phase complete.
+Phase is complete and ready for shipping.

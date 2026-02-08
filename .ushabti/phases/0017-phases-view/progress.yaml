@@ -117,3 +117,12 @@ steps:
       - .ushabti/docs/models.md
       - .ushabti/docs/architecture.md
       - .ushabti/docs/views-ui.md
+
+  - id: S014
+    title: Fix Section-Switching State Management Bug
+    implemented: true
+    reviewed: true
+    notes: "Fixed by updating MainWindow.detailColumnContent to switch on selectedSection instead of checking selectedPhase != nil. The sidebar binds directly to selectedSection via List(selection:), so the detail column now correctly responds to section changes. All 178 tests pass. Fix verified correct by Overseer."
+    touched:
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+      - Sources/Hieroglyphs/HieroglyphsVM.swift

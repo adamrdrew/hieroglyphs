@@ -318,3 +318,26 @@
 - views-ui.md documents phase views
 - Documentation follows existing doc style and structure
 - All docs are accurate and complete
+
+## S014: Fix Section-Switching State Management Bug
+
+**Intent:** Correct state management to ensure selections are cleared when switching between section types (Cards, Plans, Phases).
+
+**Work:**
+- Open `Sources/Hieroglyphs/HieroglyphsVM.swift`
+- Update `selectSection(_:)` method to clear cross-section selection state
+- When switching to `.cards(project)`, clear `selectedPhase` to nil
+- When switching to `.plans(project)`, clear both `selectedPhase` and `selectedCard` to nil
+- When switching to `.phases(project)`, clear `selectedCard` to nil
+- When switching to nil (no section), clear both `selectedCard` and `selectedPhase` to nil
+- This ensures the detail column always displays content consistent with the currently selected section
+
+**Done when:**
+- `selectSection(_:)` method updated with selection-clearing logic
+- Selecting Phases section clears `selectedCard`
+- Selecting Cards section clears `selectedPhase`
+- Selecting Plans section clears both selections
+- Selecting nil (no section) clears both selections
+- Manual testing confirms: switching from Phases (with phase selected) to Cards shows card detail, not phase detail
+- Manual testing confirms: switching from Cards (with card selected) to Phases shows empty phase detail state, not card detail
+- Code compiles without errors
