@@ -8,7 +8,7 @@ Hieroglyphs uses SwiftUI to build a three-column NavigationSplitView UI followin
 
 **Pattern:** Three-column NavigationSplitView (sidebar, list, detail)
 
-**Current Implementation:** Sidebar (project list) and CardList (card list) are complete. Detail (card editor) is a placeholder for Phase 7.
+**Current Implementation:** All three columns are complete: Sidebar (project list), CardList (card list with search/filter/sort), and CardDetail (metadata editor + click-to-edit markdown body).
 
 Views follow L10 (Design Language Consistency with TakeNote), L09 (Small, Focused Components), and SwiftUI best practices.
 
@@ -16,17 +16,23 @@ Views follow L10 (Design Language Consistency with TakeNote), L09 (Small, Focuse
 
 ```
 Sources/Hieroglyphs/Views/
-├── MainWindow.swift          # Root three-column NavigationSplitView
-├── Sidebar/                  # Sidebar feature components
-│   ├── Sidebar.swift         # Project list with toolbar
-│   ├── SidebarProjectEntry.swift  # Individual project row
-│   └── NewProjectSheet.swift # Project creation form
-└── CardList/                 # CardList feature components
-    ├── CardList.swift        # Card list with search, filter, sort
-    ├── CardListEntry.swift   # Individual card row
-    ├── CardFilterBar.swift   # Filter UI for status/type/priority
-    ├── CardSortPopover.swift # Sort UI for criteria and order
-    └── NewCardSheet.swift    # Card creation form
+├── MainWindow.swift              # Root three-column NavigationSplitView
+├── Sidebar/                      # Sidebar feature components
+│   ├── Sidebar.swift             # Project list with toolbar
+│   ├── SidebarProjectEntry.swift # Individual project row
+│   └── NewProjectSheet.swift     # Project creation form
+├── CardList/                     # CardList feature components
+│   ├── CardList.swift            # Card list with search, filter, sort
+│   ├── CardListEntry.swift       # Individual card row
+│   ├── CardFilterBar.swift       # Filter UI for status/type/priority
+│   ├── CardSortPopover.swift     # Sort UI for criteria and order
+│   └── NewCardSheet.swift        # Card creation form
+├── CardDetail/                   # CardDetail feature components
+│   ├── CardDetail.swift          # Two-section detail with empty state
+│   ├── CardMetadataEditor.swift  # Form for card metadata fields
+│   └── CardBodyEditor.swift      # Click-to-edit markdown preview/editor
+└── Shared/                       # Reusable components
+    └── TagChipView.swift         # Pill-shaped tag chip with delete
 ```
 
 **Organization:** Views are grouped by feature (Sidebar, CardList, Detail). Each view is in its own file with focused responsibility.
@@ -49,7 +55,7 @@ struct MainWindow: View {
         } content: {
             CardList()
         } detail: {
-            Text("Detail")  // Placeholder for card editor (Phase 7)
+            CardDetail()
         }
     }
 }
@@ -57,9 +63,9 @@ struct MainWindow: View {
 
 **Notes:**
 - Three-column layout per L10 (TakeNote consistency)
-- Sidebar column displays project list
-- Content column will display card list (future phase)
-- Detail column will display card editor (future phase)
+- Sidebar column displays project list with card count summaries
+- Content column displays searchable, filterable card list
+- Detail column displays card editor (metadata + click-to-edit markdown)
 - `preferredCompactColumn` controls which column shows on small windows (defaults to sidebar)
 
 ## Sidebar
@@ -668,11 +674,12 @@ Hieroglyphs follows these TakeNote design patterns per L10:
 
 1. **Three-Column NavigationSplitView:** Sidebar | List | Detail
 2. **Sidebar List with Selection:** `List(selection:)` binds to ViewModel state
-3. **SF Symbols for Icons:** `folder.fill`, `plus`, etc.
-4. **Click-to-Edit Pattern:** (Planned) Click card to show editor in detail column
-5. **Toolbar Buttons:** Primary actions in toolbar (e.g., New Project)
+3. **SF Symbols for Icons:** `folder.fill`, `plus`, type icons, priority indicators
+4. **Click-to-Edit Pattern:** ZStack with Markdown preview and CodeEditor. Tap to edit, Escape to preview.
+5. **Toolbar Buttons:** Primary actions in toolbar (e.g., New Project, New Card)
 6. **Sheet Presentation:** Modal forms for creation workflows
 7. **Form-Based Input:** Sectioned forms with TextField and labeled inputs
+8. **Empty States:** ContentUnavailableView with icon and description text
 
 **Visual Consistency:**
 
@@ -683,26 +690,11 @@ Hieroglyphs follows these TakeNote design patterns per L10:
 
 ## Empty States
 
-**Current Behavior:**
+Empty states use `ContentUnavailableView` (macOS 14+) throughout:
 
-- If `viewModel.projects` is empty, Sidebar shows empty `List`
-- No special empty state UI
-
-**Future Enhancement:**
-
-Add `ContentUnavailableView` for empty states:
-
-```swift
-if viewModel.projects.isEmpty {
-    ContentUnavailableView(
-        "No Projects",
-        systemImage: "folder",
-        description: Text("Create a project to get started.")
-    )
-} else {
-    List { ... }
-}
-```
+- **CardList (no project selected):** "Select a Project" with `folder` icon
+- **CardList (no cards):** "No Cards" with `note.text` icon
+- **CardDetail (no card selected):** "No Card Selected" with `note.text` icon
 
 ## CardDetail
 
@@ -957,6 +949,7 @@ Used in `CardMetadataEditor` within a `FlowLayout` to display all card tags. Eac
 1. **ProjectSettingsSheet:** Form for editing project metadata
 2. **WorkspaceOnboardingView:** Onboarding flow for creating initial workspace
 3. **Filter/Sort Toolbar Integration:** Integrate CardFilterBar and CardSortPopover into CardList toolbar
+4. **Search Results View:** Display SpotlightService results with navigation to matched items
 
 ## View Testing Strategy
 
@@ -979,4 +972,3 @@ Used in `CardMetadataEditor` within a `FlowLayout` to display all card tags. Eac
 1. Add `.accessibilityLabel()` and `.accessibilityHint()` to buttons and controls
 2. Add `.accessibilityValue()` to selection state
 3. Test with VoiceOver and Keyboard navigation
-4. Add keyboard shortcuts for common actions (e.g., Cmd+N for New Project)

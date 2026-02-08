@@ -32,10 +32,17 @@ The ViewModel supports L01 (Filesystem as Source of Truth by delegating to servi
 **Service Dependencies:**
 - `workspaceService: WorkspaceProviding` — Injected service for I/O operations
 - `fileWatcher: FileWatching?` — Optional injected service for file system monitoring
+- `tagReconciler: TagReconciling?` — Optional injected service for tag projection to extended attributes
+- `searchService: SearchProviding?` — Optional injected service for Spotlight search
 
 **Initialization:**
 ```swift
-init(workspaceService: WorkspaceProviding, fileWatcher: FileWatching? = nil)
+init(
+    workspaceService: WorkspaceProviding,
+    fileWatcher: FileWatching? = nil,
+    tagReconciler: TagReconciling? = nil,
+    searchService: SearchProviding? = nil
+)
 ```
 
 **Notes:**
@@ -365,13 +372,24 @@ struct HieroglyphsApp: App {
     @State private var viewModel: HieroglyphsVM
     private let workspaceService: WorkspaceProviding
     private let fileWatcher: FileWatching
+    private let tagReconciler: TagReconciling
+    private let searchService: SearchProviding
 
     init() {
         let service = WorkspaceService()
         let watcher = FileWatcherService()
+        let reconciler = TagReconcilerService()
+        let spotlight = SpotlightService()
         self.workspaceService = service
         self.fileWatcher = watcher
-        let vm = HieroglyphsVM(workspaceService: service, fileWatcher: watcher)
+        self.tagReconciler = reconciler
+        self.searchService = spotlight
+        let vm = HieroglyphsVM(
+            workspaceService: service,
+            fileWatcher: watcher,
+            tagReconciler: reconciler,
+            searchService: spotlight
+        )
         _viewModel = State(initialValue: vm)
     }
 
@@ -381,6 +399,8 @@ struct HieroglyphsApp: App {
                 .environment(viewModel)
                 .environment(\.workspaceService, workspaceService)
                 .environment(\.fileWatcher, fileWatcher)
+                .environment(\.tagReconciler, tagReconciler)
+                .environment(\.searchService, searchService)
                 .onAppear {
                     viewModel.loadWorkspace()
                 }
@@ -390,11 +410,10 @@ struct HieroglyphsApp: App {
 ```
 
 **Dependency Injection:**
-1. `WorkspaceService` created as concrete instance
-2. `FileWatcherService` created as concrete instance
-3. `HieroglyphsVM` initialized with both `workspaceService` and `fileWatcher` dependencies
-4. ViewModel injected via `.environment(viewModel)`
-5. Services also injected via environment for views that need direct access
+1. Four concrete services created: WorkspaceService, FileWatcherService, TagReconcilerService, SpotlightService
+2. `HieroglyphsVM` initialized with all four service dependencies
+3. ViewModel injected via `.environment(viewModel)`
+4. Services also injected via environment keys for views that need direct access
 
 **Notes:**
 - ViewModel is created once at app launch and shared across all views
@@ -559,10 +578,8 @@ class MockWorkspaceService: WorkspaceProviding {
 2. **Error UI:** Display user-facing error messages instead of console logging
 3. **Slug collision detection:** Check for existing projects/cards with same slug before creating
 4. **Project editing:** Add `updateProject(_:)` method to ViewModel
-5. **Project deletion:** Add `deleteProject(_:)` method to ViewModel
-6. **Card deletion:** Add `deleteCard(_:)` method to ViewModel
-7. **File watching:** Add `reloadWorkspace()` method triggered by FSEvents
-8. **Selection persistence:** Persist selectedProject and selectedCard to UserDefaults and restore on launch
-9. **Optimistic updates:** Add new project/card to list immediately without reloading (with rollback on error)
-10. **Filter persistence:** Persist filter/sort state to UserDefaults
-11. **Debounced updates:** Add debouncing for updateCard() to reduce write frequency
+5. **Selection persistence:** Persist selectedProject and selectedCard to UserDefaults and restore on launch
+6. **Optimistic updates:** Add new project/card to list immediately without reloading (with rollback on error)
+7. **Filter persistence:** Persist filter/sort state to UserDefaults
+8. **Debounced updates:** Add debouncing for updateCard() to reduce write frequency
+9. **Search UI:** Wire performSearch to `.searchable()` modifier and display searchResults in UI

@@ -22,7 +22,7 @@ workspacePath: /Users/alice/Hieroglyphs
 
 **Notes:**
 - Config file is loaded by WorkspaceService on app launch
-- If config does not exist, app shows empty state (future: onboarding UI)
+- If config does not exist, app shows empty state (workspace path nil)
 - Config directory (`~/.hieroglyphs`) is created during workspace initialization
 
 ## Workspace Directory Structure
@@ -351,7 +351,7 @@ updated: 2026-01-20T14:22:00Z
 
 **Notes:**
 - Changes made externally are first-class (L05)
-- App detects external changes via file watching (future: FSEvents)
+- App detects external changes via FSEvents file watching with ~500ms latency
 - Frontmatter is standard YAML (parseable by any YAML library)
 
 ## File System Requirements

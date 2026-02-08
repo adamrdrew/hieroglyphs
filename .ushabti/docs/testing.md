@@ -29,11 +29,13 @@ Hieroglyphs follows strict test coverage requirements per L11 (Test Coverage): e
 
 ```
 Tests/HieroglyphsTests/
-├── ModelTests.swift              # Tests for all model types
-├── FrontmatterParserTests.swift  # Tests for FrontmatterParser
-├── SlugGeneratorTests.swift      # Tests for SlugGenerator
-├── WorkspaceServiceTests.swift   # Tests for WorkspaceService
-└── HieroglyphsVMTests.swift      # Tests for HieroglyphsVM
+├── ModelTests.swift                  # Tests for all model types
+├── FrontmatterParserTests.swift      # Tests for FrontmatterParser
+├── SlugGeneratorTests.swift          # Tests for SlugGenerator
+├── WorkspaceServiceTests.swift       # Tests for WorkspaceService
+├── TagReconcilerServiceTests.swift   # Tests for TagReconcilerService
+├── SpotlightServiceTests.swift       # Tests for SpotlightService
+└── HieroglyphsVMTests.swift          # Tests for HieroglyphsVM
 ```
 
 **Organization:** One test file per module or logical grouping. Test file names match source file names with `Tests` suffix.

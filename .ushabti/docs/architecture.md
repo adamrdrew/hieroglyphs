@@ -42,16 +42,15 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 **Responsibility:** Handle all filesystem I/O, configuration loading, project/card discovery, and CRUD operations.
 
 **Components:**
-- `WorkspaceProviding`: Protocol defining the service contract
-- `WorkspaceService`: Concrete implementation reading/writing files via FileManager and Yams
-- `WorkspaceServiceEnvironmentKey`: SwiftUI environment key for dependency injection
-- `FileWatching`: Protocol defining file system monitoring contract
-- `FileWatcherService`: Concrete implementation using FSEventStream to monitor workspace
-- `FileWatcherServiceEnvironmentKey`: SwiftUI environment key for FileWatcher injection
+- `WorkspaceProviding` / `WorkspaceService`: Filesystem I/O (config, project/card CRUD, Trash)
+- `FileWatching` / `FileWatcherService`: FSEventStream monitoring for external changes
+- `TagReconciling` / `TagReconcilerService`: One-way tag projection to extended attributes via xattr
+- `SearchProviding` / `SpotlightService`: NSMetadataQuery search across content, titles, and tags
+- Environment keys for each service (SwiftUI dependency injection)
 
 **Dependencies:** Foundation, Yams, FrontmatterParser, SlugGenerator
 
-**Notes:** Services are stateless. They read from disk on every call and write atomically. No caching. This supports L01 (filesystem as truth) and L05 (external changes are first-class). FileWatcherService monitors workspace for external changes and triggers ViewModel reloads.
+**Notes:** Services are stateless. They read from disk on every call and write atomically. No caching. This supports L01 (filesystem as truth) and L05 (external changes are first-class). All four services are injected via SwiftUI environment keys.
 
 ### Utilities Layer
 
@@ -76,9 +75,9 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 **Components:**
 - `HieroglyphsVM`: Single `@Observable` `@MainActor` class holding workspace state, project/card lists, selection state, and filter/sort state
 
-**Dependencies:** SwiftUI, Observation, WorkspaceProviding, FileWatching
+**Dependencies:** SwiftUI, Observation, WorkspaceProviding, FileWatching, TagReconciling, SearchProviding
 
-**Notes:** ViewModel is a thin coordination layer. It does not perform I/O directly—it delegates to WorkspaceService. It holds transient UI state (selection) and cached data loaded from services. ViewModel starts file watching after workspace loads and handles file change events by triggering appropriate reloads.
+**Notes:** ViewModel is a thin coordination layer. It does not perform I/O directly—it delegates to services. It holds transient UI state (selection, filter, sort) and cached data loaded from services. ViewModel starts file watching after workspace loads, triggers tag reconciliation on file changes, and coordinates Spotlight search.
 
 ### Views Layer
 
@@ -89,19 +88,25 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 **Components:**
 - `MainWindow`: Root three-column NavigationSplitView
 - `Sidebar/`: Project list UI with selection and creation sheets
-  - `Sidebar`: List of projects with toolbar
+  - `Sidebar`: List of projects with toolbar and empty state
   - `SidebarProjectEntry`: Individual project row with title and card count summary
   - `NewProjectSheet`: Form for creating new projects
 - `CardList/`: Card list UI with search, filter, sort, and creation sheets
-  - `CardList`: List of cards with search, filter, sort, and toolbar
+  - `CardList`: List of cards with search, filter, sort, empty states, and toolbar
   - `CardListEntry`: Individual card row with type icon, status, and priority indicator
   - `CardFilterBar`: Multi-select filter UI for status, type, and priority
   - `CardSortPopover`: Sort UI for criteria and order
   - `NewCardSheet`: Form for creating new cards
+- `CardDetail/`: Card editor with metadata and markdown body
+  - `CardDetail`: Two-section layout with metadata editor and body editor
+  - `CardMetadataEditor`: Form for title, type, status, priority, tag chips
+  - `CardBodyEditor`: Click-to-edit markdown with preview/edit toggle
+- `Shared/`: Reusable components
+  - `TagChipView`: Pill-shaped tag chip with delete button
 
-**Dependencies:** SwiftUI, HieroglyphsVM, WorkspaceProviding
+**Dependencies:** SwiftUI, HieroglyphsVM, WorkspaceProviding, CodeEditorView, MarkdownUI
 
-**Notes:** Views are small, focused, and composable. They read state from ViewModel via `@Environment` and trigger actions via ViewModel methods. Views do not directly call services.
+**Notes:** Views are small, focused, and composable. They read state from ViewModel via `@Environment` and trigger actions via ViewModel methods. Views do not directly call services except SidebarProjectEntry (loads card counts).
 
 ### Application Entry Point
 
@@ -121,10 +126,15 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 ```
 App.swift
   ├─> WorkspaceService (created)
-  ├─> HieroglyphsVM (created with WorkspaceService injected)
+  ├─> FileWatcherService (created)
+  ├─> TagReconcilerService (created)
+  ├─> SpotlightService (created)
+  ├─> HieroglyphsVM (created with all four services injected)
   └─> MainWindow
-       └─> Sidebar (accesses ViewModel and WorkspaceService via @Environment)
-            └─> SidebarProjectEntry (accesses WorkspaceService via @Environment)
+       ├─> Sidebar (ViewModel + WorkspaceService via @Environment)
+       │    └─> SidebarProjectEntry (WorkspaceService for card counts)
+       ├─> CardList (ViewModel, searchable, filter/sort)
+       └─> CardDetail (ViewModel, CodeEditorView, MarkdownUI)
 ```
 
 All dependencies flow downward. Views depend on ViewModel and services. Services depend on utilities. Models depend on nothing.
@@ -151,13 +161,12 @@ Hieroglyphs uses macOS-specific capabilities per L06 (Platform Leverage):
 
 - **FileManager:** For directory scanning, file I/O, and Trash operations
 - **FSEvents:** For detecting external file changes via FSEventStream
-- **Extended Attributes:** (Planned) For one-way tag projection from frontmatter
-- **Spotlight (NSMetadataQuery):** (Planned) For search
+- **Extended Attributes:** One-way tag projection from frontmatter via xattr (TagReconcilerService)
+- **Spotlight (NSMetadataQuery):** Content, title, and tag search across workspace (SpotlightService)
 
 ## Future Architecture Extensions
 
-- **Tag Reconciliation:** One-way projection of frontmatter tags to extended attributes
-- **Spotlight Search:** NSMetadataQuery integration for fast search across workspace
+- **Search UI:** Wire SpotlightService to `.searchable()` modifier and search results view
 - **Filter/Sort Persistence:** Persist filter and sort state to UserDefaults
 - **Debounced Reloads:** Add debouncing to file watcher to reduce reload frequency on rapid changes
 - **Granular Updates:** Diff file changes and update only affected items instead of reloading lists

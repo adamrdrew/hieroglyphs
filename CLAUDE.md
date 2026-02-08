@@ -88,22 +88,28 @@ swift test           # Run tests
 
 ## Working with Hieroglyphs
 
-### File Structure
+### Workspace Structure
 
-The workspace directory contains:
+Configuration lives at `~/.hieroglyphs/config.yaml` (stores `workspacePath`). The workspace directory contains:
 
-- **`projects/`** — Project folders with `card.md`, `cards/`, and `.cards/` subdirectories.
-- **Cards** — Markdown files with YAML frontmatter defining title, type, status, priority, tags, etc.
+```
+{workspacePath}/
+  {project-slug}/
+    project.md              # Project frontmatter (YAML)
+    cards/
+      {card-slug}/
+        card.md             # Card frontmatter + markdown body
+```
 
-Every project and card has a unique slug identifier. File paths and frontmatter slugs must stay synchronized.
+Every project and card has a unique slug identifier derived from its title. File paths and frontmatter slugs must stay synchronized.
 
 ### Development Patterns
 
 - **Three-column NavigationSplitView:** Sidebar (projects) | List (cards) | Detail (card editor).
 - **Click-to-edit markdown:** ZStack with Markdown preview and CodeEditor. Tap to edit, Escape to preview.
-- **Searchable UI:** `.searchable()` modifier backed by Spotlight (NSMetadataQuery).
+- **Spotlight search:** Backend via NSMetadataQuery (SearchProviding protocol). UI integration pending.
 - **File watching:** FSEvents to detect external changes in real time.
-- **Tag reconciliation:** Frontmatter tags project one-way to macOS extended attributes.
+- **Tag reconciliation:** Frontmatter tags project one-way to macOS extended attributes via xattr.
 
 ### Testing
 
