@@ -303,11 +303,17 @@ final class HieroglyphsVM {
             return
         }
 
+        let previousSlug = selectedPhase?.slug
+
         do {
             let loadedPhases = try phaseService.loadPhases(
                 from: sourceDirectory
             )
             self.phases = loadedPhases
+
+            if let previousSlug {
+                self.selectedPhase = loadedPhases.first { $0.slug == previousSlug }
+            }
         } catch {
             print("Failed to load phases: \(error)")
             self.phases = []

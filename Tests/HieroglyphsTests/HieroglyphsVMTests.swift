@@ -1944,6 +1944,190 @@ extension HieroglyphsVMTests {
         XCTAssertTrue(viewModel.phases.isEmpty)
     }
 
+    @MainActor
+    func testLoadPhasesPreservesSelectionWhenPhaseExists() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPhases = MockPhaseService()
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: "/test/source"
+        )
+
+        let phase1 = Phase(
+            number: 1,
+            slug: "0001-first-phase",
+            title: "First Phase",
+            status: .planned,
+            intent: "Intent 1",
+            steps: [],
+            reviewNotes: ""
+        )
+        let phase2 = Phase(
+            number: 2,
+            slug: "0002-second-phase",
+            title: "Second Phase",
+            status: .active,
+            intent: "Intent 2",
+            steps: [],
+            reviewNotes: ""
+        )
+
+        mockPhases.mockPhases = [phase1, phase2]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            phaseService: mockPhases
+        )
+        viewModel.loadWorkspace()
+
+        mockWorkspace.mockProjects = [testProject]
+        viewModel.selectedSection = .phases(testProject)
+
+        // Initial load
+        viewModel.loadPhases()
+        XCTAssertEqual(viewModel.phases.count, 2)
+
+        // Select first phase
+        viewModel.selectedPhase = viewModel.phases.first
+        XCTAssertEqual(viewModel.selectedPhase?.slug, "0001-first-phase")
+
+        // Reload phases (simulating FSEvents trigger)
+        viewModel.loadPhases()
+
+        // Selection should be preserved
+        XCTAssertNotNil(viewModel.selectedPhase)
+        XCTAssertEqual(viewModel.selectedPhase?.slug, "0001-first-phase")
+        XCTAssertEqual(viewModel.selectedPhase?.title, "First Phase")
+    }
+
+    @MainActor
+    func testLoadPhasesClearsSelectionWhenPhaseDeleted() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPhases = MockPhaseService()
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: "/test/source"
+        )
+
+        let phase1 = Phase(
+            number: 1,
+            slug: "0001-first-phase",
+            title: "First Phase",
+            status: .planned,
+            intent: "Intent 1",
+            steps: [],
+            reviewNotes: ""
+        )
+        let phase2 = Phase(
+            number: 2,
+            slug: "0002-second-phase",
+            title: "Second Phase",
+            status: .active,
+            intent: "Intent 2",
+            steps: [],
+            reviewNotes: ""
+        )
+
+        mockPhases.mockPhases = [phase1, phase2]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            phaseService: mockPhases
+        )
+        viewModel.loadWorkspace()
+
+        mockWorkspace.mockProjects = [testProject]
+        viewModel.selectedSection = .phases(testProject)
+
+        // Initial load
+        viewModel.loadPhases()
+        XCTAssertEqual(viewModel.phases.count, 2)
+
+        // Select first phase
+        viewModel.selectedPhase = viewModel.phases.first
+
+        // Update mock to return only second phase (simulate first phase deletion)
+        mockPhases.mockPhases = [phase2]
+
+        // Reload phases
+        viewModel.loadPhases()
+
+        // Selection should be cleared
+        XCTAssertNil(viewModel.selectedPhase)
+        XCTAssertEqual(viewModel.phases.count, 1)
+    }
+
+    @MainActor
+    func testLoadPhasesPreservesNilSelectionOnReload() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPhases = MockPhaseService()
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: "/test/source"
+        )
+
+        let phase1 = Phase(
+            number: 1,
+            slug: "0001-first-phase",
+            title: "First Phase",
+            status: .planned,
+            intent: "Intent 1",
+            steps: [],
+            reviewNotes: ""
+        )
+        let phase2 = Phase(
+            number: 2,
+            slug: "0002-second-phase",
+            title: "Second Phase",
+            status: .active,
+            intent: "Intent 2",
+            steps: [],
+            reviewNotes: ""
+        )
+
+        mockPhases.mockPhases = [phase1, phase2]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            phaseService: mockPhases
+        )
+        viewModel.loadWorkspace()
+
+        mockWorkspace.mockProjects = [testProject]
+        viewModel.selectedSection = .phases(testProject)
+
+        // Ensure selectedPhase is nil before loading
+        XCTAssertNil(viewModel.selectedPhase)
+
+        // Load phases
+        viewModel.loadPhases()
+
+        // Selection should remain nil
+        XCTAssertNil(viewModel.selectedPhase)
+        XCTAssertEqual(viewModel.phases.count, 2)
+    }
+
     // MARK: - showDoneAndArchived Toggle Tests
 
     @MainActor

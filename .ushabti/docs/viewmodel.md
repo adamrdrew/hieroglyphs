@@ -271,6 +271,113 @@ Called automatically when selected project changes via `.onChange` modifier in `
 - Ingestion errors are logged but do not prevent card loading
 - Future optimization may add caching or incremental loading
 
+### loadPlans()
+
+**Signature:** `func loadPlans()`
+
+**Purpose:** Load plans from the selected project's plans directory and preserve selection across reloads.
+
+**Selection Preservation:**
+
+When plans reload (triggered by FSEvents watching the project directory), the selected plan must remain selected so the detail view continues showing the updated content without flickering or clearing.
+
+**Pattern:**
+1. Capture `selectedPlan?.slug` before loading
+2. Load plans from disk via PlanService
+3. Update `self.plans` array (old instances replaced)
+4. Find plan with matching slug in newly loaded array
+5. Restore `selectedPlan` to new instance if found, nil if not found
+
+**Behavior:**
+- Selection preserved when plan exists after reload
+- Selection cleared when plan deleted externally
+- Nil selection remains nil after reload
+- Uses slug as stable identifier across reloads
+
+**Rationale:**
+
+SwiftUI selection binding relies on object identity. When `plans` array is replaced, old Plan instances no longer exist in the new array. Without explicit restoration, selection breaks without triggering view updates, leaving stale content in the detail view.
+
+**Error Handling:**
+
+Errors are logged to console via `print()`. Plans array is set to empty on error.
+
+**Example error output:**
+```
+Cannot load plans: workspace path is nil
+Cannot load plans: plan service is nil
+Failed to load plans: invalidDirectory
+```
+
+**Usage:**
+
+Called automatically when selected project changes and when plan files change externally.
+
+**Notes:**
+- Reloads all plans from disk on every call (no caching)
+- Empty array when no project selected or on error
+- Selection preservation prevents UI flicker on external changes
+
+### loadPhases()
+
+**Signature:** `func loadPhases()`
+
+**Purpose:** Load phases from the selected project's sourceDirectory and preserve selection across reloads.
+
+**Selection Preservation:**
+
+When phases reload (triggered by FSEvents watching `.ushabti/phases/` directory), the selected phase must remain selected so the detail view continues showing the updated content without flickering or clearing.
+
+**Pattern:**
+1. Capture `selectedPhase?.slug` before loading
+2. Load phases from disk via PhaseService
+3. Update `self.phases` array (old instances replaced)
+4. Find phase with matching slug in newly loaded array
+5. Restore `selectedPhase` to new instance if found, nil if not found
+
+**Behavior:**
+- Selection preserved when phase exists after reload
+- Selection cleared when phase deleted externally
+- Nil selection remains nil after reload
+- Uses slug as stable identifier across reloads
+
+**Rationale:**
+
+SwiftUI selection binding relies on object identity. When `phases` array is replaced, old Phase instances no longer exist in the new array. Without explicit restoration, selection breaks without triggering view updates, leaving stale content in the detail view.
+
+**Pattern Consistency:**
+
+This pattern matches `loadPlans()` selection preservation (lines 342-350 in HieroglyphsVM.swift). Both use slug as stable identifier to match entities across reloads.
+
+**Error Handling:**
+
+Errors are logged to console via `print()`. Phases array is set to empty on error.
+
+**Example error output:**
+```
+Cannot load phases: phase service is nil
+Failed to load phases: invalidDirectory
+```
+
+**Usage:**
+
+Called automatically when `handlePhaseFileChange` detects changes in `.ushabti/phases/` directory:
+
+```swift
+private func handlePhaseFileChange(url: URL) {
+    let path = url.path
+    if path.contains("/.ushabti/phases/") && (path.contains(".yaml") || path.contains(".md")) {
+        loadPhases()
+    }
+}
+```
+
+**Notes:**
+- Reloads all phases from disk on every call (no caching)
+- Empty array when no project selected, no sourceDirectory, or on error
+- Selection preservation prevents UI flicker when Ushabti agents update phase files
+- Only loads phases when selectedProject has sourceDirectory configured
+
 ### createCard(title:type:status:priority:tags:body:)
 
 **Signature:** `func createCard(title:type:status:priority:tags:body:)`

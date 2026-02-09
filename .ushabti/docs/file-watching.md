@@ -408,6 +408,7 @@ private func handlePhaseFileChange(url: URL) {
 **Behavior:**
 - Changes detected within ~500ms (FSEvents latency)
 - Full phases reload when any phase file changes
+- **Selection preserved by slug** — Selected phase remains selected after reload if phase still exists
 - UI updates automatically to reflect external edits by Ushabti agents
 
 ### Edge Cases
