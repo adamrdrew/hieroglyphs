@@ -3,8 +3,32 @@ import SwiftUI
 /// Detail column view for displaying and editing a selected plan.
 struct PlanDetail: View {
     @Environment(HieroglyphsVM.self) private var viewModel
+    @Environment(\.pharaohService) private var pharaohService
     @State private var showingAddCardSheet = false
     @State private var phasePromptContent = ""
+    @State private var showingDispatchConfirmation = false
+
+    private var isEditable: Bool {
+        viewModel.selectedPlan?.status != .inProgress
+    }
+
+    private var canDispatch: Bool {
+        guard let plan = viewModel.selectedPlan,
+              let project = viewModel.selectedProject,
+              project.sourceDirectory != nil,
+              plan.status == .ready,
+              !plan.phasePrompt.isEmpty else {
+            return false
+        }
+
+        guard let sourceDirectory = project.sourceDirectory,
+              let service = pharaohService else {
+            return false
+        }
+
+        let status = service.readStatus(from: sourceDirectory)
+        return status.isIdle
+    }
 
     var body: some View {
         Group {
@@ -20,6 +44,14 @@ struct PlanDetail: View {
                     .padding()
                 }
                 .navigationTitle("Plan \(String(format: "%04d", plan.number)): \(plan.title)")
+                .toolbar {
+                    dispatchToolbarItem
+                }
+                .alert("Run this plan with Pharaoh?", isPresented: $showingDispatchConfirmation) {
+                    dispatchAlertButtons
+                } message: {
+                    dispatchAlertMessage
+                }
                 .onAppear {
                     phasePromptContent = plan.phasePrompt
                 }
@@ -83,10 +115,12 @@ struct PlanDetail: View {
 
                 Spacer()
 
-                Button {
-                    showingAddCardSheet = true
-                } label: {
-                    Label("Add Card", systemImage: "plus")
+                if isEditable {
+                    Button {
+                        showingAddCardSheet = true
+                    } label: {
+                        Label("Add Card", systemImage: "plus")
+                    }
                 }
             }
 
@@ -131,16 +165,18 @@ struct PlanDetail: View {
                 .buttonStyle(.borderless)
                 .help("View Card")
 
-                Button(role: .destructive) {
-                    viewModel.removeCardFromPlan(
-                        cardSlug: cardSlug,
-                        planSlug: plan.slug
-                    )
-                } label: {
-                    Image(systemName: "minus.circle")
+                if isEditable {
+                    Button(role: .destructive) {
+                        viewModel.removeCardFromPlan(
+                            cardSlug: cardSlug,
+                            planSlug: plan.slug
+                        )
+                    } label: {
+                        Image(systemName: "minus.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Remove from Plan")
                 }
-                .buttonStyle(.borderless)
-                .help("Remove from Plan")
             }
             .padding(.vertical, 4)
             .contextMenu {
@@ -148,11 +184,13 @@ struct PlanDetail: View {
                     navigateToCard(card: card)
                 }
 
-                Button("Remove from Plan", role: .destructive) {
-                    viewModel.removeCardFromPlan(
-                        cardSlug: cardSlug,
-                        planSlug: plan.slug
-                    )
+                if isEditable {
+                    Button("Remove from Plan", role: .destructive) {
+                        viewModel.removeCardFromPlan(
+                            cardSlug: cardSlug,
+                            planSlug: plan.slug
+                        )
+                    }
                 }
             }
         } else {
@@ -164,24 +202,28 @@ struct PlanDetail: View {
 
                 Spacer()
 
-                Button(role: .destructive) {
-                    viewModel.removeCardFromPlan(
-                        cardSlug: cardSlug,
-                        planSlug: plan.slug
-                    )
-                } label: {
-                    Image(systemName: "minus.circle")
+                if isEditable {
+                    Button(role: .destructive) {
+                        viewModel.removeCardFromPlan(
+                            cardSlug: cardSlug,
+                            planSlug: plan.slug
+                        )
+                    } label: {
+                        Image(systemName: "minus.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Remove from Plan")
                 }
-                .buttonStyle(.borderless)
-                .help("Remove from Plan")
             }
             .padding(.vertical, 4)
             .contextMenu {
-                Button("Remove from Plan", role: .destructive) {
-                    viewModel.removeCardFromPlan(
-                        cardSlug: cardSlug,
-                        planSlug: plan.slug
-                    )
+                if isEditable {
+                    Button("Remove from Plan", role: .destructive) {
+                        viewModel.removeCardFromPlan(
+                            cardSlug: cardSlug,
+                            planSlug: plan.slug
+                        )
+                    }
                 }
             }
         }
@@ -190,18 +232,29 @@ struct PlanDetail: View {
     @ViewBuilder
     private func phasePromptSection(plan: Plan) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Phase Prompt")
-                .font(.headline)
+            HStack {
+                Text("Phase Prompt")
+                    .font(.headline)
+
+                if !isEditable {
+                    Text("(Plan is executing...)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             TextEditor(text: $phasePromptContent)
                 .frame(minHeight: 200)
                 .font(.body.monospaced())
                 .border(Color.secondary.opacity(0.2))
+                .disabled(!isEditable)
                 .onChange(of: phasePromptContent) { _, newValue in
-                    viewModel.writePhasePrompt(
-                        planSlug: plan.slug,
-                        content: newValue
-                    )
+                    if isEditable {
+                        viewModel.writePhasePrompt(
+                            planSlug: plan.slug,
+                            content: newValue
+                        )
+                    }
                 }
 
             Button {
@@ -226,5 +279,32 @@ struct PlanDetail: View {
         guard let project = viewModel.selectedProject else { return }
         viewModel.selectedSection = .cards(project)
         viewModel.selectedCard = card
+    }
+
+    @ToolbarContentBuilder
+    private var dispatchToolbarItem: some ToolbarContent {
+        if canDispatch {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showingDispatchConfirmation = true
+                } label: {
+                    Label("Dispatch to Pharaoh", systemImage: "play.circle.fill")
+                }
+                .help("Send this plan to Pharaoh for execution")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var dispatchAlertButtons: some View {
+        Button("Cancel", role: .cancel) { }
+        Button("Run") {
+            viewModel.dispatchPlan()
+        }
+    }
+
+    @ViewBuilder
+    private var dispatchAlertMessage: some View {
+        Text("This will execute the plan's phase prompt using Pharaoh and set the plan status to In Progress.")
     }
 }

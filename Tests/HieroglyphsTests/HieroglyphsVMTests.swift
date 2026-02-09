@@ -1633,6 +1633,10 @@ final class MockFileWatcher: FileWatching {
     var stopWatchingPhasesCalled = false
     var watchedPhasesPath: String?
     var onPhasesChange: ((URL) -> Void)?
+    var startWatchingPharaohCalled = false
+    var stopWatchingPharaohCalled = false
+    var watchedPharaohPath: String?
+    var onPharaohChange: ((URL) -> Void)?
 
     func startWatching(path: String, onChange: @escaping (URL) -> Void) {
         startWatchingCalled = true
@@ -1654,6 +1658,17 @@ final class MockFileWatcher: FileWatching {
     func stopWatchingPhases() {
         stopWatchingPhasesCalled = true
         onPhasesChange = nil
+    }
+
+    func startWatchingPharaoh(path: String, onChange: @escaping (URL) -> Void) {
+        startWatchingPharaohCalled = true
+        watchedPharaohPath = path
+        self.onPharaohChange = onChange
+    }
+
+    func stopWatchingPharaoh() {
+        stopWatchingPharaohCalled = true
+        onPharaohChange = nil
     }
 
     func simulateChange(url: URL) {

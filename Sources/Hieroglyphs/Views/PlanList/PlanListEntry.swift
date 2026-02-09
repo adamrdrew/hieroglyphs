@@ -52,6 +52,8 @@ struct PlanListEntry: View {
             return "circle"
         case .ready:
             return "circle.inset.filled"
+        case .inProgress:
+            return "circle.inset.filled"
         case .done:
             return "checkmark.circle.fill"
         }
@@ -63,6 +65,8 @@ struct PlanListEntry: View {
             return .secondary
         case .ready:
             return .blue
+        case .inProgress:
+            return .orange
         case .done:
             return .green
         }

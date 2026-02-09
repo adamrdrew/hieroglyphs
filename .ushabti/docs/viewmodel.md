@@ -25,6 +25,7 @@ enum SidebarSection: Hashable {
     case cards(Project)
     case plans(Project)
     case phases(Project)
+    case pharaoh(Project)
 }
 ```
 
@@ -51,6 +52,9 @@ enum SidebarSection: Hashable {
 - `fileWatcher: FileWatching?` — Optional injected service for file system monitoring
 - `tagReconciler: TagReconciling?` — Optional injected service for tag projection to extended attributes
 - `searchService: SearchProviding?` — Optional injected service for Spotlight search
+- `phaseService: PhaseProviding?` — Optional injected service for Ushabti phase loading
+- `planService: PlanProviding?` — Optional injected service for plan CRUD operations
+- `pharaohService: PharaohProviding?` — Optional injected service for Pharaoh process management
 
 **Initialization:**
 ```swift
@@ -317,6 +321,43 @@ Called automatically when selected project changes and when plan files change ex
 - Reloads all plans from disk on every call (no caching)
 - Empty array when no project selected or on error
 - Selection preservation prevents UI flicker on external changes
+
+### dispatchPlan()
+
+**Signature:** `func dispatchPlan()`
+
+**Purpose:** Dispatch the selected plan to Pharaoh for automated execution.
+
+**Behavior:**
+
+1. Guard check: `selectedPlan`, `selectedProject`, `sourceDirectory` all non-nil
+2. Create `.pharaoh/dispatch/` directory if needed
+3. Write markdown file with frontmatter to `.pharaoh/dispatch/{plan-slug}.md`
+4. Set plan status to `inProgress` via `updatePlanStatus()`
+
+**Dispatch File Format:**
+```markdown
+---
+phase: {plan-slug}
+model: opus
+---
+
+{plan.phasePrompt}
+```
+
+**Error Handling:**
+
+Errors are logged to console via `print()`. No UI alerts shown.
+
+**Usage:**
+
+Called from PlanDetail toolbar dispatch button after user confirms via alert dialog.
+
+**Notes:**
+- Requires project with configured `sourceDirectory`
+- Pharaoh server must be running and idle (checked by canDispatch in PlanDetail)
+- Plan must be in `ready` status with non-empty phase prompt
+- See `.ushabti/docs/pharaoh-integration.md` for full dispatch workflow
 
 ### loadPhases()
 

@@ -39,4 +39,21 @@ protocol FileWatching {
     /// Safe to call multiple times. After calling stopWatchingPhases,
     /// startWatchingPhases may be called again to resume monitoring.
     func stopWatchingPhases()
+
+    /// Begins monitoring a pharaoh directory path recursively.
+    ///
+    /// Similar to startWatching but for a separate pharaoh directory.
+    /// Both workspace and pharaoh directories can be watched simultaneously.
+    /// Uses a separate FSEventStream to avoid conflicts.
+    ///
+    /// - Parameters:
+    ///   - path: Absolute path to pharaoh directory to monitor
+    ///   - onChange: Closure called with changed file URL
+    func startWatchingPharaoh(path: String, onChange: @escaping (URL) -> Void)
+
+    /// Stops pharaoh monitoring and cleans up resources.
+    ///
+    /// Safe to call multiple times. After calling stopWatchingPharaoh,
+    /// startWatchingPharaoh may be called again to resume monitoring.
+    func stopWatchingPharaoh()
 }

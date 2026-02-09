@@ -76,16 +76,18 @@ Plans are stored in `{projectPath}/plans/` directories. Each plan has:
 
 - `planning` — Plan is being designed and cards are being added
 - `ready` — Plan is complete and ready for execution
+- `inProgress` — Plan has been dispatched to Pharaoh and is currently executing
 - `done` — Plan has been executed and all work is complete
 
 **Conformances:** `String`, `Codable`, `CaseIterable`
 
 **Notes:**
 
-- Raw values are lowercase strings matching enum case names
-- Stored in plan.yaml `status` field as raw string (e.g., `status: planning`)
-- Status progression: planning → ready → done
-- When status becomes `done`, all linked cards have their status updated to `done`
+- Raw values are lowercase strings: `"planning"`, `"ready"`, `"in-progress"`, `"done"`
+- Stored in plan.yaml `status` field as raw string (e.g., `status: in-progress`)
+- Status progression: planning → ready → inProgress → done
+- When status changes, linked cards cascade to corresponding card status via `mapPlanStatusToCardStatus()`
+- Plans with `inProgress` status are non-editable (phase prompt disabled, card links locked)
 
 ## plan.yaml Format
 
@@ -103,7 +105,7 @@ Plans are stored in `{projectPath}/plans/` directories. Each plan has:
 | `title` | String | Yes | Human-readable title |
 | `number` | Int | Yes | Plan number |
 | `slug` | String | Yes | Filesystem-safe slug (must match directory name) |
-| `status` | String enum | No | Plan status: `planning`, `ready`, `done` (defaults to `planning`) |
+| `status` | String enum | No | Plan status: `planning`, `ready`, `in-progress`, `done` (defaults to `planning`) |
 | `created` | ISO8601 date string | No | Creation timestamp (defaults to current date) |
 | `updated` | ISO8601 date string | No | Last update timestamp (defaults to current date) |
 
@@ -611,6 +613,68 @@ Plan status changes map to card status updates:
 - Selection binding
 - Add button (creates symlink via `viewModel.addCardToPlan()`, disabled if no card selected)
 - Cancel button (dismisses sheet)
+
+## Pharaoh Dispatch
+
+Plans can be dispatched to Pharaoh for automated execution when the project has a configured `sourceDirectory`.
+
+### Dispatch Workflow
+
+**Prerequisites:**
+- Project has non-nil `sourceDirectory`
+- Pharaoh server is running and in `idle` state
+- Plan status is `ready`
+- Phase prompt is non-empty
+
+**User Action:**
+- Click play button (`play.circle.fill`) in PlanDetail toolbar
+- Confirm dispatch in alert dialog
+
+**Process:**
+1. `HieroglyphsVM.dispatchPlan()` called
+2. Create `.pharaoh/dispatch/` directory if needed
+3. Write markdown file to `.pharaoh/dispatch/{plan-slug}.md`:
+   ```markdown
+   ---
+   phase: {plan-slug}
+   model: opus
+   ---
+
+   {plan.phasePrompt}
+   ```
+4. Update plan status to `inProgress` via `updatePlanStatus()`
+5. Pharaoh detects dispatch file and begins Ushabti phase execution
+
+**Status Updates:**
+- Plan remains in `inProgress` status during execution
+- User must manually transition plan to `done` after phase completes (auto-transition deferred to future work)
+- Plan is non-editable while `inProgress` (phase prompt and card links locked)
+
+### Dispatch Button Visibility
+
+The dispatch button in PlanDetail only appears when all conditions are met:
+
+```swift
+private var canDispatch: Bool {
+    guard let plan = viewModel.selectedPlan,
+          let project = viewModel.selectedProject,
+          project.sourceDirectory != nil,
+          plan.status == .ready,
+          !plan.phasePrompt.isEmpty else {
+        return false
+    }
+
+    guard let sourceDirectory = project.sourceDirectory,
+          let service = pharaohService else {
+        return false
+    }
+
+    let status = service.readStatus(from: sourceDirectory)
+    return status.isIdle
+}
+```
+
+**Rationale:** Hidden (not disabled) when conditions not met to avoid visual clutter and confusion.
 
 ## File Watching
 

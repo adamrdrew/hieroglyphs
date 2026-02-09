@@ -1,0 +1,380 @@
+# Pharaoh Integration
+
+## Overview
+
+Pharaoh integration enables users to dispatch plans for automated execution and monitor Pharaoh's status directly within Hieroglyphs. This completes the development-in-Hieroglyphs loop: users plan work in Hieroglyphs, execute via Pharaoh, and monitor results without leaving the application.
+
+**Pharaoh** is an npm package (`@adamrdrew/pharaoh`) that runs as a long-lived Node.js process watching `.pharaoh/dispatch/` for markdown files containing phase prompts. When a plan becomes "ready" in Hieroglyphs and the user clicks dispatch, Hieroglyphs writes the plan's phase prompt to `.pharaoh/dispatch/{plan-slug}.md`, triggering Pharaoh to execute the full Ushabti cycle (Scribe → Builder → Overseer).
+
+## Architecture Components
+
+### Models
+
+**PharaohStatus** (`Sources/Hieroglyphs/Models/PharaohStatus.swift`)
+
+Represents the current state of a Pharaoh process with five cases:
+
+```swift
+enum PharaohStatus: Equatable {
+    case notRunning
+    case idle
+    case busy(phase: String)
+    case done(phase: String, cost: Double, turns: Int)
+    case blocked(phase: String, error: String)
+}
+```
+
+**Computed Properties:**
+- `isRunning` — True if Pharaoh is in any state except notRunning
+- `isBusy` — True if Pharaoh is actively executing a phase
+- `isIdle` — True if Pharaoh is ready to accept work
+
+### Services
+
+**PharaohProviding / PharaohService** (`Sources/Hieroglyphs/Services/`)
+
+Protocol-based service for Pharaoh process management and status reading.
+
+**Methods:**
+- `start(in directory: String) throws` — Spawns Pharaoh process via `Foundation.Process` with shell profile sourcing
+- `stop()` — Terminates running process
+- `readStatus(from directory: String) -> PharaohStatus` — Reads and decodes `.pharaoh/pharaoh.json`
+- `readLogs(from directory: String, count: Int) -> [String]` — Returns last N lines from `.pharaoh/pharaoh.log`
+
+**Implementation Details:**
+- Uses `Process` with `/bin/zsh -l -c "npx @adamrdrew/pharaoh serve"` to source shell profile (ensures homebrew/nvm paths available)
+- Sets `currentDirectoryURL` to project's `sourceDirectory`
+- Monitors process termination via `terminationHandler`
+- Kills process on `NSApplication.willTerminateNotification`
+- Marked `@unchecked Sendable` for async compatibility
+
+**Error Handling:**
+- Returns `.notRunning` status if JSON file missing or unreadable
+- Gracefully handles malformed JSON (returns `.notRunning`)
+- Returns empty array if log file missing
+
+### File Watching
+
+**Third FSEventStream** (`FileWatcherService`)
+
+Pharaoh status monitoring uses a separate FSEventStream watching `.pharaoh/` directory:
+
+- **Protocol Methods:** `startWatchingPharaoh(path:onChange:)` and `stopWatchingPharaoh()`
+- **Implementation:** Independent stream lifecycle, separate from workspace and phases streams
+- **Event Callback:** Distinguishes between three streams by comparing stream references
+- **Latency:** 0.5 seconds (same as other streams)
+
+**Change Detection:**
+- Watches entire `.pharaoh/` directory recursively
+- Triggers UI updates when `pharaoh.json` or `pharaoh.log` modified
+- Combined with polling (every 2 seconds) in PharaohView for guaranteed updates
+
+### UI Components
+
+**SidebarPharaohItem** (`Views/Sidebar/SidebarPharaohItem.swift`)
+
+Displays Pharaoh status indicator in project disclosure groups:
+
+- **Visibility:** Only shown for projects with non-nil `sourceDirectory`
+- **Status Colors:** Red (notRunning), green (idle), orange (busy/done/blocked)
+- **Polling:** Updates status every 2 seconds via async task
+- **Selection:** Tagged with `.pharaoh(project)` for sidebar navigation
+
+**PharaohView** (`Views/Pharaoh/PharaohView.swift`)
+
+Full-screen view for Pharaoh management shown as middle+detail content:
+
+**Not Running State:**
+- "Start Pharaoh" button
+- Description text explaining Pharaoh functionality
+- Error display if process start failed
+
+**Running State:**
+- Status badge with color-coded state (idle/busy/done/blocked)
+- Phase name and details (for busy/done/blocked states)
+- Cost and turns display (for done state)
+- Error message display (for blocked state)
+- Log viewer (ScrollView with monospaced text, ~50 recent lines)
+- "Stop Pharaoh" button
+
+**Update Strategy:**
+- Polls status and logs every 2 seconds via `monitorStatus()` async task
+- Combined with file watching for responsive updates
+
+**PlanDetail Dispatch Button** (`Views/PlanDetail/PlanDetail.swift`)
+
+Play button in toolbar with `canDispatch` conditions:
+
+- Project has `sourceDirectory`
+- Pharaoh status is `idle`
+- Plan status is `ready`
+- Phase prompt is non-empty
+
+**Confirmation Alert:**
+- Shows warning about setting plan to `inProgress`
+- Primary button triggers `viewModel.dispatchPlan()`
+
+### ViewModel Integration
+
+**HieroglyphsVM Extensions**
+
+**New Property:**
+- `private let pharaohService: PharaohProviding?` — Injected service reference
+
+**New Method:**
+- `dispatchPlan()` — Writes dispatch file and updates plan status
+
+**Dispatch Workflow:**
+1. Guard check: plan selected, project selected, sourceDirectory set
+2. Construct dispatch directory path: `{sourceDirectory}/.pharaoh/dispatch/`
+3. Create directory if needed: `FileManager.createDirectory(withIntermediateDirectories:)`
+4. Build markdown content:
+   ```markdown
+   ---
+   phase: {plan.slug}
+   model: opus
+   ---
+
+   {plan.phasePrompt}
+   ```
+5. Write file atomically: `{dispatchDirectory}/{plan-slug}.md`
+6. Update plan status to `inProgress` via `updatePlanStatus()`
+
+**Error Handling:**
+- Logs errors to console (does not throw or show UI alerts)
+- Graceful fallback if directory creation fails
+
+### Plan Status Changes
+
+**New Status: inProgress**
+
+Added to `PlanStatus` enum with raw value `"in-progress"`:
+
+```swift
+enum PlanStatus: String, Codable, CaseIterable {
+    case planning = "planning"
+    case ready = "ready"
+    case inProgress = "in-progress"
+    case done = "done"
+}
+```
+
+**UI Treatment:**
+- Icon: `circle.inset.filled` (same as `ready`)
+- Color: Orange
+- Non-editable: Phase prompt TextEditor disabled, "Add Card" and "Remove from Plan" buttons hidden
+
+**Card Status Mapping:**
+- `PlanService.mapPlanStatusToCardStatus(_:)` maps `inProgress` to `CardStatus.inProgress`
+- When plan status changes to `inProgress`, linked cards transition to `inProgress` status
+
+## Process Lifecycle
+
+### Starting Pharaoh
+
+**User Action:** Click "Start Pharaoh" in PharaohView
+
+**Process:**
+1. `PharaohService.start(in: sourceDirectory)` called
+2. Creates `Process` instance
+3. Sets executable to `/bin/zsh`, arguments to `["-l", "-c", "npx @adamrdrew/pharaoh serve"]`
+4. Sets `currentDirectoryURL` to `sourceDirectory`
+5. Registers `terminationHandler` to update UI on exit
+6. Calls `process.run()` to spawn child process
+7. Pharaoh server starts and begins watching `.pharaoh/dispatch/`
+
+**Error Handling:**
+- Throws `PharaohError.directoryNotFound` if `sourceDirectory` invalid
+- Throws `PharaohError.processStartFailed` if process spawn fails
+- PharaohView displays error message in UI
+
+### Stopping Pharaoh
+
+**User Action:** Click "Stop Pharaoh" in PharaohView
+
+**Process:**
+1. `PharaohService.stop()` called
+2. Calls `process.terminate()` on running process
+3. Sets internal process reference to nil
+4. UI updates to "Not Running" state
+
+**Automatic Termination:**
+- `NSApplication.willTerminateNotification` observer in PharaohService
+- Ensures child process killed when app quits
+
+### Status Monitoring
+
+**File-Based Status:**
+- Pharaoh writes JSON status to `.pharaoh/pharaoh.json`
+- Format varies by state (see PharaohStatus cases above)
+
+**Reading Strategy:**
+1. Read JSON file from disk
+2. Parse with `JSONSerialization`
+3. Extract `status` field (string)
+4. Switch on status value to construct PharaohStatus enum
+5. Extract associated values (phase name, cost, turns, error) based on status
+
+**Update Frequency:**
+- FSEventStream detects file changes within ~500ms
+- Polling every 2 seconds provides guaranteed updates even if file watching misses events
+- Combined strategy ensures responsive UI
+
+## Dispatch Workflow
+
+**Step 1: User prepares plan**
+- Creates plan with title and linked cards
+- Writes phase prompt in PlanDetail
+- Sets status to "ready"
+
+**Step 2: User triggers dispatch**
+- Clicks play button in PlanDetail toolbar (visible only when `canDispatch` conditions met)
+- Confirms dispatch in alert dialog
+
+**Step 3: Hieroglyphs writes dispatch file**
+- Calls `dispatchPlan()` in ViewModel
+- Creates markdown file with frontmatter: `phase`, `model`
+- Writes to `.pharaoh/dispatch/{plan-slug}.md`
+- Sets plan status to `inProgress`
+
+**Step 4: Pharaoh detects dispatch file**
+- File watcher in Pharaoh server detects new markdown file
+- Reads phase prompt content
+- Invokes Scribe to plan phase
+
+**Step 5: Pharaoh executes phase**
+- Scribe writes `phase.md`, `steps.md`, scaffolds `progress.yaml`
+- Builder implements steps, updates `progress.yaml`
+- Overseer reviews implementation, writes `review.md`
+
+**Step 6: Status updates**
+- Pharaoh writes status to `pharaoh.json` (idle → busy → done/blocked)
+- FSEventStream and polling detect changes
+- PharaohView updates in real-time
+
+**Step 7: User reviews results**
+- Views phase completion in `.ushabti/phases/{phase-id}/`
+- Manually updates plan status from `inProgress` to `done` (auto-transition deferred to future work)
+
+## Integration Points
+
+### SidebarSection Enum
+
+Added `.pharaoh(Project)` case to enable navigation:
+
+```swift
+enum SidebarSection: Hashable {
+    case cards(Project)
+    case plans(Project)
+    case phases(Project)
+    case pharaoh(Project)
+}
+```
+
+**Handling:**
+- `selectedProject` computed property extracts project
+- `selectSection(_:)` clears cross-section state (cards, plans, phases)
+- `MainWindow` shows `PharaohView` when `.pharaoh` selected
+
+### Environment Injection
+
+**App.swift:**
+- Creates `PharaohService` instance
+- Injects via `.environment(\.pharaohService, pharaohService)`
+- Passes to `HieroglyphsVM` in initializer
+
+**Service Access:**
+- Views access via `@Environment(\.pharaohService)`
+- ViewModel stores as `private let pharaohService: PharaohProviding?`
+
+### Testing
+
+**PharaohServiceTests** (`Tests/HieroglyphsTests/PharaohServiceTests.swift`)
+
+Tests cover all public methods:
+
+- `readStatus(from:)` with all five status shapes (idle, busy, done, blocked, missing file)
+- `readLogs(from:count:)` with empty file, last N lines, count exceeds total
+
+**Test Strategy:**
+- Uses temporary directories for filesystem operations
+- Creates mock `.pharaoh/pharaoh.json` and `.pharaoh/pharaoh.log` files
+- Verifies correct enum case returned with associated values
+- All tests pass
+
+**MockFileWatcher:**
+- Added `startWatchingPharaoh` and `stopWatchingPharaoh` to mock for ViewModel tests
+- Tracks calls for verification
+
+## Edge Cases and Limitations
+
+### Process Management
+
+**Single Process:** Only one Pharaoh process runs at a time (tied to PharaohService singleton, not per-project)
+
+**Project Switching:** Process continues running when user switches projects (process tied to filesystem, not UI selection)
+
+**Termination Detection:** `terminationHandler` enables UI state sync when process exits unexpectedly
+
+### Status Transitions
+
+**Manual Transitions:** User must manually move plan from `inProgress` back to `ready` or `done` (auto-transition deferred)
+
+**No Validation:** Dispatch always sets status to `inProgress` regardless of Pharaoh response
+
+**Empty Prompt Prevention:** Dispatch button hidden when `phasePrompt` is empty
+
+### Error Handling
+
+**Process Start Failures:** Displayed in PharaohView with error message, no crash
+
+**JSON Decode Errors:** Return `.notRunning` status with no error UI
+
+**Missing Files:** Log viewer shows empty, status shows `.notRunning`
+
+### Performance
+
+**Polling Overhead:** Status polling every 2 seconds adds minimal CPU usage
+
+**Log Tailing:** Reading last 50 lines prevents memory issues with large logs
+
+**File Watching:** Third FSEventStream adds minimal overhead (`.pharaoh/` updated infrequently)
+
+## Future Enhancements
+
+### Automatic Status Transitions
+
+**Phase Completion Detection:**
+- Watch `.ushabti/phases/` for `review.md` with GREEN status
+- Auto-transition plan from `inProgress` to `done`
+
+### Dispatch Queue
+
+**Multiple Dispatches:**
+- Queue pending dispatches when Pharaoh is busy
+- Show dispatch history in PharaohView
+
+### Cost Tracking
+
+**Budget Management:**
+- Track total cost across dispatches
+- Show warnings when approaching budget limits
+
+### Retry Logic
+
+**Interrupted Phases:**
+- Detect blocked phases
+- Offer retry with modified prompts
+
+### Configuration UI
+
+**Pharaoh Settings:**
+- Model selection (opus, sonnet)
+- Custom arguments for `pharaoh serve`
+- Working directory override
+
+### Multi-Process Support
+
+**Per-Project Pharaoh:**
+- Run separate Pharaoh process per project
+- Requires process registry and lifecycle management

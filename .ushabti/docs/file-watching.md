@@ -351,17 +351,18 @@ FileWatcherService not directly unit tested (requires real filesystem and runloo
 
 **Result:** Card disappears from UI, no stale data.
 
-## Phases Directory Watching
+## Multiple Directory Watching
 
-**Overview:** FileWatcherService supports watching multiple directories simultaneously using separate FSEventStream instances. This enables real-time updates of both workspace files and external phases directories (for Ushabti integration).
+**Overview:** FileWatcherService supports watching multiple directories simultaneously using separate FSEventStream instances. This enables real-time updates of workspace files, external phases directories (for Ushabti integration), and Pharaoh status files.
 
-### Dual FSEventStream Architecture
+### Triple FSEventStream Architecture
 
-**Implementation:** Two independent FSEventStream instances monitor different paths:
+**Implementation:** Three independent FSEventStream instances monitor different paths:
 - **Workspace stream:** Monitors `{workspacePath}/` recursively for project and card changes
 - **Phases stream:** Monitors `{sourceDirectory}/.ushabti/phases/` recursively for phase file changes
+- **Pharaoh stream:** Monitors `{sourceDirectory}/.pharaoh/` recursively for Pharaoh status changes
 
-**Resource Management:** Both streams use main queue dispatch and share the same latency (0.5s). Each stream has independent lifecycle methods (`startWatching`/`stopWatching` and `startWatchingPhases`/`stopWatchingPhases`).
+**Resource Management:** All streams use main queue dispatch and share the same latency (0.5s). Each stream has independent lifecycle methods (`startWatching`/`stopWatching`, `startWatchingPhases`/`stopWatchingPhases`, and `startWatchingPharaoh`/`stopWatchingPharaoh`).
 
 ### Phases Watching Lifecycle
 
@@ -431,6 +432,32 @@ private func handlePhaseFileChange(url: URL) {
 - FSEventStream handles permission errors internally
 - No crashes or exceptions propagated to application
 - Watching silently fails for inaccessible directories
+
+### Pharaoh Watching Lifecycle
+
+**Startup:**
+1. Pharaoh watching typically starts when user navigates to Pharaoh view for a project
+2. If `selectedProject.sourceDirectory` is set, construct pharaoh path (`{sourceDirectory}/.pharaoh/`)
+3. Check if pharaoh directory exists via `FileManager.fileExists`
+4. If exists, call `fileWatcher?.startWatchingPharaoh(path:onChange:)`
+5. onChange closure calls `handlePharaohFileChange(url:)`
+
+**Status Updates:**
+1. Pharaoh server writes status updates to `.pharaoh/pharaoh.json`
+2. FSEventStream detects file modification
+3. `handlePharaohFileChange` filters for `pharaoh.json` changes
+4. PharaohView refreshes status display via polling (every 2 seconds) combined with file watching
+
+**Shutdown:**
+1. `stopWatchingPharaoh()` stops pharaoh stream independently
+2. Safe to call multiple times
+3. Independent of workspace and phases streams
+
+**Behavior:**
+- Changes detected within ~500ms (FSEvents latency)
+- Pharaoh status updates trigger UI refresh in PharaohView and SidebarPharaohItem
+- Log file (`.pharaoh/pharaoh.log`) also monitored for real-time log viewing
+- UI updates automatically when Pharaoh transitions between idle/busy/done/blocked states
 
 ## Future Enhancements
 

@@ -25,11 +25,14 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 **Responsibility:** Define domain entities as plain Swift types.
 
 **Components:**
-- `Project`: Represents a project with title, description, tags, timestamps, and slug
+- `Project`: Represents a project with title, description, tags, timestamps, slug, and optional sourceDirectory
 - `Card`: Represents a work item with type, status, priority, tags, and markdown body
+- `Plan`: Represents a development plan with number, title, status, linked cards, and phase prompt
 - `WorkspaceConfig`: Holds workspace directory path
-- `CardStatus`, `CardType`, `Priority`: Enums defining structured metadata options
+- `CardStatus`, `CardType`, `Priority`, `PlanStatus`: Enums defining structured metadata options
 - `CardSortOption`: Enum defining sort criteria for card lists (created, updated, priority, status, title)
+- `Phase`, `PhaseStatus`, `PhaseStep`: Read-only models for Ushabti phase data
+- `PharaohStatus`: Enum representing Pharaoh server state (notRunning, idle, busy, done, blocked)
 
 **Dependencies:** Foundation only (for UUID, Date, Codable protocols)
 
@@ -47,11 +50,13 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 - `TagReconciling` / `TagReconcilerService`: One-way tag projection to extended attributes via xattr
 - `SearchProviding` / `SpotlightService`: NSMetadataQuery search across content, titles, and tags
 - `PhaseProviding` / `PhaseService`: Read-only Ushabti phase data loading from `.ushabti/phases/`
+- `PlanProviding` / `PlanService`: Plan CRUD operations and card status synchronization
+- `PharaohProviding` / `PharaohService`: Pharaoh server process management and status monitoring
 - Environment keys for each service (SwiftUI dependency injection)
 
 **Dependencies:** Foundation, Yams, FrontmatterParser, SlugGenerator
 
-**Notes:** Services are stateless. They read from disk on every call and write atomically. No caching. This supports L01 (filesystem as truth) and L05 (external changes are first-class). All four services are injected via SwiftUI environment keys.
+**Notes:** Services are stateless (except FileWatcherService and PharaohService which manage process lifecycle). They read from disk on every call and write atomically. No caching. This supports L01 (filesystem as truth) and L05 (external changes are first-class). All services are injected via SwiftUI environment keys. PharaohService manages Pharaoh server process lifecycle via Foundation.Process and reads status/logs from `.pharaoh/` directory.
 
 ### Utilities Layer
 
@@ -130,12 +135,21 @@ App.swift
   ├─> FileWatcherService (created)
   ├─> TagReconcilerService (created)
   ├─> SpotlightService (created)
-  ├─> HieroglyphsVM (created with all four services injected)
+  ├─> PhaseService (created)
+  ├─> PlanService (created)
+  ├─> PharaohService (created)
+  ├─> HieroglyphsVM (created with all services injected)
   └─> MainWindow
        ├─> Sidebar (ViewModel + WorkspaceService via @Environment)
-       │    └─> SidebarProjectEntry (WorkspaceService for card counts)
+       │    ├─> SidebarProjectEntry (WorkspaceService for card counts)
+       │    └─> SidebarPharaohItem (PharaohService for status)
        ├─> CardList (ViewModel, searchable, filter/sort)
-       └─> CardDetail (ViewModel, CodeEditorView, MarkdownUI)
+       ├─> CardDetail (ViewModel, CodeEditorView, MarkdownUI)
+       ├─> PlanList (ViewModel)
+       ├─> PlanDetail (ViewModel, PharaohService for dispatch)
+       ├─> PhaseList (ViewModel)
+       ├─> PhaseDetail (ViewModel)
+       └─> PharaohView (PharaohService for process management)
 ```
 
 All dependencies flow downward. Views depend on ViewModel and services. Services depend on utilities. Models depend on nothing.

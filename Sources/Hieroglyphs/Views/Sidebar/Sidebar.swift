@@ -127,6 +127,10 @@ struct Sidebar: View {
 
                                 Label("Phases", systemImage: "list.number")
                                     .tag(SidebarSection.phases(project))
+
+                                if project.sourceDirectory != nil {
+                                    SidebarPharaohItem(project: project)
+                                }
                             } label: {
                                 SidebarProjectEntry(
                                     project: project,

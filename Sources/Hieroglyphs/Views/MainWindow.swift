@@ -26,6 +26,8 @@ struct MainWindow: View {
             PlanList()
         case .phases:
             PhaseList()
+        case .pharaoh(let project):
+            PharaohView(project: project)
         case .none:
             ContentUnavailableView(
                 "Select a Project",
@@ -44,6 +46,8 @@ struct MainWindow: View {
             PlanDetail()
         case .phases:
             PhaseDetail()
+        case .pharaoh:
+            Text("")
         case .none:
             ContentUnavailableView(
                 "Select a Project",

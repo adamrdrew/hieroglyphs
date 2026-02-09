@@ -9,6 +9,7 @@ struct HieroglyphsApp: App {
     private let searchService: SearchProviding
     private let phaseService: PhaseProviding
     private let planService: PlanProviding
+    private let pharaohService: PharaohProviding
 
     init() {
         let service = WorkspaceService()
@@ -17,19 +18,22 @@ struct HieroglyphsApp: App {
         let spotlight = SpotlightService()
         let phases = PhaseService()
         let plans = PlanService()
+        let pharaoh = PharaohService()
         self.workspaceService = service
         self.fileWatcher = watcher
         self.tagReconciler = reconciler
         self.searchService = spotlight
         self.phaseService = phases
         self.planService = plans
+        self.pharaohService = pharaoh
         let vm = HieroglyphsVM(
             workspaceService: service,
             fileWatcher: watcher,
             tagReconciler: reconciler,
             searchService: spotlight,
             phaseService: phases,
-            planService: plans
+            planService: plans,
+            pharaohService: pharaoh
         )
         _viewModel = State(initialValue: vm)
     }
@@ -50,6 +54,7 @@ struct HieroglyphsApp: App {
             .environment(\.searchService, searchService)
             .environment(\.phaseService, phaseService)
             .environment(\.planService, planService)
+            .environment(\.pharaohService, pharaohService)
             .onAppear {
                 viewModel.loadWorkspace()
             }

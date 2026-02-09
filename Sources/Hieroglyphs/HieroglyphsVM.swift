@@ -4,13 +4,14 @@ import Observation
 /// Represents a selectable section in the sidebar.
 ///
 /// Each section corresponds to a project and a specific view type
-/// (cards, plans, or phases). This enables hierarchical navigation where
+/// (cards, plans, phases, or pharaoh). This enables hierarchical navigation where
 /// selecting a section determines both the project context and which
 /// middle-column view to display.
 enum SidebarSection: Hashable {
     case cards(Project)
     case plans(Project)
     case phases(Project)
+    case pharaoh(Project)
 }
 
 /// ViewModel coordinating workspace state and UI selection.
@@ -27,7 +28,7 @@ final class HieroglyphsVM {
 
     /// Computed property that extracts the project from any section variant.
     ///
-    /// Returns the associated project for cards, plans, or phases sections.
+    /// Returns the associated project for cards, plans, phases, or pharaoh sections.
     /// Returns nil if no section is selected.
     var selectedProject: Project? {
         switch selectedSection {
@@ -36,6 +37,8 @@ final class HieroglyphsVM {
         case .plans(let project):
             return project
         case .phases(let project):
+            return project
+        case .pharaoh(let project):
             return project
         case .none:
             return nil
@@ -77,6 +80,7 @@ final class HieroglyphsVM {
     private let searchService: SearchProviding?
     private let phaseService: PhaseProviding?
     private let planService: PlanProviding?
+    private let pharaohService: PharaohProviding?
 
     private let cardUpdateDebouncer = Debouncer(delay: 1.5)
     private var pendingCardUpdate: Card?
@@ -88,7 +92,8 @@ final class HieroglyphsVM {
         tagReconciler: TagReconciling? = nil,
         searchService: SearchProviding? = nil,
         phaseService: PhaseProviding? = nil,
-        planService: PlanProviding? = nil
+        planService: PlanProviding? = nil,
+        pharaohService: PharaohProviding? = nil
     ) {
         self.workspaceService = workspaceService
         self.fileWatcher = fileWatcher
@@ -96,6 +101,7 @@ final class HieroglyphsVM {
         self.searchService = searchService
         self.phaseService = phaseService
         self.planService = planService
+        self.pharaohService = pharaohService
     }
 
     /// Initializes a new workspace at the specified path.
@@ -198,6 +204,8 @@ final class HieroglyphsVM {
                     self.selectedSection = .plans(updatedProject)
                 case .phases:
                     self.selectedSection = .phases(updatedProject)
+                case .pharaoh:
+                    self.selectedSection = .pharaoh(updatedProject)
                 }
             }
         } catch {
@@ -224,6 +232,10 @@ final class HieroglyphsVM {
         case .phases:
             self.selectedCard = nil
             self.selectedPlan = nil
+        case .pharaoh:
+            self.selectedCard = nil
+            self.selectedPlan = nil
+            self.selectedPhase = nil
         case .none:
             self.selectedCard = nil
             self.selectedPlan = nil
@@ -528,6 +540,52 @@ final class HieroglyphsVM {
             )
         } catch {
             print("Failed to write phase prompt: \(error)")
+        }
+    }
+
+    func dispatchPlan() {
+        guard let plan = selectedPlan else {
+            print("Cannot dispatch: no plan selected")
+            return
+        }
+
+        guard let selectedProject else {
+            print("Cannot dispatch: no project selected")
+            return
+        }
+
+        guard let sourceDirectory = selectedProject.sourceDirectory else {
+            print("Cannot dispatch: project has no source directory")
+            return
+        }
+
+        let dispatchDirectory = "\(sourceDirectory)/.pharaoh/dispatch"
+        let dispatchFilePath = "\(dispatchDirectory)/\(plan.slug).md"
+
+        let frontmatter = """
+        ---
+        phase: \(plan.slug)
+        model: opus
+        ---
+
+        \(plan.phasePrompt)
+        """
+
+        do {
+            try FileManager.default.createDirectory(
+                atPath: dispatchDirectory,
+                withIntermediateDirectories: true
+            )
+
+            try frontmatter.write(
+                toFile: dispatchFilePath,
+                atomically: true,
+                encoding: .utf8
+            )
+
+            updatePlanStatus(plan: plan, status: .inProgress)
+        } catch {
+            print("Failed to dispatch plan: \(error)")
         }
     }
 

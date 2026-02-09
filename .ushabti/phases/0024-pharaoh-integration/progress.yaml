@@ -1,0 +1,146 @@
+phase:
+  id: 24
+  slug: pharaoh-integration
+  title: "Pharaoh Integration"
+  status: complete
+
+steps:
+  - id: S001
+    title: "Add inProgress status to PlanStatus enum"
+    implemented: true
+    reviewed: true
+    notes: "Added inProgress case to PlanStatus enum. Updated PlanListEntry to display with orange color and circle.inset.filled icon. Updated PlanService to map inProgress to CardStatus.inProgress."
+    touched:
+      - Sources/Hieroglyphs/Models/PlanStatus.swift
+      - Sources/Hieroglyphs/Views/PlanList/PlanListEntry.swift
+      - Sources/Hieroglyphs/Services/PlanService.swift
+
+  - id: S002
+    title: "Make in-progress plans non-editable"
+    implemented: true
+    reviewed: true
+    notes: "Added isEditable computed property that returns false when plan status is inProgress. Disabled phase prompt TextEditor, hid Add Card button, and hid Remove from Plan button/context menu when not editable. Added visual indicator text."
+    touched:
+      - Sources/Hieroglyphs/Views/PlanDetail/PlanDetail.swift
+
+  - id: S003
+    title: "Create PharaohStatus model"
+    implemented: true
+    reviewed: true
+    notes: "Created PharaohStatus enum with five cases (notRunning, idle, busy, done, blocked). Added computed properties isRunning, isBusy, isIdle. Made Equatable for testing."
+    touched:
+      - Sources/Hieroglyphs/Models/PharaohStatus.swift
+
+  - id: S004
+    title: "Create PharaohProviding protocol"
+    implemented: true
+    reviewed: true
+    notes: "Created PharaohProviding protocol with methods: start(in:), stop(), readStatus(from:), readLogs(from:count:). Defined PharaohError enum with appropriate error cases."
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohProviding.swift
+
+  - id: S005
+    title: "Implement PharaohService"
+    implemented: true
+    reviewed: true
+    notes: "Implemented PharaohService with process management via Foundation.Process. Process spawned with zsh -l -c for profile sourcing. Status read from .pharaoh/pharaoh.json with JSON parsing. Logs read from .pharaoh/pharaoh.log returning last N lines. Process terminates on app quit. Marked @unchecked Sendable for async compatibility."
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S006
+    title: "Add PharaohService environment key"
+    implemented: true
+    reviewed: true
+    notes: "Created PharaohServiceEnvironmentKey with environment extension. Injected service in App.swift. Updated HieroglyphsVM to accept and store pharaohService parameter. Used nonisolated(unsafe) for concurrency safety."
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohServiceEnvironmentKey.swift
+      - Sources/Hieroglyphs/App.swift
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S007
+    title: "Add third FSEventStream for pharaoh.json watching"
+    implemented: true
+    reviewed: true
+    notes: "Added startWatchingPharaoh() and stopWatchingPharaoh() methods to FileWatching protocol. Implemented in FileWatcherService with separate FSEventStream. Updated eventCallback to distinguish between three streams. Updated MockFileWatcher for tests."
+    touched:
+      - Sources/Hieroglyphs/Services/FileWatching.swift
+      - Sources/Hieroglyphs/Services/FileWatcherService.swift
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+
+  - id: S008
+    title: "Add .pharaoh case to SidebarSection enum"
+    implemented: true
+    reviewed: true
+    notes: "Added .pharaoh(Project) case to SidebarSection enum. Updated selectedProject computed property to handle pharaoh case. Updated all switch statements in HieroglyphsVM and MainWindow to handle new case. Added placeholder view in MainWindow for pharaoh section."
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+
+  - id: S009
+    title: "Create SidebarPharaohItem view"
+    implemented: true
+    reviewed: true
+    notes: "Created SidebarPharaohItem view with status indicator. Red circle for notRunning, green for idle, orange for busy/done/blocked. Polls status every 2 seconds using async task. Tagged with .pharaoh(project) for sidebar selection."
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/SidebarPharaohItem.swift
+
+  - id: S010
+    title: "Update Sidebar to include Pharaoh item"
+    implemented: true
+    reviewed: true
+    notes: "Added SidebarPharaohItem to project disclosure groups in Sidebar. Item placed below Phases. Conditionally shown only if project.sourceDirectory is not nil."
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift
+
+  - id: S011
+    title: "Create PharaohView"
+    implemented: true
+    reviewed: true
+    notes: "Created PharaohView with two states: not running (start button and description) and running (status badge, phase info, cost/turns, error messages, log viewer, stop button). Polls status and logs every 2 seconds. Logs displayed in monospaced ScrollView with 50 most recent lines."
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+
+  - id: S012
+    title: "Update MainWindow to show PharaohView"
+    implemented: true
+    reviewed: true
+    notes: "Updated MainWindow middleColumnContent to show PharaohView when .pharaoh section selected. View spans middle column (detail column shows empty content)."
+    touched:
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+
+  - id: S013
+    title: "Add play button to PlanDetail"
+    implemented: true
+    reviewed: true
+    notes: "Added play button to PlanDetail toolbar with canDispatch computed property. Button visible only when project has sourceDirectory, Pharaoh is idle, plan status is ready, and phasePrompt is non-empty. Added confirmation alert. Button action placeholder for S014."
+    touched:
+      - Sources/Hieroglyphs/Views/PlanDetail/PlanDetail.swift
+
+  - id: S014
+    title: "Implement plan dispatch logic"
+    implemented: true
+    reviewed: true
+    notes: "Implemented dispatchPlan() in HieroglyphsVM. Creates .pharaoh/dispatch directory if needed. Writes markdown file with frontmatter (phase slug, model opus) and phase prompt content. Sets plan status to inProgress. Wired up Run button in PlanDetail confirmation alert."
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+      - Sources/Hieroglyphs/Views/PlanDetail/PlanDetail.swift
+
+  - id: S015
+    title: "Write tests for PharaohService"
+    implemented: true
+    reviewed: true
+    notes: "Created PharaohServiceTests with 8 tests covering readStatus (all five status shapes) and readLogs (empty, last N lines, count exceeds total). All tests pass."
+    touched:
+      - Tests/HieroglyphsTests/PharaohServiceTests.swift
+
+  - id: S016
+    title: "Update documentation"
+    implemented: true
+    reviewed: true
+    notes: "Updated architecture.md (added PharaohService to services layer, PharaohStatus to models, updated dependency flow). Updated file-watching.md (third FSEventStream for pharaoh). Created pharaoh-integration.md (comprehensive integration guide). Updated plans-system.md (inProgress status, dispatch workflow). Updated viewmodel.md (dispatchPlan method, SidebarSection pharaoh case, service dependencies)."
+    touched:
+      - .ushabti/docs/architecture.md
+      - .ushabti/docs/file-watching.md
+      - .ushabti/docs/pharaoh-integration.md
+      - .ushabti/docs/plans-system.md
+      - .ushabti/docs/viewmodel.md

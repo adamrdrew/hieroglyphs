@@ -388,6 +388,8 @@ final class PlanService: PlanProviding {
             return .backlog
         case .ready:
             return .todo
+        case .inProgress:
+            return .inProgress
         case .done:
             return .done
         }

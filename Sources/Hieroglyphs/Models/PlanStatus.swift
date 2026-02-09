@@ -4,5 +4,6 @@ import Foundation
 enum PlanStatus: String, Codable, CaseIterable {
     case planning = "planning"
     case ready = "ready"
+    case inProgress = "in-progress"
     case done = "done"
 }

@@ -10,10 +10,13 @@ final class FileWatcherService: FileWatching {
     fileprivate var onChange: ((URL) -> Void)?
     fileprivate var phasesStream: FSEventStreamRef?
     fileprivate var onPhasesChange: ((URL) -> Void)?
+    fileprivate var pharaohStream: FSEventStreamRef?
+    fileprivate var onPharaohChange: ((URL) -> Void)?
 
     deinit {
         stopWatching()
         stopWatchingPhases()
+        stopWatchingPharaoh()
     }
 
     func startWatching(path: String, onChange: @escaping (URL) -> Void) {
@@ -62,6 +65,30 @@ final class FileWatcherService: FileWatching {
     func stopWatchingPhases() {
         cleanupPhasesStream()
         onPhasesChange = nil
+    }
+
+    func startWatchingPharaoh(path: String, onChange: @escaping (URL) -> Void) {
+        stopWatchingPharaoh()
+
+        self.onPharaohChange = onChange
+
+        let context = createContext()
+        guard let streamRef = createStream(path: path, context: context) else {
+            return
+        }
+
+        self.pharaohStream = streamRef
+        FSEventStreamSetDispatchQueue(streamRef, DispatchQueue.main)
+
+        guard FSEventStreamStart(streamRef) else {
+            cleanupPharaohStream()
+            return
+        }
+    }
+
+    func stopWatchingPharaoh() {
+        cleanupPharaohStream()
+        onPharaohChange = nil
     }
 
     private func createContext() -> UnsafeMutablePointer<FSEventStreamContext> {
@@ -121,6 +148,16 @@ final class FileWatcherService: FileWatching {
 
         phasesStream = nil
     }
+
+    private func cleanupPharaohStream() {
+        guard let streamRef = pharaohStream else { return }
+
+        FSEventStreamStop(streamRef)
+        FSEventStreamInvalidate(streamRef)
+        FSEventStreamRelease(streamRef)
+
+        pharaohStream = nil
+    }
 }
 
 private func eventCallback(
@@ -139,8 +176,14 @@ private func eventCallback(
     }
 
     // Determine which stream this is by comparing stream references
-    let isPhasesStream = (streamRef == watcher.phasesStream)
-    let callback = isPhasesStream ? watcher.onPhasesChange : watcher.onChange
+    let callback: ((URL) -> Void)?
+    if streamRef == watcher.phasesStream {
+        callback = watcher.onPhasesChange
+    } else if streamRef == watcher.pharaohStream {
+        callback = watcher.onPharaohChange
+    } else {
+        callback = watcher.onChange
+    }
 
     for path in paths {
         let url = URL(fileURLWithPath: path)
