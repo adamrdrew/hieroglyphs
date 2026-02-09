@@ -10,8 +10,16 @@ struct PlanListEntry: View {
                 .foregroundStyle(statusColor)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(plan.title)
-                    .font(.body)
+                Text(plan.title.uppercased())
+                    .font(.headline)
+
+                if !plan.phasePrompt.isEmpty {
+                    Text(strippedPhasePrompt)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
 
                 Text("Plan \(String(format: "%04d", plan.number)) • \(plan.linkedCardSlugs.count) cards")
                     .font(.caption)
@@ -21,6 +29,21 @@ struct PlanListEntry: View {
             Spacer()
         }
         .padding(.vertical, 4)
+    }
+
+    private var strippedPhasePrompt: String {
+        plan.phasePrompt
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "#", with: "")
+            .replacingOccurrences(of: "**", with: "")
+            .replacingOccurrences(of: "__", with: "")
+            .replacingOccurrences(of: "*", with: "")
+            .replacingOccurrences(of: "_", with: "")
+            .replacingOccurrences(of: "`", with: "")
+            .replacingOccurrences(of: "> ", with: "")
+            .replacingOccurrences(of: "- ", with: "")
+            .split(separator: " ")
+            .joined(separator: " ")
     }
 
     private var statusIcon: String {

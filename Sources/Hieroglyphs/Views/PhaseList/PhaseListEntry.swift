@@ -10,8 +10,16 @@ struct PhaseListEntry: View {
                 .foregroundStyle(statusColor)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(phase.title)
-                    .font(.body)
+                Text(phase.title.uppercased())
+                    .font(.headline)
+
+                if !phase.intent.isEmpty {
+                    Text(strippedIntent)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
 
                 Text("Phase \(String(format: "%04d", phase.number))")
                     .font(.caption)
@@ -21,6 +29,21 @@ struct PhaseListEntry: View {
             Spacer()
         }
         .padding(.vertical, 4)
+    }
+
+    private var strippedIntent: String {
+        phase.intent
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "#", with: "")
+            .replacingOccurrences(of: "**", with: "")
+            .replacingOccurrences(of: "__", with: "")
+            .replacingOccurrences(of: "*", with: "")
+            .replacingOccurrences(of: "_", with: "")
+            .replacingOccurrences(of: "`", with: "")
+            .replacingOccurrences(of: "> ", with: "")
+            .replacingOccurrences(of: "- ", with: "")
+            .split(separator: " ")
+            .joined(separator: " ")
     }
 
     private var statusIcon: String {
