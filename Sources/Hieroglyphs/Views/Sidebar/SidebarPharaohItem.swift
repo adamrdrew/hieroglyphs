@@ -7,20 +7,19 @@ struct SidebarPharaohItem: View {
     @State private var status: PharaohStatus = .notRunning
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "circle.fill")
-                .font(.system(size: 8))
+        Label 
+            {Text("Pharoah")} 
+            icon: {
+                Image(systemName: "circle.fill")
                 .foregroundStyle(statusColor)
-
-            Text("Pharaoh")
-        }
-        .tag(SidebarSection.pharaoh(project))
-        .onAppear {
-            updateStatus()
-        }
-        .task {
-            await pollStatus()
-        }
+            }
+            .tag(SidebarSection.pharaoh(project))
+            .onAppear {
+                updateStatus()
+            }
+            .task {
+                await pollStatus()
+            }
     }
 
     private var statusColor: Color {
