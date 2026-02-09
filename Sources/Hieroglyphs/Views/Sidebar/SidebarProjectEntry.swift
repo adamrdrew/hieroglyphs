@@ -8,12 +8,12 @@ struct SidebarProjectEntry: View {
     let project: Project
     let workspacePath: String
     let workspaceService: WorkspaceProviding
-
+    @State private var hasContent = false
     @State private var showingEditSheet = false
 
     var body: some View {
         HStack {
-            Image(systemName: "folder.fill")
+            Image(systemName: hasContent ? "folder.fill" : "folder")
                 .foregroundStyle(.orange)
 
             Text(project.title)
@@ -29,5 +29,23 @@ struct SidebarProjectEntry: View {
         .sheet(isPresented: $showingEditSheet) {
             EditProjectSheet(project: project)
         }
+        .onAppear {
+            checkContent()
+        }
+    }
+
+    private func checkContent() {
+        let projectPath = "\(workspacePath)/\(project.slug)"
+        let cards = try? workspaceService.loadCards(
+            from: projectPath,
+            for: project
+        )
+        let hasCards = !(cards ?? []).isEmpty
+        let plansPath = "\(projectPath)/plans"
+        let hasPlans = FileManager.default
+            .fileExists(atPath: plansPath)
+            && (try? FileManager.default
+                .contentsOfDirectory(atPath: plansPath))?.isEmpty == false
+        hasContent = hasCards || hasPlans
     }
 }
