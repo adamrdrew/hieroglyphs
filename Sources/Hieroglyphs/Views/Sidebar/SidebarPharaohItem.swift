@@ -10,7 +10,7 @@ struct SidebarPharaohItem: View {
         Label 
             {Text("Pharoah")} 
             icon: {
-                Image(systemName: "circle.fill")
+                Image(systemName: statusIcon)
                 .foregroundStyle(statusColor)
             }
             .tag(SidebarSection.pharaoh(project))
@@ -20,6 +20,17 @@ struct SidebarPharaohItem: View {
             .task {
                 await pollStatus()
             }
+    }
+
+    private var statusIcon: String {
+        switch status {
+        case .notRunning:
+            return "gear.badge.xmark"
+        case .idle:
+            return "gear.badge.checkmark"
+        case .busy, .done, .blocked:
+            return "gear"
+        }
     }
 
     private var statusColor: Color {
