@@ -428,6 +428,49 @@ Plan status changes map to card status updates:
 - Works correctly with symlinks, hard links, and regular directories
 - No link-type checking is performed — any directory matching the card slug is removed
 
+### findNextPlanNumber(projectPath:)
+
+**Signature:** `func findNextPlanNumber(projectPath: String) throws -> Int`
+
+**Purpose:** Find the next sequential plan number for auto-increment. Used by plan creation UI to eliminate manual number entry.
+
+**Parameters:**
+
+- `projectPath` — Absolute path to project directory
+
+**Returns:** Next plan number (max+1 or 1 if no plans exist)
+
+**Throws:**
+
+- Rarely throws (returns 1 if plans directory missing or inaccessible)
+
+**Behavior:**
+
+1. Check if `{projectPath}/plans/` exists; return 1 if missing
+2. Enumerate all directories in `plans/` via `FileManager.contentsOfDirectory`
+3. For each directory name:
+   - Split on hyphen (first split only): `"0003-my-plan" → ["0003", "my-plan"]`
+   - Parse first component as integer
+   - Track maximum number found
+4. Skip malformed directory names gracefully (continue to next)
+5. Return `maxNumber + 1` (or 1 if no valid plans found)
+
+**Examples:**
+
+- Empty plans directory → returns 1
+- Plans `0001`, `0002`, `0003` → returns 4
+- Plans `0001`, `0003`, `0005` (with gaps) → returns 6 (max+1, not gap-fill)
+- Plans with non-numeric prefixes skipped → returns 1 if no numeric plans exist
+- Malformed names like `"invalid-plan"` or `"abc-def"` → skipped, does not affect numbering
+
+**Notes:**
+
+- Auto-increment uses max+1 strategy, not gap-filling
+- Number collisions prevented by sequential assignment
+- Called by `HieroglyphsVM.createPlan(title:)` before creating plan
+- ViewModel no longer accepts number parameter from NewPlanSheet
+- NewPlanSheet UI simplified (no number field)
+
 ## PlanService Implementation
 
 **Location:** `Sources/Hieroglyphs/Services/PlanService.swift`

@@ -6,15 +6,12 @@ struct NewPlanSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var title = ""
-    @State private var number = 1
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Plan Details") {
                     TextField("Title", text: $title)
-
-                    TextField("Number", value: $number, format: .number)
                 }
             }
             .navigationTitle("New Plan")
@@ -37,7 +34,7 @@ struct NewPlanSheet: View {
     }
 
     private func savePlan() {
-        viewModel.createPlan(title: title, number: number)
+        viewModel.createPlan(title: title)
         dismiss()
     }
 }

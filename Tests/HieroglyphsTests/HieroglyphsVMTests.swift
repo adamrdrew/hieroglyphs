@@ -788,6 +788,140 @@ final class HieroglyphsVMTests: XCTestCase {
         XCTAssertEqual(viewModel.cards.count, initialCardCount)
     }
 
+    // MARK: - Phases Watching Tests
+
+    @MainActor
+    func testStartWatchingStartsPhasesWatchingWhenSourceDirectorySet() throws {
+        let mockService = MockWorkspaceService()
+        let mockWatcher = MockFileWatcher()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnLoadProjects = false
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let phasesDir = tempDir.appendingPathComponent(".ushabti/phases")
+        try FileManager.default.createDirectory(
+            at: phasesDir,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectWithSource = Project(
+            id: UUID(),
+            title: "Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "project",
+            sourceDirectory: tempDir.path
+        )
+        mockService.mockProjects = [projectWithSource]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockService,
+            fileWatcher: mockWatcher
+        )
+        viewModel.loadWorkspace()
+
+        // Select project with source directory
+        if let project = viewModel.projects.first(where: { $0.sourceDirectory != nil }) {
+            viewModel.selectedSection = .phases(project)
+            viewModel.startWatching()
+
+            XCTAssertTrue(mockWatcher.startWatchingPhasesCalled)
+            XCTAssertNotNil(mockWatcher.watchedPhasesPath)
+        } else {
+            XCTFail("No project with source directory found")
+        }
+    }
+
+    @MainActor
+    func testStartWatchingDoesNotStartPhasesWatchingWhenNoSourceDirectory() {
+        let mockService = MockWorkspaceService()
+        let mockWatcher = MockFileWatcher()
+        mockService.shouldThrowOnLoadConfig = false
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockService,
+            fileWatcher: mockWatcher
+        )
+        viewModel.loadWorkspace()
+
+        // Select project without source directory (first mock project has no source directory)
+        if let project = viewModel.projects.first(where: { $0.sourceDirectory == nil }) {
+            viewModel.selectedSection = .cards(project)
+            viewModel.startWatching()
+
+            XCTAssertFalse(mockWatcher.startWatchingPhasesCalled)
+        } else {
+            XCTFail("Expected project without source directory")
+        }
+    }
+
+    @MainActor
+    func testStopWatchingStopsPhasesWatching() {
+        let mockService = MockWorkspaceService()
+        let mockWatcher = MockFileWatcher()
+        mockService.shouldThrowOnLoadConfig = false
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockService,
+            fileWatcher: mockWatcher
+        )
+        viewModel.loadWorkspace()
+
+        viewModel.stopWatching()
+
+        XCTAssertTrue(mockWatcher.stopWatchingCalled)
+        XCTAssertTrue(mockWatcher.stopWatchingPhasesCalled)
+    }
+
+    @MainActor
+    func testRestartPhasesWatchingRestartsCorrectly() throws {
+        let mockService = MockWorkspaceService()
+        let mockWatcher = MockFileWatcher()
+        mockService.shouldThrowOnLoadConfig = false
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let phasesDir = tempDir.appendingPathComponent(".ushabti/phases")
+        try FileManager.default.createDirectory(
+            at: phasesDir,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectWithSource = Project(
+            id: UUID(),
+            title: "Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "project",
+            sourceDirectory: tempDir.path
+        )
+        mockService.mockProjects = [projectWithSource]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockService,
+            fileWatcher: mockWatcher
+        )
+        viewModel.loadWorkspace()
+
+        // Select project with source directory
+        if let project = viewModel.projects.first(where: { $0.sourceDirectory != nil }) {
+            viewModel.selectedSection = .phases(project)
+            viewModel.restartPhasesWatching()
+
+            XCTAssertTrue(mockWatcher.stopWatchingPhasesCalled)
+            XCTAssertTrue(mockWatcher.startWatchingPhasesCalled)
+        } else {
+            XCTFail("No project with source directory found")
+        }
+    }
+
     // MARK: - Tag Reconciliation Tests
 
     @MainActor
@@ -1495,6 +1629,10 @@ final class MockFileWatcher: FileWatching {
     var stopWatchingCalled = false
     var watchedPath: String?
     var onChange: ((URL) -> Void)?
+    var startWatchingPhasesCalled = false
+    var stopWatchingPhasesCalled = false
+    var watchedPhasesPath: String?
+    var onPhasesChange: ((URL) -> Void)?
 
     func startWatching(path: String, onChange: @escaping (URL) -> Void) {
         startWatchingCalled = true
@@ -1507,8 +1645,23 @@ final class MockFileWatcher: FileWatching {
         onChange = nil
     }
 
+    func startWatchingPhases(path: String, onChange: @escaping (URL) -> Void) {
+        startWatchingPhasesCalled = true
+        watchedPhasesPath = path
+        self.onPhasesChange = onChange
+    }
+
+    func stopWatchingPhases() {
+        stopWatchingPhasesCalled = true
+        onPhasesChange = nil
+    }
+
     func simulateChange(url: URL) {
         onChange?(url)
+    }
+
+    func simulatePhasesChange(url: URL) {
+        onPhasesChange?(url)
     }
 }
 
@@ -1660,6 +1813,14 @@ final class MockPlanService: PlanProviding {
             )
         }
     }
+
+    func findNextPlanNumber(projectPath: String) throws -> Int {
+        if mockPlans.isEmpty {
+            return 1
+        }
+        let maxNumber = mockPlans.map { $0.number }.max() ?? 0
+        return maxNumber + 1
+    }
 }
 
 // MARK: - loadPhases() Tests
@@ -1781,5 +1942,27 @@ extension HieroglyphsVMTests {
         viewModel.loadPhases()
 
         XCTAssertTrue(viewModel.phases.isEmpty)
+    }
+
+    // MARK: - showDoneAndArchived Toggle Tests
+
+    @MainActor
+    func testShowDoneAndArchivedDefaultValue() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        XCTAssertFalse(viewModel.showDoneAndArchived, "showDoneAndArchived should default to false")
+    }
+
+    @MainActor
+    func testShowDoneAndArchivedToggle() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        viewModel.showDoneAndArchived = true
+        XCTAssertTrue(viewModel.showDoneAndArchived, "showDoneAndArchived should be true after setting")
+
+        viewModel.showDoneAndArchived = false
+        XCTAssertFalse(viewModel.showDoneAndArchived, "showDoneAndArchived should be false after toggling back")
     }
 }

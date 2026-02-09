@@ -476,4 +476,40 @@ final class PlanService: PlanProviding {
             }
         }
     }
+
+    func findNextPlanNumber(projectPath: String) throws -> Int {
+        let projectURL = URL(fileURLWithPath: projectPath)
+        let plansURL = projectURL.appendingPathComponent("plans")
+
+        // Return 1 if plans directory doesn't exist
+        guard fileManager.fileExists(atPath: plansURL.path) else {
+            return 1
+        }
+
+        // Get all plan directories
+        let contents = try fileManager.contentsOfDirectory(
+            at: plansURL,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        )
+
+        // Extract numbers from directory names
+        var maxNumber = 0
+        for url in contents {
+            let dirName = url.lastPathComponent
+
+            // Split on hyphen and get first component
+            let components = dirName.split(separator: "-", maxSplits: 1)
+            guard let firstComponent = components.first else {
+                continue
+            }
+
+            // Try to parse as integer
+            if let number = Int(firstComponent) {
+                maxNumber = max(maxNumber, number)
+            }
+        }
+
+        return maxNumber + 1
+    }
 }

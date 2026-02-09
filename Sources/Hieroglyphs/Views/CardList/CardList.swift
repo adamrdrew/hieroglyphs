@@ -58,6 +58,18 @@ struct CardList: View {
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Button {
+                    viewModel.showDoneAndArchived.toggle()
+                } label: {
+                    Label(
+                        viewModel.showDoneAndArchived ? "Hide Done" : "Show Done",
+                        systemImage: viewModel.showDoneAndArchived ? "eye" : "eye.slash"
+                    )
+                }
+                .help(viewModel.showDoneAndArchived ? "Hide done and archived cards" : "Show done and archived cards")
+            }
+
+            ToolbarItem(placement: .automatic) {
+                Button {
                     showFilterBar.toggle()
                 } label: {
                     Label("Filter", systemImage: filterButtonIcon)
@@ -163,6 +175,13 @@ struct CardList: View {
         if !viewModel.filterPriority.isEmpty {
             filtered = filtered.filter { card in
                 viewModel.filterPriority.contains(card.priority)
+            }
+        }
+
+        // Filter done and archived cards
+        if !viewModel.showDoneAndArchived {
+            filtered = filtered.filter { card in
+                card.status != .done && card.status != .archived
             }
         }
 

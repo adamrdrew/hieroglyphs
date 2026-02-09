@@ -63,6 +63,7 @@ final class HieroglyphsVM {
     var filterPriority: Set<Priority> = []
     var sortBy: CardSortOption = .updated
     var sortOrder: SortOrder = .forward
+    var showDoneAndArchived: Bool = false
 
     var searchResults: [SearchResult] = []
 
@@ -347,7 +348,7 @@ final class HieroglyphsVM {
         }
     }
 
-    func createPlan(title: String, number: Int) {
+    func createPlan(title: String) {
         guard let selectedProject else {
             print("Cannot create plan: no project selected")
             return
@@ -366,6 +367,7 @@ final class HieroglyphsVM {
         let projectPath = "\(workspacePath)/\(selectedProject.slug)"
 
         do {
+            let number = try planService.findNextPlanNumber(projectPath: projectPath)
             _ = try planService.createPlan(
                 title: title,
                 number: number,
@@ -636,6 +638,19 @@ final class HieroglyphsVM {
         fileWatcher?.startWatching(path: workspacePath) { [weak self] url in
             self?.handleFileChange(url: url)
         }
+
+        // Start phases watching if source directory is set
+        if let selectedProject,
+           let sourceDirectory = selectedProject.sourceDirectory {
+            let phasesPath = "\(sourceDirectory)/.ushabti/phases/"
+
+            // Only start watching if phases directory exists
+            if FileManager.default.fileExists(atPath: phasesPath) {
+                fileWatcher?.startWatchingPhases(path: phasesPath) { [weak self] url in
+                    self?.handlePhaseFileChange(url: url)
+                }
+            }
+        }
     }
 
     /// Stops watching workspace for external file changes.
@@ -643,6 +658,35 @@ final class HieroglyphsVM {
     /// Called on deinit to clean up file monitoring resources.
     func stopWatching() {
         fileWatcher?.stopWatching()
+        stopPhasesWatching()
+    }
+
+    /// Stops watching phases directory for external file changes.
+    func stopPhasesWatching() {
+        fileWatcher?.stopWatchingPhases()
+    }
+
+    /// Restarts phases watching when project selection changes.
+    ///
+    /// Called when selectedProject changes to update the phases watching
+    /// to monitor the new project's source directory, or stop watching
+    /// if the new project has no source directory set.
+    func restartPhasesWatching() {
+        // Stop current phases watching
+        stopPhasesWatching()
+
+        // Start phases watching for new project if it has source directory
+        if let selectedProject,
+           let sourceDirectory = selectedProject.sourceDirectory {
+            let phasesPath = "\(sourceDirectory)/.ushabti/phases/"
+
+            // Only start watching if phases directory exists
+            if FileManager.default.fileExists(atPath: phasesPath) {
+                fileWatcher?.startWatchingPhases(path: phasesPath) { [weak self] url in
+                    self?.handlePhaseFileChange(url: url)
+                }
+            }
+        }
     }
 
     private func handleFileChange(url: URL) {
@@ -670,6 +714,15 @@ final class HieroglyphsVM {
                path.contains("/\(selectedProject.slug)/") {
                 loadPlans()
             }
+        }
+    }
+
+    private func handlePhaseFileChange(url: URL) {
+        let path = url.path
+
+        // Check if path contains phases directory and phase files
+        if path.contains("/.ushabti/phases/") && (path.contains(".yaml") || path.contains(".md")) {
+            loadPhases()
         }
     }
 

@@ -32,4 +32,10 @@ protocol PlanProviding {
     /// Agnostic to link type (works with symlinks, hard links, or plain directories).
     /// Best-effort cleanup: logs warnings for individual failures but does not throw.
     func removeCardFromPlans(cardSlug: String, projectPath: String) throws
+
+    /// Find the next sequential plan number for auto-increment.
+    /// Scans the plans directory, finds the highest existing plan number,
+    /// and returns max+1. Returns 1 if no plans exist or plans directory is missing.
+    /// Malformed directory names are skipped gracefully.
+    func findNextPlanNumber(projectPath: String) throws -> Int
 }

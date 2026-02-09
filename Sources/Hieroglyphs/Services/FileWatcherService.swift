@@ -8,9 +8,12 @@ import Foundation
 final class FileWatcherService: FileWatching {
     private var stream: FSEventStreamRef?
     fileprivate var onChange: ((URL) -> Void)?
+    fileprivate var phasesStream: FSEventStreamRef?
+    fileprivate var onPhasesChange: ((URL) -> Void)?
 
     deinit {
         stopWatching()
+        stopWatchingPhases()
     }
 
     func startWatching(path: String, onChange: @escaping (URL) -> Void) {
@@ -35,6 +38,30 @@ final class FileWatcherService: FileWatching {
     func stopWatching() {
         cleanupStream()
         onChange = nil
+    }
+
+    func startWatchingPhases(path: String, onChange: @escaping (URL) -> Void) {
+        stopWatchingPhases()
+
+        self.onPhasesChange = onChange
+
+        let context = createContext()
+        guard let streamRef = createStream(path: path, context: context) else {
+            return
+        }
+
+        self.phasesStream = streamRef
+        FSEventStreamSetDispatchQueue(streamRef, DispatchQueue.main)
+
+        guard FSEventStreamStart(streamRef) else {
+            cleanupPhasesStream()
+            return
+        }
+    }
+
+    func stopWatchingPhases() {
+        cleanupPhasesStream()
+        onPhasesChange = nil
     }
 
     private func createContext() -> UnsafeMutablePointer<FSEventStreamContext> {
@@ -84,6 +111,16 @@ final class FileWatcherService: FileWatching {
 
         stream = nil
     }
+
+    private func cleanupPhasesStream() {
+        guard let streamRef = phasesStream else { return }
+
+        FSEventStreamStop(streamRef)
+        FSEventStreamInvalidate(streamRef)
+        FSEventStreamRelease(streamRef)
+
+        phasesStream = nil
+    }
 }
 
 private func eventCallback(
@@ -101,8 +138,12 @@ private func eventCallback(
         return
     }
 
+    // Determine which stream this is by comparing stream references
+    let isPhasesStream = (streamRef == watcher.phasesStream)
+    let callback = isPhasesStream ? watcher.onPhasesChange : watcher.onChange
+
     for path in paths {
         let url = URL(fileURLWithPath: path)
-        watcher.onChange?(url)
+        callback?(url)
     }
 }

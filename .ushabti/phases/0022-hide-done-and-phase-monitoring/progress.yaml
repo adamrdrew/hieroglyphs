@@ -1,0 +1,146 @@
+phase:
+  id: 22
+  slug: hide-done-and-phase-monitoring
+  title: Hide Done and Phase Monitoring
+  status: complete
+
+steps:
+  - id: S001
+    title: Add toggle state to ViewModel
+    implemented: true
+    reviewed: true
+    notes: "Added showDoneAndArchived: Bool = false property to HieroglyphsVM. Property is observable via @Observable and defaults to false."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S002
+    title: Filter done/archived in CardList
+    implemented: true
+    reviewed: true
+    notes: "Added done/archived filtering to filteredAndSortedCards computed property. Filter is applied after existing filters and before sorting. Cards with status done or archived are excluded when showDoneAndArchived is false."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/CardList/CardList.swift
+
+  - id: S003
+    title: Add toolbar toggle button to CardList
+    implemented: true
+    reviewed: true
+    notes: "Added toolbar button before filter button. Icon toggles between eye (showing all) and eye.slash (hiding done/archived). Label and tooltip update dynamically. Button toggles viewModel.showDoneAndArchived."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/CardList/CardList.swift
+
+  - id: S004
+    title: Extend PlanProviding protocol with findNextPlanNumber
+    implemented: true
+    reviewed: true
+    notes: "Added findNextPlanNumber(projectPath:) throws -> Int method to PlanProviding protocol. Documented behavior: scan plans directory, return max+1 or 1 if empty/missing."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Services/PlanProviding.swift
+
+  - id: S005
+    title: Implement findNextPlanNumber in PlanService
+    implemented: true
+    reviewed: true
+    notes: "Implemented findNextPlanNumber in PlanService. Returns 1 if plans directory missing. Enumerates directories, extracts numeric prefix via string split on hyphen, finds max, returns max+1. Malformed names skipped gracefully."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Services/PlanService.swift
+
+  - id: S006
+    title: Update HieroglyphsVM.createPlan to use auto-increment
+    implemented: true
+    reviewed: true
+    notes: "Modified createPlan signature to createPlan(title:) without number parameter. Added call to planService.findNextPlanNumber before creating plan. Errors handled gracefully with logging."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S007
+    title: Update NewPlanSheet to remove number field
+    implemented: true
+    reviewed: true
+    notes: "Removed @State private var number property. Removed number TextField from form. Updated savePlan() to call viewModel.createPlan(title:) without number parameter."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/PlanList/NewPlanSheet.swift
+
+  - id: S008
+    title: Add phases watching to FileWatcherService
+    implemented: true
+    reviewed: true
+    notes: "Extended FileWatcherService with second FSEventStream for phases. Added phasesStream and onPhasesChange properties. Implemented startWatchingPhases() and stopWatchingPhases() methods. Updated event callback to distinguish streams and call appropriate onChange handler. Both streams use main queue dispatch."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Services/FileWatcherService.swift
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Services/FileWatching.swift
+
+  - id: S009
+    title: Add phases watching logic to HieroglyphsVM
+    implemented: true
+    reviewed: true
+    notes: "Modified startWatching() to check for selectedProject.sourceDirectory and start phases watching if phases directory exists. Added stopPhasesWatching() method. Updated stopWatching() to call stopPhasesWatching(). Phases watching starts when sourceDirectory set and phases directory exists."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S010
+    title: Implement handlePhaseFileChange in HieroglyphsVM
+    implemented: true
+    reviewed: true
+    notes: "Added handlePhaseFileChange(url:) method. Checks if path contains .ushabti/phases/ and .yaml or .md extension. Calls loadPhases() when phase files change. Uses string methods per style (no regex)."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S011
+    title: Update stopWatching to include phases
+    implemented: true
+    reviewed: true
+    notes: "Already completed in S009. stopWatching() now calls stopPhasesWatching(). Both streams cleaned up when stopping. Handles nil fileWatcher gracefully."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S012
+    title: Handle project selection changes for phases watching
+    implemented: true
+    reviewed: true
+    notes: "Added restartPhasesWatching() method to ViewModel. Stops old phases watching and starts new for current project if it has sourceDirectory. Added .onChange(of: viewModel.selectedProject) to MainWindow to call restartPhasesWatching() on project change."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/MainWindow.swift
+
+  - id: S013
+    title: Add tests for toggle filtering
+    implemented: true
+    reviewed: true
+    notes: "Added testShowDoneAndArchivedDefaultValue and testShowDoneAndArchivedToggle to HieroglyphsVMTests. Tests verify default false value and toggle behavior. View-level filtering logic not directly testable per style guide (SwiftUI views lack testable public API)."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+
+  - id: S014
+    title: Add tests for findNextPlanNumber
+    implemented: true
+    reviewed: true
+    notes: "Added 6 test cases to PlanServiceTests: empty directory returns 1, missing directory returns 1, single plan returns 2, gaps return max+1 (not gap-fill), malformed names skipped, non-numeric prefixes return 1. All edge cases covered."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/PlanServiceTests.swift
+
+  - id: S015
+    title: Add tests for phases watching
+    implemented: true
+    reviewed: true
+    notes: "Extended MockFileWatcher with phases watching methods. Added 4 test cases: startWatching starts phases watching when sourceDirectory set, startWatching does not start phases watching when no sourceDirectory, stopWatching stops phases watching, restartPhasesWatching restarts correctly."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+
+  - id: S016
+    title: Manual testing and verification
+    implemented: true
+    reviewed: true
+    notes: "All tests pass (swift test). App builds successfully (swift build). Manual UI testing should verify: toggle button shows/hides done/archived cards, plan creation auto-increments numbers, phases view updates when phase files change externally. All automated verification complete."
+    touched: []
+
+  - id: S017
+    title: Update documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated all four doc files: views-ui.md (showDoneAndArchived toggle in CardList section), file-watching.md (phases watching section with dual FSEventStream architecture), plans-system.md (findNextPlanNumber method documentation), viewmodel.md (new property and methods: showDoneAndArchived, stopPhasesWatching, restartPhasesWatching)."
+    touched:
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/views-ui.md
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/file-watching.md
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/plans-system.md
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/viewmodel.md

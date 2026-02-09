@@ -41,6 +41,7 @@ enum SidebarSection: Hashable {
 - `filterPriority: Set<Priority>` — Active priority filters (empty set = show all)
 - `sortBy: CardSortOption` — Sort criteria (created, updated, priority, status, title)
 - `sortOrder: SortOrder` — Sort direction (forward = ascending, reverse = descending)
+- `showDoneAndArchived: Bool` — Toggle for showing/hiding done and archived cards (default: false, state is ephemeral)
 - `showingNewProjectSheet: Bool` — Controls New Project sheet presentation (false = hidden)
 - `showingNewCardSheet: Bool` — Controls New Card sheet presentation (false = hidden)
 - `focusSearch: Bool` — Triggers search field focus when set to true (resets to false after use)
@@ -496,11 +497,12 @@ func loadWorkspace() {
 
 **Signature:** `func stopWatching()`
 
-**Purpose:** Stop monitoring workspace for external file changes.
+**Purpose:** Stop monitoring workspace and phases directories for external file changes.
 
 **Behavior:**
 
-1. Call `fileWatcher?.stopWatching()` to clean up resources
+1. Call `fileWatcher?.stopWatching()` to clean up workspace monitoring resources
+2. Call `stopPhasesWatching()` to clean up phases monitoring resources
 
 **Usage:**
 
@@ -512,8 +514,63 @@ viewModel.stopWatching()
 
 **Notes:**
 - Safe to call even if not currently watching
+- Stops both workspace and phases watching simultaneously
 - ViewModel does not call this in deinit due to Swift concurrency restrictions
 - ViewModel is app-lifetime, so cleanup happens naturally on app termination
+
+### stopPhasesWatching()
+
+**Signature:** `func stopPhasesWatching()`
+
+**Purpose:** Stop monitoring phases directory for external file changes.
+
+**Behavior:**
+
+1. Call `fileWatcher?.stopWatchingPhases()` to clean up phases monitoring resources
+
+**Usage:**
+
+Called by `stopWatching()` or manually by client code:
+
+```swift
+viewModel.stopPhasesWatching()
+```
+
+**Notes:**
+- Safe to call even if not currently watching phases
+- Independent of workspace watching lifecycle
+- Used by `restartPhasesWatching()` to stop old phases watching before starting new
+
+### restartPhasesWatching()
+
+**Signature:** `func restartPhasesWatching()`
+
+**Purpose:** Restart phases watching when project selection changes.
+
+**Behavior:**
+
+1. Stop current phases watching via `stopPhasesWatching()`
+2. Check if `selectedProject` has `sourceDirectory` set
+3. If set, construct phases path: `{sourceDirectory}/.ushabti/phases/`
+4. Check if phases directory exists via `FileManager.fileExists`
+5. If exists, start phases watching via `fileWatcher?.startWatchingPhases`
+6. onChange closure calls `handlePhaseFileChange(url:)`
+
+**Usage:**
+
+Called automatically when project selection changes via MainWindow `.onChange` modifier:
+
+```swift
+.onChange(of: viewModel.selectedProject) { _, _ in
+    viewModel.restartPhasesWatching()
+}
+```
+
+**Notes:**
+- Stops old phases watching before starting new
+- Handles projects with no sourceDirectory (stops phases watching, does not start new)
+- Handles missing phases directory (no watching, no errors)
+- Enables per-project phases monitoring with automatic switching
 
 ## Lifecycle and Initialization
 

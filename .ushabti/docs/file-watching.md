@@ -351,6 +351,86 @@ FileWatcherService not directly unit tested (requires real filesystem and runloo
 
 **Result:** Card disappears from UI, no stale data.
 
+## Phases Directory Watching
+
+**Overview:** FileWatcherService supports watching multiple directories simultaneously using separate FSEventStream instances. This enables real-time updates of both workspace files and external phases directories (for Ushabti integration).
+
+### Dual FSEventStream Architecture
+
+**Implementation:** Two independent FSEventStream instances monitor different paths:
+- **Workspace stream:** Monitors `{workspacePath}/` recursively for project and card changes
+- **Phases stream:** Monitors `{sourceDirectory}/.ushabti/phases/` recursively for phase file changes
+
+**Resource Management:** Both streams use main queue dispatch and share the same latency (0.5s). Each stream has independent lifecycle methods (`startWatching`/`stopWatching` and `startWatchingPhases`/`stopWatchingPhases`).
+
+### Phases Watching Lifecycle
+
+**Startup:**
+1. `startWatching()` is called after workspace loads successfully
+2. If `selectedProject.sourceDirectory` is set, construct phases path
+3. Check if phases directory exists via `FileManager.fileExists`
+4. If exists, call `fileWatcher?.startWatchingPhases(path:onChange:)`
+5. onChange closure calls `handlePhaseFileChange(url:)`
+
+**Project Selection Changes:**
+1. User selects different project in sidebar
+2. MainWindow detects change via `.onChange(of: viewModel.selectedProject)`
+3. Calls `viewModel.restartPhasesWatching()`
+4. Stops old phases watching, starts new for current project's sourceDirectory
+5. No watching if new project has no sourceDirectory
+
+**Shutdown:**
+1. `stopWatching()` calls both `stopWatching` and `stopPhasesWatching`
+2. Both streams cleaned up simultaneously
+3. Safe to call multiple times
+
+### Phase File Change Handling
+
+**handlePhaseFileChange(url:):**
+
+```swift
+private func handlePhaseFileChange(url: URL) {
+    let path = url.path
+
+    // Check if path contains phases directory and phase files
+    if path.contains("/.ushabti/phases/") && (path.contains(".yaml") || path.contains(".md")) {
+        loadPhases()
+    }
+}
+```
+
+**Watched Files:**
+- `progress.yaml` — Phase progress tracking
+- `phase.md` — Phase intent and scope
+- `review.md` — Phase review notes
+- `steps.md` — Implementation steps
+
+**Behavior:**
+- Changes detected within ~500ms (FSEvents latency)
+- Full phases reload when any phase file changes
+- UI updates automatically to reflect external edits by Ushabti agents
+
+### Edge Cases
+
+**Missing Phases Directory:**
+- Phases watching not started if `.ushabti/phases/` does not exist
+- No errors logged or thrown
+- Normal behavior for projects without Ushabti integration
+
+**Nil Source Directory:**
+- Phases watching not started if `selectedProject.sourceDirectory` is nil
+- Projects without external source directories use normal workspace-only watching
+
+**External Source Directory:**
+- Phases directory may be outside workspace directory
+- Full absolute path constructed from `sourceDirectory` property
+- Handles invalid paths gracefully (no watching, no errors)
+
+**Permission Errors:**
+- FSEventStream handles permission errors internally
+- No crashes or exceptions propagated to application
+- Watching silently fails for inaccessible directories
+
 ## Future Enhancements
 
 ### Debouncing

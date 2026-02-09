@@ -860,6 +860,7 @@ struct CardList: View {
 
 **Toolbar:**
 
+- **Hide Done/Archived Toggle:** Toggles visibility of done and archived cards. Icon switches between `eye` (showing all) and `eye.slash` (hiding done/archived). State is ephemeral (not persisted across sessions). Default: off (hides done/archived).
 - **Filter Button:** Toggles visibility of `CardFilterBar` inline below toolbar. Icon changes to filled variant when filters are active.
 - **Sort Button:** Opens `CardSortPopover` as popover for selecting sort criteria and order.
 - **New Card Button:** Opens `NewCardSheet` (disabled when no project selected).
@@ -871,7 +872,8 @@ Filters are applied in sequence:
 2. Status filter (if filterStatus is not empty)
 3. Type filter (if filterType is not empty)
 4. Priority filter (if filterPriority is not empty)
-5. Sort by selected criteria and order
+5. Done/archived filter (if showDoneAndArchived is false)
+6. Sort by selected criteria and order
 
 **Empty States:**
 

@@ -656,4 +656,86 @@ final class PlanServiceTests: XCTestCase {
         XCTAssertEqual(plans.count, 1)
         XCTAssertTrue(plans[0].linkedCardSlugs.contains("test-card"))
     }
+
+    // MARK: - findNextPlanNumber() Tests
+
+    func testFindNextPlanNumber_EmptyDirectory() throws {
+        let plansDir = projectURL.appendingPathComponent("plans")
+        try fileManager.createDirectory(at: plansDir, withIntermediateDirectories: true)
+
+        let number = try service.findNextPlanNumber(projectPath: projectURL.path)
+        XCTAssertEqual(number, 1, "Should return 1 when plans directory is empty")
+    }
+
+    func testFindNextPlanNumber_MissingDirectory() throws {
+        let number = try service.findNextPlanNumber(projectPath: projectURL.path)
+        XCTAssertEqual(number, 1, "Should return 1 when plans directory does not exist")
+    }
+
+    func testFindNextPlanNumber_SinglePlan() throws {
+        _ = try service.createPlan(
+            title: "Test Plan",
+            number: 1,
+            projectPath: projectURL.path
+        )
+
+        let number = try service.findNextPlanNumber(projectPath: projectURL.path)
+        XCTAssertEqual(number, 2, "Should return 2 when only plan 0001 exists")
+    }
+
+    func testFindNextPlanNumber_MultipleWithGaps() throws {
+        _ = try service.createPlan(
+            title: "First Plan",
+            number: 1,
+            projectPath: projectURL.path
+        )
+        _ = try service.createPlan(
+            title: "Third Plan",
+            number: 3,
+            projectPath: projectURL.path
+        )
+        _ = try service.createPlan(
+            title: "Fifth Plan",
+            number: 5,
+            projectPath: projectURL.path
+        )
+
+        let number = try service.findNextPlanNumber(projectPath: projectURL.path)
+        XCTAssertEqual(number, 6, "Should return 6 (max+1), not gap-fill")
+    }
+
+    func testFindNextPlanNumber_MalformedNames() throws {
+        let plansDir = projectURL.appendingPathComponent("plans")
+        try fileManager.createDirectory(at: plansDir, withIntermediateDirectories: true)
+
+        // Create plan with valid number
+        _ = try service.createPlan(
+            title: "Valid Plan",
+            number: 2,
+            projectPath: projectURL.path
+        )
+
+        // Create directories with malformed names
+        let malformedDir1 = plansDir.appendingPathComponent("invalid-plan")
+        let malformedDir2 = plansDir.appendingPathComponent("abc-def")
+        try fileManager.createDirectory(at: malformedDir1, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: malformedDir2, withIntermediateDirectories: true)
+
+        let number = try service.findNextPlanNumber(projectPath: projectURL.path)
+        XCTAssertEqual(number, 3, "Should skip malformed directory names and return max+1")
+    }
+
+    func testFindNextPlanNumber_NonNumericPrefixes() throws {
+        let plansDir = projectURL.appendingPathComponent("plans")
+        try fileManager.createDirectory(at: plansDir, withIntermediateDirectories: true)
+
+        // Create directories with non-numeric prefixes
+        let dir1 = plansDir.appendingPathComponent("abc-plan")
+        let dir2 = plansDir.appendingPathComponent("xyz-plan")
+        try fileManager.createDirectory(at: dir1, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: dir2, withIntermediateDirectories: true)
+
+        let number = try service.findNextPlanNumber(projectPath: projectURL.path)
+        XCTAssertEqual(number, 1, "Should return 1 when all directories have non-numeric prefixes")
+    }
 }

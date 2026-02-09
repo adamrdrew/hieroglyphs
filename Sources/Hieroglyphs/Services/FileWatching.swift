@@ -22,4 +22,21 @@ protocol FileWatching {
     /// Safe to call multiple times. After calling stopWatching,
     /// startWatching may be called again to resume monitoring.
     func stopWatching()
+
+    /// Begins monitoring a phases directory path recursively.
+    ///
+    /// Similar to startWatching but for a separate phases directory.
+    /// Both workspace and phases directories can be watched simultaneously.
+    /// Uses a separate FSEventStream to avoid conflicts.
+    ///
+    /// - Parameters:
+    ///   - path: Absolute path to phases directory to monitor
+    ///   - onChange: Closure called with changed file URL
+    func startWatchingPhases(path: String, onChange: @escaping (URL) -> Void)
+
+    /// Stops phases monitoring and cleans up resources.
+    ///
+    /// Safe to call multiple times. After calling stopWatchingPhases,
+    /// startWatchingPhases may be called again to resume monitoring.
+    func stopWatchingPhases()
 }

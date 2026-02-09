@@ -12,6 +12,9 @@ struct MainWindow: View {
         } detail: {
             detailColumnContent
         }
+        .onChange(of: viewModel.selectedProject) { _, _ in
+            viewModel.restartPhasesWatching()
+        }
     }
 
     @ViewBuilder
