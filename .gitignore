@@ -14,5 +14,7 @@ DerivedData/
 *.swp
 *~
 
+.pharoah
+
 # Claude Code
 .claude/settings.local.json
