@@ -18,9 +18,9 @@ Represents the current state of a Pharaoh process with five cases:
 enum PharaohStatus: Equatable {
     case notRunning
     case idle
-    case busy(phase: String)
-    case done(phase: String, cost: Double, turns: Int)
-    case blocked(phase: String, error: String)
+    case busy(phase: String, turnsElapsed: Int, runningCostUsd: Double, phaseStarted: Date?)
+    case done(phase: String, costUsd: Double, turns: Int)
+    case blocked(phase: String, error: String, costUsd: Double, turns: Int)
 }
 ```
 
@@ -28,6 +28,11 @@ enum PharaohStatus: Equatable {
 - `isRunning` — True if Pharaoh is in any state except notRunning
 - `isBusy` — True if Pharaoh is actively executing a phase
 - `isIdle` — True if Pharaoh is ready to accept work
+
+**Enriched Status Fields:**
+- `busy`: Includes `turnsElapsed` (current turn count), `runningCostUsd` (cost so far), and `phaseStarted` (ISO8601 timestamp for elapsed time display)
+- `done`: Uses `costUsd` (not `cost`) and `turns` for final execution metrics
+- `blocked`: Includes `costUsd` and `turns` for partial execution metrics before failure
 
 ### Services
 
@@ -40,6 +45,7 @@ Protocol-based service for Pharaoh process management and status reading.
 - `stop()` — Terminates running process
 - `readStatus(from directory: String) -> PharaohStatus` — Reads and decodes `.pharaoh/pharaoh.json`
 - `readLogs(from directory: String, count: Int) -> [String]` — Returns last N lines from `.pharaoh/pharaoh.log`
+- `readEvents(from directory: String) -> [PharaohEvent]` — Reads and parses `.pharaoh/events.jsonl`
 
 **Implementation Details:**
 - Uses `Process` with `/bin/zsh -l -c "npx @adamrdrew/pharaoh serve"` to source shell profile (ensures homebrew/nvm paths available)
@@ -52,6 +58,73 @@ Protocol-based service for Pharaoh process management and status reading.
 - Returns `.notRunning` status if JSON file missing or unreadable
 - Gracefully handles malformed JSON (returns `.notRunning`)
 - Returns empty array if log file missing
+
+### Event Stream Architecture
+
+**PharaohEvent** (`Sources/Hieroglyphs/Models/PharaohEvent.swift`)
+
+Represents a single event from the Pharaoh agent execution stream:
+
+```swift
+struct PharaohEvent: Identifiable, Equatable {
+    let id: UUID
+    let timestamp: Date
+    let type: PharaohEventType
+    let summary: String
+    let detailJson: String?
+}
+
+enum PharaohEventType: String, Equatable {
+    case toolCall = "tool_call"
+    case toolProgress = "tool_progress"
+    case toolSummary = "tool_summary"
+    case text
+    case turn
+    case status
+    case result
+    case error
+}
+```
+
+**Event Stream File Format:**
+- File: `.pharaoh/events.jsonl` (JSON Lines format, one event per line)
+- Each line is a JSON object with `timestamp` (ISO8601), `type`, `summary`, and optional `detail`
+- Events are appended to the file as Pharaoh executes
+
+**Event Parsing:**
+- `PharaohEvent.parse(line: String) -> PharaohEvent?` — Static method parses a single JSON Lines entry
+- Returns nil for malformed lines (graceful failure)
+- Timestamp parsed with ISO8601DateFormatter including fractional seconds
+- Detail object serialized to JSON string for storage (not decoded into typed structs)
+
+**PharaohActivityStreamView** (`Sources/Hieroglyphs/Views/Pharaoh/PharaohActivityStreamView.swift`)
+
+Detail column view that displays the real-time event stream:
+
+- ScrollView with LazyVStack of PharaohEventRow components
+- Polls events every 2 seconds via `readEvents(from:)`
+- Auto-scrolls to bottom on new events (ScrollViewReader with anchor)
+- Empty state shows ContentUnavailableView when no events exist
+
+**PharaohEventRow** (`Sources/Hieroglyphs/Views/Pharaoh/PharaohEventRow.swift`)
+
+Individual event row showing:
+- Relative timestamp (Text(style: .relative) in 60pt fixed-width column)
+- Type icon (SF Symbol, color-coded by event type)
+- Summary text (truncated, font varies by type)
+
+**Turn Events:**
+Turn events render as subtle separators (Divider with small "Turn N" label) rather than full rows to reduce visual clutter.
+
+**Event Type Icons and Colors:**
+- `toolCall`: wrench.fill, accent color, monospaced font
+- `toolProgress`: clock.arrow.circlepath, secondary
+- `toolSummary`: checkmark.circle, green
+- `text`: text.bubble, secondary
+- `turn`: separator (no icon)
+- `status`: info.circle, blue
+- `result`: checkmark.seal.fill, green, bold
+- `error`: exclamationmark.triangle.fill, red, bold
 
 ### File Watching
 
@@ -82,7 +155,7 @@ Displays Pharaoh status indicator in project disclosure groups:
 
 **PharaohView** (`Views/Pharaoh/PharaohView.swift`)
 
-Full-screen view for Pharaoh management shown as middle+detail content:
+Full-screen view for Pharaoh management shown as middle column content:
 
 **Not Running State:**
 - "Start Pharaoh" button
@@ -91,15 +164,29 @@ Full-screen view for Pharaoh management shown as middle+detail content:
 
 **Running State:**
 - Status badge with color-coded state (idle/busy/done/blocked)
-- Phase name and details (for busy/done/blocked states)
-- Cost and turns display (for done state)
-- Error message display (for blocked state)
-- Log viewer (ScrollView with monospaced text, ~50 recent lines)
+- Model picker (segmented, visible only when idle): Opus/Sonnet/Haiku
+- Phase name and enriched metrics (for busy/done/blocked states):
+  - Busy: Turns elapsed, running cost ($0.4f), live elapsed time (Text(style: .relative))
+  - Done: Final cost, turns
+  - Blocked: Error message (red banner), final cost, turns
 - "Stop Pharaoh" button
 
 **Update Strategy:**
-- Polls status and logs every 2 seconds via `monitorStatus()` async task
+- Polls status every 2 seconds via `monitorStatus()` async task
+- Detects status transitions for auto-completion and error alerts
 - Combined with file watching for responsive updates
+
+**Automatic Plan Completion:**
+- Tracks `previousStatus` to detect busy → done transition
+- Calls `autoCompletePlan(phase:)` to find matching plan by slug with `inProgress` status
+- Updates plan status to `done` via `viewModel.updatePlanStatus(plan:status:)`
+- Logs completion to console
+
+**Error Surfacing:**
+- Detects busy → blocked transition
+- Shows alert with title "Phase Failed" and error message
+- Alert remains visible until user clicks OK
+- Blocked state continues showing error after alert dismissed
 
 **PlanDetail Dispatch Button** (`Views/PlanDetail/PlanDetail.swift`)
 
@@ -118,8 +205,9 @@ Play button in toolbar with `canDispatch` conditions:
 
 **HieroglyphsVM Extensions**
 
-**New Property:**
+**New Properties:**
 - `private let pharaohService: PharaohProviding?` — Injected service reference
+- `var pharaohModel: String = "opus"` — Selected model for plan dispatch (opus/sonnet/haiku)
 
 **New Method:**
 - `dispatchPlan()` — Writes dispatch file and updates plan status
@@ -128,11 +216,11 @@ Play button in toolbar with `canDispatch` conditions:
 1. Guard check: plan selected, project selected, sourceDirectory set
 2. Construct dispatch directory path: `{sourceDirectory}/.pharaoh/dispatch/`
 3. Create directory if needed: `FileManager.createDirectory(withIntermediateDirectories:)`
-4. Build markdown content:
+4. Build markdown content using selected model:
    ```markdown
    ---
    phase: {plan.slug}
-   model: opus
+   model: {pharaohModel}
    ---
 
    {plan.phasePrompt}
@@ -143,6 +231,18 @@ Play button in toolbar with `canDispatch` conditions:
 **Error Handling:**
 - Logs errors to console (does not throw or show UI alerts)
 - Graceful fallback if directory creation fails
+
+### Model Selection
+
+**UI Integration:**
+- Segmented picker in PharaohView (visible only when Pharaoh is idle)
+- Three options: Opus (default), Sonnet, Haiku
+- Binds to `viewModel.pharaohModel`
+
+**Dispatch Integration:**
+- `dispatchPlan()` uses `pharaohModel` value in frontmatter instead of hardcoded "opus"
+- Model selection applies to next dispatch only (no effect on running execution)
+- Model preference not persisted across app launches (defaults to opus)
 
 ### Plan Status Changes
 
@@ -249,12 +349,18 @@ enum PlanStatus: String, Codable, CaseIterable {
 
 **Step 6: Status updates**
 - Pharaoh writes status to `pharaoh.json` (idle → busy → done/blocked)
+- Pharaoh appends events to `events.jsonl` as execution proceeds
 - FSEventStream and polling detect changes
-- PharaohView updates in real-time
+- PharaohView and PharaohActivityStreamView update in real-time
 
-**Step 7: User reviews results**
+**Step 7: Automatic completion or error surfacing**
+- On busy → done transition: PharaohView auto-completes matching plan (sets status to `done`)
+- On busy → blocked transition: PharaohView shows alert with error message
+
+**Step 8: User reviews results**
 - Views phase completion in `.ushabti/phases/{phase-id}/`
-- Manually updates plan status from `inProgress` to `done` (auto-transition deferred to future work)
+- Plan status already set to `done` automatically
+- Reviews event stream for execution details
 
 ## Integration Points
 
@@ -342,12 +448,6 @@ Tests cover all public methods:
 
 ## Future Enhancements
 
-### Automatic Status Transitions
-
-**Phase Completion Detection:**
-- Watch `.ushabti/phases/` for `review.md` with GREEN status
-- Auto-transition plan from `inProgress` to `done`
-
 ### Dispatch Queue
 
 **Multiple Dispatches:**
@@ -359,19 +459,13 @@ Tests cover all public methods:
 **Budget Management:**
 - Track total cost across dispatches
 - Show warnings when approaching budget limits
+- Persist cost history across sessions
 
 ### Retry Logic
 
 **Interrupted Phases:**
-- Detect blocked phases
-- Offer retry with modified prompts
-
-### Configuration UI
-
-**Pharaoh Settings:**
-- Model selection (opus, sonnet)
-- Custom arguments for `pharaoh serve`
-- Working directory override
+- Offer retry button for blocked phases
+- Allow editing phase prompt before retry
 
 ### Multi-Process Support
 

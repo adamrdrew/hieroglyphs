@@ -57,4 +57,10 @@ protocol PharaohProviding {
     ///   - count: Maximum number of lines to return (from end of file)
     /// - Returns: Array of log line strings, or empty array if log file does not exist
     func readLogs(from directory: String, count: Int) -> [String]
+
+    /// Reads and parses events from the Pharaoh event stream.
+    ///
+    /// - Parameter directory: Absolute path to the source directory containing .pharaoh/
+    /// - Returns: Array of PharaohEvent objects, or empty array if file does not exist
+    func readEvents(from directory: String) -> [PharaohEvent]
 }
