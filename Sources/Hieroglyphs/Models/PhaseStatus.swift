@@ -6,8 +6,7 @@ import Foundation
 /// progression through the plan-build-review cycle.
 enum PhaseStatus: String, Codable, Equatable, Hashable {
     case planned
-    case active
-    case green
-    case yellow
-    case red
+    case building
+    case review
+    case complete
 }

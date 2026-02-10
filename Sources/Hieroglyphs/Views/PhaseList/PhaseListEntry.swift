@@ -50,14 +50,12 @@ struct PhaseListEntry: View {
         switch phase.status {
         case .planned:
             return "circle"
-        case .active:
+        case .building:
             return "circle.inset.filled"
-        case .green:
+        case .complete:
             return "checkmark.circle.fill"
-        case .yellow:
+        case .review:
             return "exclamationmark.triangle.fill"
-        case .red:
-            return "xmark.circle.fill"
         }
     }
 
@@ -65,14 +63,12 @@ struct PhaseListEntry: View {
         switch phase.status {
         case .planned:
             return .secondary
-        case .active:
+        case .building:
             return .blue
-        case .green:
+        case .complete:
             return .green
-        case .yellow:
+        case .review:
             return .yellow
-        case .red:
-            return .red
         }
     }
 }
