@@ -1766,6 +1766,120 @@ Each step shows:
 - Uses MarkdownUI for rendering intent and review notes
 - Follows CardDetail pattern for empty state and ScrollView layout
 
+## PharaohView
+
+**File:** `Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift`
+
+**Purpose:** Middle-column view for Pharaoh process management and status monitoring.
+
+**Structure:**
+
+PharaohView has two states:
+
+1. **Not Running:** Start button, description text, error display if start failed
+2. **Running:** Status badge, enriched metrics, model picker (idle only), Stop button
+
+**Not Running State:**
+- Large "Start Pharaoh" button with play icon
+- Description text explaining Pharaoh functionality
+- Error banner (orange) if process start failed
+
+**Running State:**
+- Status badge (color-coded: red/green/orange/blue for notRunning/idle/busy/done/blocked)
+- Model picker (segmented): Visible only when idle, options for Opus/Sonnet/Haiku
+- Enriched status display:
+  - **Busy:** Phase name, turns elapsed, running cost ($0.4f), live elapsed time (Text(style: .relative))
+  - **Done:** Phase name, final cost, turns
+  - **Blocked:** Phase name, error message (red banner), final cost, turns
+- Stop button (destructive role, red)
+
+**Auto-Complete Logic:**
+- Tracks `previousStatus` to detect busy → done transition
+- Calls `autoCompletePlan(phase:)` to find matching plan by slug with `inProgress` status
+- Updates plan status to `done` via `viewModel.updatePlanStatus()`
+- Logs completion to console
+
+**Error Alert:**
+- Detects busy → blocked transition
+- Shows alert with title "Phase Failed" and error message
+- Alert dismissed via OK button
+
+**Update Strategy:**
+- Polls status every 2 seconds via `monitorStatus()` async task
+- Status updates trigger auto-completion and error detection
+
+**Notes:**
+- Removed log viewer section (replaced by PharaohActivityStreamView in detail column)
+- Model selection binds to `viewModel.pharaohModel`
+- Process management (start/stop) tied to project's `sourceDirectory`
+
+## PharaohActivityStreamView
+
+**File:** `Sources/Hieroglyphs/Views/Pharaoh/PharaohActivityStreamView.swift`
+
+**Purpose:** Detail-column view displaying real-time Pharaoh event stream.
+
+**Structure:**
+
+1. **Empty State:** ContentUnavailableView with "No Events" message when events array is empty
+2. **Event List:** ScrollView with LazyVStack of PharaohEventRow components
+
+**Event List Implementation:**
+- ScrollViewReader wraps ScrollView for programmatic scrolling
+- LazyVStack contains ForEach(events) rendering PharaohEventRow
+- Color.clear anchor at bottom with id="bottom" for auto-scroll
+- `.onChange(of: events)` triggers auto-scroll to bottom with animation
+
+**Polling Strategy:**
+- Polls events every 2 seconds via `pollEvents()` async task
+- Calls `pharaohService.readEvents(from: sourceDirectory)` to read `.pharaoh/events.jsonl`
+- Updates `events` state on each poll
+- Auto-scroll enabled by default (could be configurable in future)
+
+**Notes:**
+- Navigation title: "Activity"
+- Loads project's `sourceDirectory` from environment
+- Gracefully handles missing file (service returns empty array)
+- LazyVStack for performance with large event streams
+
+## PharaohEventRow
+
+**File:** `Sources/Hieroglyphs/Views/Pharaoh/PharaohEventRow.swift`
+
+**Purpose:** Individual event row displaying timestamp, icon, and summary.
+
+**Structure:**
+
+Two rendering modes:
+
+1. **Standard Event Row:** HStack with timestamp, icon, and summary
+2. **Turn Separator:** VStack with Divider and small "Turn N" label (for turn events)
+
+**Standard Event Layout:**
+- Relative timestamp: `Text(style: .relative)` in caption2 monospaced font, tertiary color, 60pt fixed width, trailing alignment
+- Type icon: SF Symbol in 16pt fixed-width frame, color-coded by event type
+- Summary: Truncated text with font varying by event type (callout or callout.monospaced() or callout.bold())
+
+**Event Type Icons and Colors:**
+- `toolCall`: wrench.fill, accent color, monospaced font
+- `toolProgress`: clock.arrow.circlepath, secondary
+- `toolSummary`: checkmark.circle, green
+- `text`: text.bubble, secondary
+- `turn`: separator (Divider + label, no icon)
+- `status`: info.circle, blue
+- `result`: checkmark.seal.fill, green, bold
+- `error`: exclamationmark.triangle.fill, red, bold
+
+**Turn Event Rendering:**
+- Renders as subtle separator to reduce visual clutter
+- VStack with Divider and small "Turn N" label (caption2, tertiary)
+- No icon or timestamp
+
+**Notes:**
+- Vertical padding: 2pt for standard rows, 4pt for turn separators
+- Summary text limited to single line with tail truncation
+- Icons follow TakeNote SF Symbol patterns
+
 ## Accessibility
 
 **Current State:** Basic accessibility via SwiftUI defaults (labels, semantic elements).

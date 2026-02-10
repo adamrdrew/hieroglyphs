@@ -4,9 +4,9 @@ import Foundation
 enum PharaohStatus: Equatable {
     case notRunning
     case idle
-    case busy(phase: String)
-    case done(phase: String, cost: Double, turns: Int)
-    case blocked(phase: String, error: String)
+    case busy(phase: String, turnsElapsed: Int, runningCostUsd: Double, phaseStarted: Date?)
+    case done(phase: String, costUsd: Double, turns: Int)
+    case blocked(phase: String, error: String, costUsd: Double, turns: Int)
 
     /// Returns true if Pharaoh is running in any state (not notRunning).
     var isRunning: Bool {

@@ -76,18 +76,37 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
 
         case "busy":
             let phase = json["phase"] as? String ?? "unknown"
-            return .busy(phase: phase)
+            let turnsElapsed = json["turnsElapsed"] as? Int ?? 0
+            let runningCostUsd = json["runningCostUsd"] as? Double ?? 0.0
+
+            let phaseStarted: Date?
+            if let phaseStartedString = json["phaseStarted"] as? String {
+                let formatter = ISO8601DateFormatter()
+                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                phaseStarted = formatter.date(from: phaseStartedString)
+            } else {
+                phaseStarted = nil
+            }
+
+            return .busy(
+                phase: phase,
+                turnsElapsed: turnsElapsed,
+                runningCostUsd: runningCostUsd,
+                phaseStarted: phaseStarted
+            )
 
         case "done":
             let phase = json["phase"] as? String ?? "unknown"
-            let cost = json["cost"] as? Double ?? 0.0
+            let costUsd = json["costUsd"] as? Double ?? 0.0
             let turns = json["turns"] as? Int ?? 0
-            return .done(phase: phase, cost: cost, turns: turns)
+            return .done(phase: phase, costUsd: costUsd, turns: turns)
 
         case "blocked":
             let phase = json["phase"] as? String ?? "unknown"
             let error = json["error"] as? String ?? "Unknown error"
-            return .blocked(phase: phase, error: error)
+            let costUsd = json["costUsd"] as? Double ?? 0.0
+            let turns = json["turns"] as? Int ?? 0
+            return .blocked(phase: phase, error: error, costUsd: costUsd, turns: turns)
 
         default:
             return .notRunning
@@ -109,6 +128,22 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
         let lines = content.split(separator: "\n").map(String.init)
         let startIndex = max(0, lines.count - count)
         return Array(lines[startIndex...])
+    }
+
+    func readEvents(from directory: String) -> [PharaohEvent] {
+        let eventsPath = directory + "/.pharaoh/events.jsonl"
+
+        guard FileManager.default.fileExists(atPath: eventsPath) else {
+            return []
+        }
+
+        guard let content = try? String(contentsOf: URL(fileURLWithPath: eventsPath), encoding: .utf8) else {
+            return []
+        }
+
+        return content
+            .split(separator: "\n")
+            .compactMap { PharaohEvent.parse(line: String($0)) }
     }
 
     @objc private func applicationWillTerminate() {

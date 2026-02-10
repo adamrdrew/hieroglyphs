@@ -46,8 +46,8 @@ struct MainWindow: View {
             PlanDetail()
         case .phases:
             PhaseDetail()
-        case .pharaoh:
-            Text("")
+        case .pharaoh(let project):
+            PharaohActivityStreamView(project: project)
         case .none:
             ContentUnavailableView(
                 "Select a Project",

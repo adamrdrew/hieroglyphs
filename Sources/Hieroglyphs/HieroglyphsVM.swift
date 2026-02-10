@@ -74,6 +74,8 @@ final class HieroglyphsVM {
     var showingNewCardSheet: Bool = false
     var focusSearch: Bool = false
 
+    var pharaohModel: String = "opus"
+
     private let workspaceService: WorkspaceProviding
     private let fileWatcher: FileWatching?
     private let tagReconciler: TagReconciling?
@@ -565,7 +567,7 @@ final class HieroglyphsVM {
         let frontmatter = """
         ---
         phase: \(plan.slug)
-        model: opus
+        model: \(pharaohModel)
         ---
 
         \(plan.phasePrompt)

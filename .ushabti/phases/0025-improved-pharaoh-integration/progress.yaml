@@ -1,0 +1,120 @@
+phase:
+  id: 0025
+  slug: improved-pharaoh-integration
+  title: Improved Pharaoh Integration
+  status: complete
+
+steps:
+  - id: S001
+    title: Update PharaohStatus enum with enriched fields
+    implemented: true
+    reviewed: true
+    notes: "Updated enum cases with new associated values: busy includes turnsElapsed/runningCostUsd/phaseStarted, done uses costUsd instead of cost, blocked includes costUsd and turns"
+    touched:
+      - Sources/Hieroglyphs/Models/PharaohStatus.swift
+
+  - id: S002
+    title: Update PharaohService.readStatus() to parse enriched JSON
+    implemented: true
+    reviewed: true
+    notes: "Updated readStatus to parse turnsElapsed, runningCostUsd, phaseStarted (ISO8601 with fractional seconds), costUsd, and turns from JSON. All fields have sensible defaults if missing."
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S003
+    title: Refactor PharaohView to display enriched status
+    implemented: true
+    reviewed: true
+    notes: "Removed log viewer section. Updated busy state to display turns elapsed, running cost ($0.4f format), and live elapsed time via Text(style: .relative). Updated done and blocked states to display costUsd and turns."
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+
+  - id: S004
+    title: Create PharaohEvent model with JSON parsing
+    implemented: true
+    reviewed: true
+    notes: "Created PharaohEvent struct with id, timestamp, type, summary, detailJson. Defined PharaohEventType enum with all event type cases. Implemented static parse(line:) method with ISO8601 date parsing and graceful failure on malformed lines."
+    touched:
+      - Sources/Hieroglyphs/Models/PharaohEvent.swift
+
+  - id: S005
+    title: Add readEvents method to PharaohService
+    implemented: true
+    reviewed: true
+    notes: "Added readEvents(from:) to PharaohProviding protocol. Implemented method in PharaohService to read events.jsonl, split on newline, and compactMap with PharaohEvent.parse. Returns empty array if file missing."
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohProviding.swift
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S006
+    title: Create PharaohEventRow view
+    implemented: true
+    reviewed: true
+    notes: "Created PharaohEventRow with relative timestamp, type icon, and summary. Turn events render as separators with Divider and small label. Icons and colors mapped to event types as specified."
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohEventRow.swift
+
+  - id: S007
+    title: Create PharaohActivityStreamView
+    implemented: true
+    reviewed: true
+    notes: "Created PharaohActivityStreamView with empty state, ScrollViewReader with LazyVStack, polling every 2 seconds, auto-scroll to bottom on events change. Navigation title set to 'Activity'."
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohActivityStreamView.swift
+
+  - id: S008
+    title: Wire PharaohActivityStreamView to MainWindow detail column
+    implemented: true
+    reviewed: true
+    notes: "Updated MainWindow detailColumnContent to show PharaohActivityStreamView(project:) for .pharaoh case instead of empty Text."
+    touched:
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+
+  - id: S009
+    title: Implement auto-complete plan on success
+    implemented: true
+    reviewed: true
+    notes: "Added previousStatus state. Updated updateStatus() to detect busy→done transition and call autoCompletePlan(). Implemented autoCompletePlan() to find matching plan by slug with inProgress status and call viewModel.updatePlanStatus to done. Logs completion to console."
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+
+  - id: S010
+    title: Surface Pharaoh errors with alert
+    implemented: true
+    reviewed: true
+    notes: "Added showErrorAlert and errorMessage state. Updated updateStatus() to detect busy→blocked transition and set error message and show alert. Added alert modifier to view with title 'Phase Failed' and OK button."
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+
+  - id: S011
+    title: Add model selection to PharaohView
+    implemented: true
+    reviewed: true
+    notes: "Added pharaohModel property to HieroglyphsVM (String, defaults to 'opus'). Updated dispatchPlan() to use pharaohModel in frontmatter. Added segmented picker to PharaohView visible when status.isIdle with opus/sonnet/haiku options."
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+
+  - id: S012
+    title: Update PharaohServiceTests for enriched status and events
+    implemented: true
+    reviewed: true
+    notes: "Updated existing status tests to verify new enum shapes (turnsElapsed, runningCostUsd, phaseStarted, costUsd, turns). Added five new tests for readEvents: missing file, empty file, malformed lines, detail JSON, and all event types."
+    touched:
+      - Tests/HieroglyphsTests/PharaohServiceTests.swift
+
+  - id: S013
+    title: Update documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated pharaoh-integration.md with enriched PharaohStatus shapes, event stream architecture, PharaohEvent/PharaohActivityStreamView/PharaohEventRow descriptions, auto-completion flow, error surfacing, and model selection. Updated views-ui.md with PharaohView, PharaohActivityStreamView, and PharaohEventRow entries."
+    touched:
+      - .ushabti/docs/pharaoh-integration.md
+      - .ushabti/docs/views-ui.md
+
+  - id: S014
+    title: Build verification
+    implemented: true
+    reviewed: true
+    notes: "swift build completed successfully with no errors. Only unrelated warning about AppIcon.icon/icon.json being unhandled."
+    touched: []

@@ -6,8 +6,10 @@ struct PharaohView: View {
     @Environment(\.pharaohService) private var pharaohService
     @Environment(HieroglyphsVM.self) private var viewModel
     @State private var status: PharaohStatus = .notRunning
-    @State private var logs: [String] = []
+    @State private var previousStatus: PharaohStatus = .notRunning
     @State private var startError: String?
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
 
     var body: some View {
         ScrollView {
@@ -23,6 +25,11 @@ struct PharaohView: View {
         .navigationTitle("Pharaoh")
         .task {
             await monitorStatus()
+        }
+        .alert("Phase Failed", isPresented: $showErrorAlert) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
         }
     }
 
@@ -68,17 +75,45 @@ struct PharaohView: View {
                 statusBadge
             }
 
-            if case .busy(let phase) = status {
-                phaseInfoRow(label: "Phase", value: phase)
+            if status.isIdle {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Model")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    @Bindable var bindableViewModel = viewModel
+                    Picker("Model", selection: $bindableViewModel.pharaohModel) {
+                        Text("Opus").tag("opus")
+                        Text("Sonnet").tag("sonnet")
+                        Text("Haiku").tag("haiku")
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                }
             }
 
-            if case .done(let phase, let cost, let turns) = status {
+            if case .busy(let phase, let turnsElapsed, let runningCostUsd, let phaseStarted) = status {
                 phaseInfoRow(label: "Phase", value: phase)
-                phaseInfoRow(label: "Cost", value: String(format: "$%.2f", cost))
+                phaseInfoRow(label: "Turns", value: "\(turnsElapsed)")
+                phaseInfoRow(label: "Running Cost", value: String(format: "$%.4f", runningCostUsd))
+
+                if let phaseStarted = phaseStarted {
+                    HStack {
+                        Text("Elapsed:")
+                            .foregroundStyle(.secondary)
+                        Text(phaseStarted, style: .relative)
+                            .fontWeight(.medium)
+                    }
+                }
+            }
+
+            if case .done(let phase, let costUsd, let turns) = status {
+                phaseInfoRow(label: "Phase", value: phase)
+                phaseInfoRow(label: "Cost", value: String(format: "$%.4f", costUsd))
                 phaseInfoRow(label: "Turns", value: "\(turns)")
             }
 
-            if case .blocked(let phase, let error) = status {
+            if case .blocked(let phase, let error, let costUsd, let turns) = status {
                 phaseInfoRow(label: "Phase", value: phase)
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -92,11 +127,10 @@ struct PharaohView: View {
                         .background(Color.red.opacity(0.1))
                         .cornerRadius(8)
                 }
+
+                phaseInfoRow(label: "Cost", value: String(format: "$%.4f", costUsd))
+                phaseInfoRow(label: "Turns", value: "\(turns)")
             }
-
-            Divider()
-
-            logViewerSection
 
             Divider()
 
@@ -148,29 +182,6 @@ struct PharaohView: View {
         }
     }
 
-    @ViewBuilder
-    private var logViewerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Logs")
-                .font(.headline)
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(logs, id: \.self) { line in
-                        Text(line)
-                            .font(.caption.monospaced())
-                            .textSelection(.enabled)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(height: 300)
-            .padding()
-            .background(Color.secondary.opacity(0.05))
-            .cornerRadius(8)
-        }
-    }
-
     private func startPharaoh() {
         guard let sourceDirectory = project.sourceDirectory,
               let service = pharaohService else {
@@ -189,7 +200,6 @@ struct PharaohView: View {
     private func stopPharaoh() {
         pharaohService?.stop()
         status = .notRunning
-        logs = []
     }
 
     private func updateStatus() {
@@ -199,11 +209,30 @@ struct PharaohView: View {
             return
         }
 
-        status = service.readStatus(from: sourceDirectory)
+        let newStatus = service.readStatus(from: sourceDirectory)
 
-        if status.isRunning {
-            logs = service.readLogs(from: sourceDirectory, count: 50)
+        if case .busy = previousStatus, case .done(let phase, _, _) = newStatus {
+            autoCompletePlan(phase: phase)
         }
+
+        if case .busy = previousStatus, case .blocked(_, let error, _, _) = newStatus {
+            errorMessage = error
+            showErrorAlert = true
+        }
+
+        previousStatus = status
+        status = newStatus
+    }
+
+    private func autoCompletePlan(phase: String) {
+        guard let matchingPlan = viewModel.plans.first(where: {
+            $0.slug == phase && $0.status == .inProgress
+        }) else {
+            return
+        }
+
+        viewModel.updatePlanStatus(plan: matchingPlan, status: .done)
+        print("[Hieroglyphs] Auto-completed plan: \(phase)")
     }
 
     private func monitorStatus() async {
