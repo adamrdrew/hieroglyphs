@@ -1988,7 +1988,7 @@ extension HieroglyphsVMTests {
             number: 2,
             slug: "0002-second-phase",
             title: "Second Phase",
-            status: .active,
+            status: .building,
             intent: "Intent 2",
             steps: [],
             reviewNotes: ""
@@ -2051,7 +2051,7 @@ extension HieroglyphsVMTests {
             number: 2,
             slug: "0002-second-phase",
             title: "Second Phase",
-            status: .active,
+            status: .building,
             intent: "Intent 2",
             steps: [],
             reviewNotes: ""
@@ -2115,7 +2115,7 @@ extension HieroglyphsVMTests {
             number: 2,
             slug: "0002-second-phase",
             title: "Second Phase",
-            status: .active,
+            status: .building,
             intent: "Intent 2",
             steps: [],
             reviewNotes: ""

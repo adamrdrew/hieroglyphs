@@ -229,4 +229,23 @@ final class PharaohServiceTests: XCTestCase {
         XCTAssertEqual(events[6].type, .result)
         XCTAssertEqual(events[7].type, .error)
     }
+
+    func testStartThrowsErrorWhenDirectoryDoesNotExist() {
+        let nonexistentPath = "/nonexistent/path/\(UUID().uuidString)"
+        XCTAssertThrowsError(try service.start(in: nonexistentPath, model: "opus")) { error in
+            guard case PharaohError.directoryNotFound(let path) = error else {
+                XCTFail("Expected directoryNotFound error")
+                return
+            }
+            XCTAssertEqual(path, nonexistentPath)
+        }
+    }
+
+    func testStartAcceptsModelParameter() throws {
+        XCTAssertNoThrow(try service.start(in: tempDirectory.path, model: "opus"))
+        service.stop()
+        XCTAssertNoThrow(try service.start(in: tempDirectory.path, model: "sonnet"))
+        service.stop()
+        XCTAssertNoThrow(try service.start(in: tempDirectory.path, model: "haiku"))
+    }
 }

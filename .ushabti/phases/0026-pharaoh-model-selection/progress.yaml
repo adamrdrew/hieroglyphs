@@ -1,0 +1,64 @@
+phase:
+  id: 0026
+  slug: pharaoh-model-selection
+  title: Pharaoh Model Selection at Start
+  status: complete
+
+steps:
+  - id: S001
+    title: Update PharaohProviding protocol
+    implemented: true
+    reviewed: true
+    notes: "Updated protocol signature to start(in:model:) with documentation"
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohProviding.swift
+  - id: S002
+    title: Update PharaohService implementation
+    implemented: true
+    reviewed: true
+    notes: Updated start method to accept model parameter and include --model flag in process arguments
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+  - id: S003
+    title: Move model picker to not-running state
+    implemented: true
+    reviewed: true
+    notes: Moved model picker from runningStateView to notRunningStateView
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+  - id: S004
+    title: Wire model selection through to service
+    implemented: true
+    reviewed: true
+    notes: Updated startPharaoh() to pass viewModel.pharaohModel to service.start()
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+  - id: S005
+    title: Update PharaohService tests
+    implemented: true
+    reviewed: true
+    notes: "Added tests for start(in:model:) signature including error handling and model parameter acceptance"
+    touched:
+      - Tests/HieroglyphsTests/PharaohServiceTests.swift
+  - id: S006
+    title: Fix pre-existing test failures
+    implemented: true
+    reviewed: true
+    notes: "Fixed PhaseStatus enum references in tests to use current values (building instead of active, complete instead of green, review instead of yellow/red)"
+    touched:
+      - Tests/HieroglyphsTests/PhaseServiceTests.swift
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+  - id: S007
+    title: Run full test suite
+    implemented: true
+    reviewed: true
+    notes: "All 243 tests passing, build successful"
+    touched:
+      - Tests/HieroglyphsTests/PhaseServiceTests.swift
+  - id: S008
+    title: Update pharaoh-integration.md to reflect model picker relocation and service signature change
+    implemented: true
+    reviewed: true
+    notes: "Updated pharaoh-integration.md: fixed service method signature (line 44), removed idle-state picker reference (line 167), updated Model Selection section (lines 235-251), and fixed process start docs (line 278)"
+    touched:
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/pharaoh-integration.md

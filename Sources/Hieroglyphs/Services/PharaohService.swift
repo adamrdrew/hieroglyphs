@@ -19,7 +19,7 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
         stop()
     }
 
-    func start(in directory: String) throws {
+    func start(in directory: String, model: String) throws {
         let directoryURL = URL(fileURLWithPath: directory)
         guard FileManager.default.fileExists(atPath: directory) else {
             throw PharaohError.directoryNotFound(directory)
@@ -27,7 +27,7 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = ["-l", "-c", "npx @adamrdrew/pharaoh serve"]
+        process.arguments = ["-l", "-c", "npx @adamrdrew/pharaoh serve --model \(model)"]
         process.currentDirectoryURL = directoryURL
 
         process.terminationHandler = { [weak self] _ in

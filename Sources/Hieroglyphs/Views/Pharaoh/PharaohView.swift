@@ -42,6 +42,21 @@ struct PharaohView: View {
             Text("Pharaoh executes Ushabti development phases automatically. Start the server to enable plan dispatch and phase execution.")
                 .foregroundStyle(.secondary)
 
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Model")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                @Bindable var bindableViewModel = viewModel
+                Picker("Model", selection: $bindableViewModel.pharaohModel) {
+                    Text("Opus").tag("opus")
+                    Text("Sonnet").tag("sonnet")
+                    Text("Haiku").tag("haiku")
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+
             if let error = startError {
                 HStack {
                     Image(systemName: "exclamationmark.triangle")
@@ -73,23 +88,6 @@ struct PharaohView: View {
                 Spacer()
 
                 statusBadge
-            }
-
-            if status.isIdle {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Model")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    @Bindable var bindableViewModel = viewModel
-                    Picker("Model", selection: $bindableViewModel.pharaohModel) {
-                        Text("Opus").tag("opus")
-                        Text("Sonnet").tag("sonnet")
-                        Text("Haiku").tag("haiku")
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                }
             }
 
             if case .busy(let phase, let turnsElapsed, let runningCostUsd, let phaseStarted) = status {
@@ -190,7 +188,7 @@ struct PharaohView: View {
         }
 
         do {
-            try service.start(in: sourceDirectory)
+            try service.start(in: sourceDirectory, model: viewModel.pharaohModel)
             startError = nil
         } catch {
             startError = error.localizedDescription

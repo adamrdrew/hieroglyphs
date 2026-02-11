@@ -41,7 +41,7 @@ enum PharaohStatus: Equatable {
 Protocol-based service for Pharaoh process management and status reading.
 
 **Methods:**
-- `start(in directory: String) throws` — Spawns Pharaoh process via `Foundation.Process` with shell profile sourcing
+- `start(in directory: String, model: String) throws` — Spawns Pharaoh process via `Foundation.Process` with shell profile sourcing
 - `stop()` — Terminates running process
 - `readStatus(from directory: String) -> PharaohStatus` — Reads and decodes `.pharaoh/pharaoh.json`
 - `readLogs(from directory: String, count: Int) -> [String]` — Returns last N lines from `.pharaoh/pharaoh.log`
@@ -160,11 +160,11 @@ Full-screen view for Pharaoh management shown as middle column content:
 **Not Running State:**
 - "Start Pharaoh" button
 - Description text explaining Pharaoh functionality
+- Model picker (segmented): Opus/Sonnet/Haiku — selection passed to `--model` flag on start
 - Error display if process start failed
 
 **Running State:**
 - Status badge with color-coded state (idle/busy/done/blocked)
-- Model picker (segmented, visible only when idle): Opus/Sonnet/Haiku
 - Phase name and enriched metrics (for busy/done/blocked states):
   - Busy: Turns elapsed, running cost ($0.4f), live elapsed time (Text(style: .relative))
   - Done: Final cost, turns
@@ -235,14 +235,18 @@ Play button in toolbar with `canDispatch` conditions:
 ### Model Selection
 
 **UI Integration:**
-- Segmented picker in PharaohView (visible only when Pharaoh is idle)
+- Segmented picker in PharaohView (visible only when Pharaoh is not running)
 - Three options: Opus (default), Sonnet, Haiku
 - Binds to `viewModel.pharaohModel`
+
+**Process Start Integration:**
+- Selected model passed to `PharaohService.start(in:model:)` which includes `--model <model>` in process arguments
+- Model selection must be made before starting Pharaoh (cannot change mid-session)
+- Model preference not persisted across app launches (defaults to opus)
 
 **Dispatch Integration:**
 - `dispatchPlan()` uses `pharaohModel` value in frontmatter instead of hardcoded "opus"
 - Model selection applies to next dispatch only (no effect on running execution)
-- Model preference not persisted across app launches (defaults to opus)
 
 ### Plan Status Changes
 
@@ -275,9 +279,9 @@ enum PlanStatus: String, Codable, CaseIterable {
 **User Action:** Click "Start Pharaoh" in PharaohView
 
 **Process:**
-1. `PharaohService.start(in: sourceDirectory)` called
+1. `PharaohService.start(in: sourceDirectory, model: selectedModel)` called with user's model selection
 2. Creates `Process` instance
-3. Sets executable to `/bin/zsh`, arguments to `["-l", "-c", "npx @adamrdrew/pharaoh serve"]`
+3. Sets executable to `/bin/zsh`, arguments to `["-l", "-c", "npx @adamrdrew/pharaoh serve --model \(model)"]`
 4. Sets `currentDirectoryURL` to `sourceDirectory`
 5. Registers `terminationHandler` to update UI on exit
 6. Calls `process.run()` to spawn child process

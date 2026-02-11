@@ -199,10 +199,9 @@ final class PhaseServiceTests: XCTestCase {
     func testLoadPhasesParsesAllStatusValues() throws {
         let statusCases: [(String, PhaseStatus)] = [
             ("planned", .planned),
-            ("active", .active),
-            ("green", .green),
-            ("yellow", .yellow),
-            ("red", .red)
+            ("building", .building),
+            ("review", .review),
+            ("complete", .complete)
         ]
 
         for (index, statusCase) in statusCases.enumerated() {
@@ -215,7 +214,7 @@ final class PhaseServiceTests: XCTestCase {
         }
 
         let phases = try service.loadPhases(from: sourceDirectory.path)
-        XCTAssertEqual(phases.count, 5)
+        XCTAssertEqual(phases.count, 4)
 
         for (index, statusCase) in statusCases.enumerated() {
             XCTAssertEqual(phases[index].status, statusCase.1)

@@ -32,12 +32,14 @@ enum PharaohError: Error, LocalizedError {
 
 /// Protocol defining Pharaoh process management and status reading capabilities.
 protocol PharaohProviding {
-    /// Starts the Pharaoh server process in the specified directory.
+    /// Starts the Pharaoh server process in the specified directory with the specified model.
     ///
-    /// - Parameter directory: Absolute path to the source directory containing .pharaoh/
+    /// - Parameters:
+    ///   - directory: Absolute path to the source directory containing .pharaoh/
+    ///   - model: The Claude model to use (e.g., "opus", "sonnet", "haiku")
     /// - Throws: PharaohError.processStartFailed if the process fails to start
     /// - Throws: PharaohError.directoryNotFound if the directory does not exist
-    func start(in directory: String) throws
+    func start(in directory: String, model: String) throws
 
     /// Stops the currently running Pharaoh server process.
     ///
