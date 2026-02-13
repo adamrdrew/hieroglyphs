@@ -139,3 +139,11 @@ These laws define the non-negotiable invariants for Hieroglyphs. Every phase, im
 - **Enforcement:** Verify that Overseer blocks GREEN status if docs are not reconciled. Verify that progress.yaml includes doc reconciliation as a completion criterion.
 - **Scope:** All phases, Overseer review process
 - **Exceptions:** None
+
+### L17 — UI State Correctness
+
+- **Rule:** Views MUST always reflect current application state. When context changes — project selection, navigation, tab switching — all affected views MUST update to reflect the new context immediately. Views MUST NOT display stale content from a previous selection. Async operations MUST provide visual feedback (progress indication) and MUST surface errors visibly. Timer-driven or polling-driven views MUST NOT trigger redraws when content has not changed.
+- **Rationale:** Hieroglyphs is a GUI application. Code that compiles, passes tests, and follows SOLID principles can still produce a broken user experience. Stale views, missing loading states, silent failures, and unnecessary redraws are defects — they erode user trust and make the app feel unreliable. UI state correctness is not cosmetic; it is functional correctness.
+- **Enforcement:** Verify that views bound to a selection reset when that selection changes (via `.id()`, `onChange(of:)`, or equivalent). Verify that async operations show a `ProgressView` or equivalent while in progress and an alert or visible error on failure. Verify that polling-driven views compare content before triggering updates (content hash, equality check, or count comparison). Verify that modals and sheets have constrained dimensions — content scrolls, the container does not grow unboundedly.
+- **Scope:** All UI code
+- **Exceptions:** None

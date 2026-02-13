@@ -201,15 +201,29 @@ viewModel.createProject(
 
 **Signature:** `func selectSection(_ section: SidebarSection?)`
 
-**Purpose:** Update selected section state.
+**Purpose:** Update selected section state and manage detail selections when project or section type changes.
 
 **Parameters:**
 - `section` — The section to select (nil to deselect)
 
 **Behavior:**
 
-1. Set `self.selectedSection = section`
-2. Computed `selectedProject` property automatically reflects the associated project
+1. Capture current `selectedProject` (extracted from current `selectedSection`)
+2. Set `self.selectedSection = section`
+3. Extract new `selectedProject` from new `selectedSection`
+4. If project changed (old project ID ≠ new project ID):
+   - Clear all detail selections (`selectedCard`, `selectedPlan`, `selectedPhase`)
+   - Return (skip cross-section clearing)
+5. If only section type changed within same project:
+   - Clear cross-section selections (e.g., switching from Cards to Plans clears `selectedCard` and `selectedPhase`)
+
+**Project Change Detection:**
+
+When the user switches from one project to another (e.g., Project A's Cards → Project B's Cards), the method detects the project change and clears all detail selections to prevent stale content from appearing in the detail column.
+
+**Cross-Section Clearing:**
+
+When switching between section types within the same project (e.g., Cards → Plans), only incompatible selections are cleared. This ensures the detail column shows content appropriate to the current section type.
 
 **Usage:**
 
@@ -224,10 +238,10 @@ List(selection: $bindableViewModel.selectedSection) {
 SwiftUI automatically calls `selectSection(_:)` when user clicks a section row.
 
 **Notes:**
-- This is a simple setter with no side effects
+- Project change clearing prevents stale content bugs when switching projects
+- Cross-section clearing ensures detail column consistency
 - Selection state is ephemeral (not persisted across app launches)
-- Computed `selectedProject` extracts project from any section case (cards, plans, or phases)
-- Future phases may persist selection to UserDefaults
+- Combined with `.id()` modifiers in MainWindow, ensures views reset completely on project change
 
 ### loadCards()
 
@@ -279,28 +293,23 @@ Called automatically when selected project changes via `.onChange` modifier in `
 
 **Signature:** `func loadPlans()`
 
-**Purpose:** Load plans from the selected project's plans directory and preserve selection across reloads.
-
-**Selection Preservation:**
-
-When plans reload (triggered by FSEvents watching the project directory), the selected plan must remain selected so the detail view continues showing the updated content without flickering or clearing.
-
-**Pattern:**
-1. Capture `selectedPlan?.slug` before loading
-2. Load plans from disk via PlanService
-3. Update `self.plans` array (old instances replaced)
-4. Find plan with matching slug in newly loaded array
-5. Restore `selectedPlan` to new instance if found, nil if not found
+**Purpose:** Load plans from the selected project's plans directory.
 
 **Behavior:**
-- Selection preserved when plan exists after reload
-- Selection cleared when plan deleted externally
-- Nil selection remains nil after reload
-- Uses slug as stable identifier across reloads
 
-**Rationale:**
+1. Guard check `selectedProject` is not nil (sets plans to empty array and returns if nil)
+2. Guard check `workspacePath` is not nil (logs error, sets plans to empty array, and returns if nil)
+3. Guard check `planService` is not nil (logs error, sets plans to empty array, and returns if nil)
+4. Call `planService.loadPlans(projectPath:)` to load all plans
+5. Update `self.plans` with loaded plans
+6. Clear `selectedPlan` if the selected plan no longer exists in the loaded array
+7. If loading throws, catch error, log to console, and set `plans` to empty array
 
-SwiftUI selection binding relies on object identity. When `plans` array is replaced, old Plan instances no longer exist in the new array. Without explicit restoration, selection breaks without triggering view updates, leaving stale content in the detail view.
+**Selection Clearing:**
+
+When plans reload (triggered by FSEvents watching the project directory), the selection is cleared if the selected plan was deleted externally. This ensures the detail view shows an empty state rather than stale content from a deleted plan.
+
+Selection is NOT preserved across reloads. When the project changes (handled by `selectSection(_:)`), all detail selections are cleared. Within the same project, selection is maintained by SwiftUI's identity system unless the item is deleted.
 
 **Error Handling:**
 
@@ -320,7 +329,7 @@ Called automatically when selected project changes and when plan files change ex
 **Notes:**
 - Reloads all plans from disk on every call (no caching)
 - Empty array when no project selected or on error
-- Selection preservation prevents UI flicker on external changes
+- Selection cleared only when plan no longer exists (deletion case)
 
 ### dispatchPlan()
 
@@ -363,32 +372,23 @@ Called from PlanDetail toolbar dispatch button after user confirms via alert dia
 
 **Signature:** `func loadPhases()`
 
-**Purpose:** Load phases from the selected project's sourceDirectory and preserve selection across reloads.
-
-**Selection Preservation:**
-
-When phases reload (triggered by FSEvents watching `.ushabti/phases/` directory), the selected phase must remain selected so the detail view continues showing the updated content without flickering or clearing.
-
-**Pattern:**
-1. Capture `selectedPhase?.slug` before loading
-2. Load phases from disk via PhaseService
-3. Update `self.phases` array (old instances replaced)
-4. Find phase with matching slug in newly loaded array
-5. Restore `selectedPhase` to new instance if found, nil if not found
+**Purpose:** Load phases from the selected project's sourceDirectory.
 
 **Behavior:**
-- Selection preserved when phase exists after reload
-- Selection cleared when phase deleted externally
-- Nil selection remains nil after reload
-- Uses slug as stable identifier across reloads
 
-**Rationale:**
+1. Guard check `selectedProject` is not nil (sets phases to empty array and returns if nil)
+2. Guard check `sourceDirectory` is set (sets phases to empty array and returns if nil)
+3. Guard check `phaseService` is not nil (logs error, sets phases to empty array, and returns if nil)
+4. Call `phaseService.loadPhases(from:)` to load all phases
+5. Update `self.phases` with loaded phases
+6. Clear `selectedPhase` if the selected phase no longer exists in the loaded array
+7. If loading throws, catch error, log to console, and set `phases` to empty array
 
-SwiftUI selection binding relies on object identity. When `phases` array is replaced, old Phase instances no longer exist in the new array. Without explicit restoration, selection breaks without triggering view updates, leaving stale content in the detail view.
+**Selection Clearing:**
 
-**Pattern Consistency:**
+When phases reload (triggered by FSEvents watching `.ushabti/phases/` directory), the selection is cleared if the selected phase was deleted externally. This ensures the detail view shows an empty state rather than stale content from a deleted phase.
 
-This pattern matches `loadPlans()` selection preservation (lines 342-350 in HieroglyphsVM.swift). Both use slug as stable identifier to match entities across reloads.
+Selection is NOT preserved across reloads. When the project changes (handled by `selectSection(_:)`), all detail selections are cleared. Within the same project, selection is maintained by SwiftUI's identity system unless the item is deleted.
 
 **Error Handling:**
 
@@ -416,7 +416,7 @@ private func handlePhaseFileChange(url: URL) {
 **Notes:**
 - Reloads all phases from disk on every call (no caching)
 - Empty array when no project selected, no sourceDirectory, or on error
-- Selection preservation prevents UI flicker when Ushabti agents update phase files
+- Selection cleared only when phase no longer exists (deletion case)
 - Only loads phases when selectedProject has sourceDirectory configured
 
 ### createCard(title:type:status:priority:tags:body:)
