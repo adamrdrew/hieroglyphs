@@ -1,0 +1,101 @@
+phase:
+  id: 0027
+  slug: improve-pharaoh-reporting
+  title: Improve Pharaoh Reporting
+  status: complete
+
+steps:
+  - id: S001
+    title: Create PharaohServerInfo model
+    implemented: true
+    reviewed: true
+    notes: "Created PharaohServerInfo model with parse method using camelCase keys (pharaohVersion, ushabtiVersion, phasesCompleted)"
+    touched:
+      - Sources/Hieroglyphs/Models/PharaohServerInfo.swift
+
+  - id: S002
+    title: Extend PharaohProviding protocol with readServerInfo method
+    implemented: true
+    reviewed: true
+    notes: Added readServerInfo method signature to PharaohProviding protocol
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohProviding.swift
+
+  - id: S003
+    title: Implement readServerInfo in PharaohService
+    implemented: true
+    reviewed: true
+    notes: Implemented readServerInfo in PharaohService to read and parse pharaoh.json
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S004
+    title: Add typed detail properties to PharaohEvent
+    implemented: true
+    reviewed: true
+    notes: Added 8 typed detail properties to PharaohEvent with generic parseDetailField helper method
+    touched:
+      - Sources/Hieroglyphs/Models/PharaohEvent.swift
+
+  - id: S005
+    title: Add hasDetail computed property to PharaohEvent
+    implemented: true
+    reviewed: true
+    notes: Added hasDetail computed property to PharaohEvent
+    touched:
+      - Sources/Hieroglyphs/Models/PharaohEvent.swift
+
+  - id: S006
+    title: Create PharaohEventDetailView component
+    implemented: true
+    reviewed: true
+    notes: Created PharaohEventDetailView with expandable disclosure showing type-specific detail data
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohEventDetailView.swift
+
+  - id: S007
+    title: Integrate PharaohEventDetailView into PharaohEventRow
+    implemented: true
+    reviewed: true
+    notes: "Integrated PharaohEventDetailView into PharaohEventRow, showing expandable detail when hasDetail is true"
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohEventRow.swift
+
+  - id: S008
+    title: Add server info display to PharaohView
+    implemented: true
+    reviewed: true
+    notes: "Added server info state and display section to PharaohView showing version, model, cwd, PID, started time, and phases completed"
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+
+  - id: S009
+    title: Write tests for PharaohServerInfo parsing
+    implemented: true
+    reviewed: true
+    notes: "Added four tests for PharaohServerInfo parsing covering valid JSON, missing file, malformed JSON, and missing fields"
+    touched:
+      - Tests/HieroglyphsTests/PharaohServiceTests.swift
+
+  - id: S010
+    title: Write tests for PharaohEvent detail properties
+    implemented: true
+    reviewed: true
+    notes: "Added six tests for PharaohEvent detail properties covering tool_call, turn, text, result, malformed JSON, and hasDetail"
+    touched:
+      - Tests/HieroglyphsTests/PharaohServiceTests.swift
+
+  - id: S011
+    title: Reconcile pharaoh-integration.md documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated pharaoh-integration.md to document PharaohServerInfo, event detail properties, PharaohEventDetailView, and updated PharaohView and testing sections"
+    touched:
+      - .ushabti/docs/pharaoh-integration.md
+
+  - id: S012
+    title: Run tests and verify build
+    implemented: true
+    reviewed: true
+    notes: All 253 tests pass and project builds successfully
+    touched: []

@@ -248,4 +248,168 @@ final class PharaohServiceTests: XCTestCase {
         service.stop()
         XCTAssertNoThrow(try service.start(in: tempDirectory.path, model: "haiku"))
     }
+
+    func testReadServerInfoReturnsValidDataWhenFileIsValid() throws {
+        let pharaohDir = tempDirectory.appendingPathComponent(".pharaoh")
+        try FileManager.default.createDirectory(at: pharaohDir, withIntermediateDirectories: true)
+
+        let serverInfoFile = pharaohDir.appendingPathComponent("pharaoh.json")
+        let json = """
+        {
+            "status": "idle",
+            "pid": 12345,
+            "started": "2024-01-01T12:00:00.000Z",
+            "pharaohVersion": "1.0.0",
+            "ushabtiVersion": "2.0.0",
+            "model": "opus",
+            "cwd": "/test/directory",
+            "phasesCompleted": 5
+        }
+        """
+        try json.write(to: serverInfoFile, atomically: true, encoding: .utf8)
+
+        let serverInfo = service.readServerInfo(from: tempDirectory.path)
+        XCTAssertNotNil(serverInfo)
+        XCTAssertEqual(serverInfo?.status, "idle")
+        XCTAssertEqual(serverInfo?.pid, 12345)
+        XCTAssertEqual(serverInfo?.pharaohVersion, "1.0.0")
+        XCTAssertEqual(serverInfo?.ushabtiVersion, "2.0.0")
+        XCTAssertEqual(serverInfo?.model, "opus")
+        XCTAssertEqual(serverInfo?.cwd, "/test/directory")
+        XCTAssertEqual(serverInfo?.phasesCompleted, 5)
+        XCTAssertNotNil(serverInfo?.started)
+    }
+
+    func testReadServerInfoReturnsNilWhenFileDoesNotExist() {
+        let serverInfo = service.readServerInfo(from: tempDirectory.path)
+        XCTAssertNil(serverInfo)
+    }
+
+    func testReadServerInfoReturnsNilWhenJSONIsMalformed() throws {
+        let pharaohDir = tempDirectory.appendingPathComponent(".pharaoh")
+        try FileManager.default.createDirectory(at: pharaohDir, withIntermediateDirectories: true)
+
+        let serverInfoFile = pharaohDir.appendingPathComponent("pharaoh.json")
+        let malformedJson = "not valid json"
+        try malformedJson.write(to: serverInfoFile, atomically: true, encoding: .utf8)
+
+        let serverInfo = service.readServerInfo(from: tempDirectory.path)
+        XCTAssertNil(serverInfo)
+    }
+
+    func testReadServerInfoReturnsNilWhenRequiredFieldsAreMissing() throws {
+        let pharaohDir = tempDirectory.appendingPathComponent(".pharaoh")
+        try FileManager.default.createDirectory(at: pharaohDir, withIntermediateDirectories: true)
+
+        let serverInfoFile = pharaohDir.appendingPathComponent("pharaoh.json")
+        let incompleteJson = """
+        {
+            "status": "idle",
+            "pid": 12345
+        }
+        """
+        try incompleteJson.write(to: serverInfoFile, atomically: true, encoding: .utf8)
+
+        let serverInfo = service.readServerInfo(from: tempDirectory.path)
+        XCTAssertNil(serverInfo)
+    }
+
+    func testEventDetailParsingToolCall() {
+        let detailJson = """
+        {"tool_name": "Bash", "input": "ls -la"}
+        """
+        let event = PharaohEvent(
+            timestamp: Date(),
+            type: .toolCall,
+            summary: "Test",
+            detailJson: detailJson
+        )
+
+        XCTAssertEqual(event.toolName, "Bash")
+        XCTAssertEqual(event.toolInput, "ls -la")
+    }
+
+    func testEventDetailParsingTurn() {
+        let detailJson = """
+        {"turn": 3, "input_tokens": 1000, "output_tokens": 500}
+        """
+        let event = PharaohEvent(
+            timestamp: Date(),
+            type: .turn,
+            summary: "Test",
+            detailJson: detailJson
+        )
+
+        XCTAssertEqual(event.turnNumber, 3)
+        XCTAssertEqual(event.inputTokens, 1000)
+        XCTAssertEqual(event.outputTokens, 500)
+    }
+
+    func testEventDetailParsingText() {
+        let detailJson = """
+        {"full_text": "This is the complete text content"}
+        """
+        let event = PharaohEvent(
+            timestamp: Date(),
+            type: .text,
+            summary: "Test",
+            detailJson: detailJson
+        )
+
+        XCTAssertEqual(event.fullText, "This is the complete text content")
+    }
+
+    func testEventDetailParsingResult() {
+        let detailJson = """
+        {"turns": 10, "cost_usd": 1.5}
+        """
+        let event = PharaohEvent(
+            timestamp: Date(),
+            type: .result,
+            summary: "Test",
+            detailJson: detailJson
+        )
+
+        XCTAssertEqual(event.resultTurns, 10)
+        XCTAssertNotNil(event.resultCostUsd)
+        if let cost = event.resultCostUsd {
+            XCTAssertEqual(cost, 1.5, accuracy: 0.001)
+        }
+    }
+
+    func testEventDetailParsingMalformedJson() {
+        let event = PharaohEvent(
+            timestamp: Date(),
+            type: .toolCall,
+            summary: "Test",
+            detailJson: "not valid json"
+        )
+
+        XCTAssertNil(event.toolName)
+        XCTAssertNil(event.toolInput)
+        XCTAssertNil(event.turnNumber)
+        XCTAssertNil(event.inputTokens)
+        XCTAssertNil(event.outputTokens)
+        XCTAssertNil(event.fullText)
+        XCTAssertNil(event.resultTurns)
+        XCTAssertNil(event.resultCostUsd)
+    }
+
+    func testEventHasDetail() {
+        let eventWithDetail = PharaohEvent(
+            timestamp: Date(),
+            type: .toolCall,
+            summary: "Test",
+            detailJson: "{}"
+        )
+        XCTAssertTrue(eventWithDetail.hasDetail)
+
+        let eventWithoutDetail = PharaohEvent(
+            timestamp: Date(),
+            type: .toolCall,
+            summary: "Test",
+            detailJson: nil
+        )
+        XCTAssertFalse(eventWithoutDetail.hasDetail)
+    }
 }

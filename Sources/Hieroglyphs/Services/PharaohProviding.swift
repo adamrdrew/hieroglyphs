@@ -65,4 +65,10 @@ protocol PharaohProviding {
     /// - Parameter directory: Absolute path to the source directory containing .pharaoh/
     /// - Returns: Array of PharaohEvent objects, or empty array if file does not exist
     func readEvents(from directory: String) -> [PharaohEvent]
+
+    /// Reads server metadata from pharaoh.json.
+    ///
+    /// - Parameter directory: Absolute path to the source directory containing .pharaoh/
+    /// - Returns: PharaohServerInfo if file exists and is valid, nil otherwise
+    func readServerInfo(from directory: String) -> PharaohServerInfo?
 }

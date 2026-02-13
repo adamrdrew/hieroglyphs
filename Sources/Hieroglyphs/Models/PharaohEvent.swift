@@ -22,6 +22,62 @@ struct PharaohEvent: Identifiable, Equatable {
         self.detailJson = detailJson
     }
 
+    /// Returns true if this event has detail data.
+    var hasDetail: Bool {
+        detailJson != nil
+    }
+
+    /// Extract tool name from detail JSON for tool_call events.
+    var toolName: String? {
+        parseDetailField(key: "tool_name")
+    }
+
+    /// Extract tool input from detail JSON for tool_call events.
+    var toolInput: String? {
+        parseDetailField(key: "input")
+    }
+
+    /// Extract turn number from detail JSON for turn events.
+    var turnNumber: Int? {
+        parseDetailField(key: "turn")
+    }
+
+    /// Extract input token count from detail JSON for turn events.
+    var inputTokens: Int? {
+        parseDetailField(key: "input_tokens")
+    }
+
+    /// Extract output token count from detail JSON for turn events.
+    var outputTokens: Int? {
+        parseDetailField(key: "output_tokens")
+    }
+
+    /// Extract full text from detail JSON for text events.
+    var fullText: String? {
+        parseDetailField(key: "full_text")
+    }
+
+    /// Extract total turns from detail JSON for result events.
+    var resultTurns: Int? {
+        parseDetailField(key: "turns")
+    }
+
+    /// Extract total cost from detail JSON for result events.
+    var resultCostUsd: Double? {
+        parseDetailField(key: "cost_usd")
+    }
+
+    /// Parse a field from the detail JSON.
+    private func parseDetailField<T>(key: String) -> T? {
+        guard let detailJson = detailJson,
+              let data = detailJson.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let value = json[key] as? T else {
+            return nil
+        }
+        return value
+    }
+
     /// Parse a JSON Lines string into a PharaohEvent.
     /// Returns nil if the line is malformed or cannot be parsed.
     static func parse(line: String) -> PharaohEvent? {

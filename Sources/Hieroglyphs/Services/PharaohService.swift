@@ -146,6 +146,25 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
             .compactMap { PharaohEvent.parse(line: String($0)) }
     }
 
+    func readServerInfo(from directory: String) -> PharaohServerInfo? {
+        let serverInfoPath = directory + "/.pharaoh/pharaoh.json"
+        let serverInfoURL = URL(fileURLWithPath: serverInfoPath)
+
+        guard FileManager.default.fileExists(atPath: serverInfoPath) else {
+            return nil
+        }
+
+        guard let data = try? Data(contentsOf: serverInfoURL) else {
+            return nil
+        }
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+
+        return PharaohServerInfo.parse(json: json)
+    }
+
     @objc private func applicationWillTerminate() {
         stop()
     }

@@ -34,6 +34,29 @@ enum PharaohStatus: Equatable {
 - `done`: Uses `costUsd` (not `cost`) and `turns` for final execution metrics
 - `blocked`: Includes `costUsd` and `turns` for partial execution metrics before failure
 
+**PharaohServerInfo** (`Sources/Hieroglyphs/Models/PharaohServerInfo.swift`)
+
+Represents server metadata extracted from `pharaoh.json`:
+
+```swift
+struct PharaohServerInfo: Equatable {
+    let status: String
+    let pid: Int
+    let started: Date
+    let pharaohVersion: String
+    let ushabtiVersion: String
+    let model: String
+    let cwd: String
+    let phasesCompleted: Int
+}
+```
+
+**Parsing:**
+- Static method `parse(json: [String: Any]) -> PharaohServerInfo?`
+- Returns nil if required fields missing or timestamp unparseable
+- Uses ISO8601DateFormatter with fractional seconds for `started` field
+- JSON keys use camelCase: `pharaohVersion`, `ushabtiVersion`, `phasesCompleted`
+
 ### Services
 
 **PharaohProviding / PharaohService** (`Sources/Hieroglyphs/Services/`)
@@ -46,6 +69,7 @@ Protocol-based service for Pharaoh process management and status reading.
 - `readStatus(from directory: String) -> PharaohStatus` — Reads and decodes `.pharaoh/pharaoh.json`
 - `readLogs(from directory: String, count: Int) -> [String]` — Returns last N lines from `.pharaoh/pharaoh.log`
 - `readEvents(from directory: String) -> [PharaohEvent]` — Reads and parses `.pharaoh/events.jsonl`
+- `readServerInfo(from directory: String) -> PharaohServerInfo?` — Reads and parses server metadata from `.pharaoh/pharaoh.json`
 
 **Implementation Details:**
 - Uses `Process` with `/bin/zsh -l -c "npx @adamrdrew/pharaoh serve"` to source shell profile (ensures homebrew/nvm paths available)
@@ -97,6 +121,22 @@ enum PharaohEventType: String, Equatable {
 - Timestamp parsed with ISO8601DateFormatter including fractional seconds
 - Detail object serialized to JSON string for storage (not decoded into typed structs)
 
+**Event Detail Properties:**
+
+PharaohEvent exposes typed computed properties for extracting structured data from `detailJson`:
+
+- `hasDetail: Bool` — True if event has detail data
+- `toolName: String?` — Extract tool name for tool_call events (from `detail.tool_name`)
+- `toolInput: String?` — Extract tool input for tool_call events (from `detail.input`)
+- `turnNumber: Int?` — Extract turn number for turn events (from `detail.turn`)
+- `inputTokens: Int?` — Extract input token count for turn events (from `detail.input_tokens`)
+- `outputTokens: Int?` — Extract output token count for turn events (from `detail.output_tokens`)
+- `fullText: String?` — Extract full text for text events (from `detail.full_text`)
+- `resultTurns: Int?` — Extract total turns for result events (from `detail.turns`)
+- `resultCostUsd: Double?` — Extract total cost for result events (from `detail.cost_usd`)
+
+All detail properties return nil gracefully if `detailJson` is nil, parse fails, or the field is missing.
+
 **PharaohActivityStreamView** (`Sources/Hieroglyphs/Views/Pharaoh/PharaohActivityStreamView.swift`)
 
 Detail column view that displays the real-time event stream:
@@ -112,9 +152,21 @@ Individual event row showing:
 - Relative timestamp (Text(style: .relative) in 60pt fixed-width column)
 - Type icon (SF Symbol, color-coded by event type)
 - Summary text (truncated, font varies by type)
+- Expandable detail section (PharaohEventDetailView) when `event.hasDetail` is true
 
 **Turn Events:**
 Turn events render as subtle separators (Divider with small "Turn N" label) rather than full rows to reduce visual clutter.
+
+**PharaohEventDetailView** (`Sources/Hieroglyphs/Views/Pharaoh/PharaohEventDetailView.swift`)
+
+Expandable disclosure group showing event-type-specific detail data:
+
+- **tool_call events:** Shows tool name and tool input
+- **turn events:** Shows turn number, input tokens, output tokens
+- **text events:** Shows full text content
+- **result events:** Shows total turns and total cost (formatted as currency)
+
+Detail rows use compact monospaced font with label/value pairs. Missing detail fields are omitted gracefully (no empty rows displayed).
 
 **Event Type Icons and Colors:**
 - `toolCall`: wrench.fill, accent color, monospaced font
@@ -164,6 +216,14 @@ Full-screen view for Pharaoh management shown as middle column content:
 - Error display if process start failed
 
 **Running State:**
+- **Server Information Section** (shown when `serverInfo` is non-nil):
+  - Pharaoh Version
+  - Ushabti Version
+  - Model (selected on server start)
+  - Working Directory (truncated if longer than 50 chars, showing last 2 path components)
+  - PID
+  - Started (relative time since server started)
+  - Phases Completed (count of completed phases in this session)
 - Status badge with color-coded state (idle/busy/done/blocked)
 - Phase name and enriched metrics (for busy/done/blocked states):
   - Busy: Turns elapsed, running cost ($0.4f), live elapsed time (Text(style: .relative))
@@ -172,7 +232,8 @@ Full-screen view for Pharaoh management shown as middle column content:
 - "Stop Pharaoh" button
 
 **Update Strategy:**
-- Polls status every 2 seconds via `monitorStatus()` async task
+- Polls status and server info every 2 seconds via `monitorStatus()` async task
+- Calls `readServerInfo(from:)` on each poll and updates `serverInfo` state
 - Detects status transitions for auto-completion and error alerts
 - Combined with file watching for responsive updates
 
@@ -405,11 +466,15 @@ Tests cover all public methods:
 
 - `readStatus(from:)` with all five status shapes (idle, busy, done, blocked, missing file)
 - `readLogs(from:count:)` with empty file, last N lines, count exceeds total
+- `readEvents(from:)` with missing file, empty file, malformed lines, detail JSON, all event types
+- `readServerInfo(from:)` with valid JSON, missing file, malformed JSON, missing fields
+- Event detail property parsing (tool_call, turn, text, result, malformed JSON, hasDetail)
 
 **Test Strategy:**
 - Uses temporary directories for filesystem operations
-- Creates mock `.pharaoh/pharaoh.json` and `.pharaoh/pharaoh.log` files
+- Creates mock `.pharaoh/pharaoh.json`, `.pharaoh/pharaoh.log`, and `.pharaoh/events.jsonl` files
 - Verifies correct enum case returned with associated values
+- Tests detail property extraction with all event types and error cases
 - All tests pass
 
 **MockFileWatcher:**

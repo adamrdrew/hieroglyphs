@@ -7,6 +7,7 @@ struct PharaohView: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @State private var status: PharaohStatus = .notRunning
     @State private var previousStatus: PharaohStatus = .notRunning
+    @State private var serverInfo: PharaohServerInfo?
     @State private var startError: String?
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
@@ -81,6 +82,11 @@ struct PharaohView: View {
     @ViewBuilder
     private var runningStateView: some View {
         VStack(alignment: .leading, spacing: 16) {
+            if let serverInfo = serverInfo {
+                serverInfoSection(serverInfo)
+                Divider()
+            }
+
             HStack {
                 Text("Status")
                     .font(.headline)
@@ -180,6 +186,60 @@ struct PharaohView: View {
         }
     }
 
+    @ViewBuilder
+    private func serverInfoSection(_ info: PharaohServerInfo) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Server Information")
+                .font(.headline)
+
+            phaseInfoRow(
+                label: "Pharaoh Version",
+                value: info.pharaohVersion
+            )
+            phaseInfoRow(
+                label: "Ushabti Version",
+                value: info.ushabtiVersion
+            )
+            phaseInfoRow(
+                label: "Model",
+                value: info.model
+            )
+            phaseInfoRow(
+                label: "Working Directory",
+                value: truncatePath(info.cwd)
+            )
+            phaseInfoRow(
+                label: "PID",
+                value: "\(info.pid)"
+            )
+            phaseInfoRow(
+                label: "Started",
+                value: relativeDateString(info.started)
+            )
+            phaseInfoRow(
+                label: "Phases Completed",
+                value: "\(info.phasesCompleted)"
+            )
+        }
+    }
+
+    private func truncatePath(_ path: String) -> String {
+        if path.count > 50 {
+            let components = path.split(separator: "/")
+            if components.count > 3 {
+                let last = components.suffix(2).joined(separator: "/")
+                return ".../" + last
+            }
+        }
+        return path
+    }
+
+    private func relativeDateString(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
     private func startPharaoh() {
         guard let sourceDirectory = project.sourceDirectory,
               let service = pharaohService else {
@@ -204,10 +264,12 @@ struct PharaohView: View {
         guard let sourceDirectory = project.sourceDirectory,
               let service = pharaohService else {
             status = .notRunning
+            serverInfo = nil
             return
         }
 
         let newStatus = service.readStatus(from: sourceDirectory)
+        serverInfo = service.readServerInfo(from: sourceDirectory)
 
         if case .busy = previousStatus, case .done(let phase, _, _) = newStatus {
             autoCompletePlan(phase: phase)

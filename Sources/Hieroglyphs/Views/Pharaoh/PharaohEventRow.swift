@@ -14,22 +14,28 @@ struct PharaohEventRow: View {
 
     @ViewBuilder
     private var eventRow: some View {
-        HStack(spacing: 8) {
-            Text(event.timestamp, style: .relative)
-                .font(.caption2.monospacedDigit())
-                .foregroundStyle(.tertiary)
-                .frame(width: 60, alignment: .trailing)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Text(event.timestamp, style: .relative)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 60, alignment: .trailing)
 
-            Image(systemName: iconName)
-                .foregroundStyle(iconColor)
-                .frame(width: 16)
+                Image(systemName: iconName)
+                    .foregroundStyle(iconColor)
+                    .frame(width: 16)
 
-            Text(event.summary)
-                .font(summaryFont)
-                .lineLimit(1)
-                .truncationMode(.tail)
+                Text(event.summary)
+                    .font(summaryFont)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .padding(.vertical, 2)
+
+            if event.hasDetail {
+                PharaohEventDetailView(event: event)
+            }
         }
-        .padding(.vertical, 2)
     }
 
     @ViewBuilder
