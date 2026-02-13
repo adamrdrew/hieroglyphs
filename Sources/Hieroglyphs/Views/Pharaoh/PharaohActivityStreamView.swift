@@ -42,8 +42,8 @@ struct PharaohActivityStreamView: View {
                 }
                 .padding()
             }
-            .onChange(of: events) { _, _ in
-                if autoScroll {
+            .onChange(of: events.count) { oldCount, newCount in
+                if autoScroll && newCount > oldCount {
                     withAnimation {
                         proxy.scrollTo("bottom", anchor: .bottom)
                     }
@@ -60,7 +60,18 @@ struct PharaohActivityStreamView: View {
                 continue
             }
 
-            events = service.readEvents(from: sourceDirectory)
+            let newEvents = service.readEvents(from: sourceDirectory)
+
+            // Detect truncation (new phase started)
+            if newEvents.count < events.count {
+                events = newEvents
+            } else if newEvents.count > events.count {
+                // Append only new events
+                let newItems = Array(newEvents.dropFirst(events.count))
+                events.append(contentsOf: newItems)
+            }
+            // If counts are equal, do nothing (no change)
+
             try? await Task.sleep(for: .seconds(2))
         }
     }

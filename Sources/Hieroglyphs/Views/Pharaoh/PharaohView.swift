@@ -269,7 +269,11 @@ struct PharaohView: View {
         }
 
         let newStatus = service.readStatus(from: sourceDirectory)
-        serverInfo = service.readServerInfo(from: sourceDirectory)
+        let newServerInfo = service.readServerInfo(from: sourceDirectory)
+
+        if newServerInfo != serverInfo {
+            serverInfo = newServerInfo
+        }
 
         if case .busy = previousStatus, case .done(let phase, _, _) = newStatus {
             autoCompletePlan(phase: phase)
@@ -281,7 +285,9 @@ struct PharaohView: View {
         }
 
         previousStatus = status
-        status = newStatus
+        if newStatus != status {
+            status = newStatus
+        }
     }
 
     private func autoCompletePlan(phase: String) {
