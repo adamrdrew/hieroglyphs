@@ -3,8 +3,15 @@ import AppKit
 
 /// Sheet for creating a new project.
 ///
-/// Provides input fields for project title, description, and tags.
+/// Provides input fields for project title, description, tags, and optional source directory.
 /// Validates that title is non-empty before enabling save.
+///
+/// Design:
+/// - Constrained dimensions with scrollable content
+/// - Semantic typography (headline headers, body content, caption metadata)
+/// - Consistent spacing scale (4, 8, 12, 16 points)
+/// - Clear visual hierarchy (primary fields prominent, directory picker secondary)
+/// - Automatic Liquid Glass treatment on toolbar
 struct NewProjectSheet: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @Environment(\.dismiss) private var dismiss
@@ -16,44 +23,59 @@ struct NewProjectSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Project Details") {
-                    TextField("Title", text: $title)
-                    TextField("Description", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
-                }
+            ScrollView {
+                Form {
+                    Section {
+                        TextField("Title", text: $title)
 
-                Section("Tags") {
-                    TextField("Comma-separated tags", text: $tags)
-                }
+                        TextField("Description", text: $description, axis: .vertical)
+                            .lineLimit(3...6)
+                    } header: {
+                        Text("Project Details")
+                            .font(.headline)
+                    }
 
-                Section("Source Directory") {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
+                    Section {
+                        TextField("Comma-separated tags", text: $tags)
+                    } header: {
+                        Text("Tags")
+                            .font(.headline)
+                    }
+
+                    Section {
+                        VStack(alignment: .leading, spacing: 8) {
                             if let sourceDirectory = sourceDirectory {
                                 Text(sourceDirectory)
                                     .font(.caption)
+                                    .foregroundStyle(.secondary)
                                     .lineLimit(2)
                                     .truncationMode(.middle)
                             } else {
                                 Text("None")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.tertiary)
+                            }
+
+                            HStack(spacing: 8) {
+                                if sourceDirectory != nil {
+                                    Button("Clear") {
+                                        self.sourceDirectory = nil
+                                    }
+                                    .buttonStyle(.borderless)
+                                }
+
+                                Button("Select Folder...") {
+                                    selectSourceDirectory()
+                                }
+                                .buttonStyle(.borderedProminent)
                             }
                         }
-                        Spacer()
-                        if sourceDirectory != nil {
-                            Button("Clear") {
-                                self.sourceDirectory = nil
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                        Button("Select Folder...") {
-                            selectSourceDirectory()
-                        }
-                        .buttonStyle(.borderedProminent)
+                    } header: {
+                        Text("Source Directory")
+                            .font(.headline)
                     }
                 }
+                .formStyle(.grouped)
             }
             .navigationTitle("New Project")
             .toolbar {
@@ -71,6 +93,7 @@ struct NewProjectSheet: View {
                 }
             }
         }
+        .frame(width: 500, height: 450)
     }
 
     /// Parses tags and creates the project.

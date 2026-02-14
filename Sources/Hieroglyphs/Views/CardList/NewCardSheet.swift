@@ -1,6 +1,14 @@
 import SwiftUI
 
 /// Modal sheet for creating a new card.
+///
+/// Design:
+/// - Constrained dimensions (500x600) with scrollable content
+/// - Semantic typography throughout (headline headers, body content)
+/// - Consistent spacing using 8pt scale
+/// - Clear visual hierarchy (title primary, pickers secondary, body tertiary)
+/// - Body TextEditor constrained within ScrollView for multi-line content
+/// - Automatic Liquid Glass treatment on toolbar
 struct NewCardSheet: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @Environment(\.dismiss) private var dismiss
@@ -14,43 +22,53 @@ struct NewCardSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Card Details") {
-                    TextField("Title", text: $title)
+            ScrollView {
+                Form {
+                    Section {
+                        TextField("Title", text: $title)
 
-                    Picker("Type", selection: $type) {
-                        ForEach(CardType.allCases, id: \.self) { cardType in
-                            Text(cardType.rawValue.capitalized)
-                                .tag(cardType)
+                        Picker("Type", selection: $type) {
+                            ForEach(CardType.allCases, id: \.self) { cardType in
+                                Text(cardType.rawValue.capitalized)
+                                    .tag(cardType)
+                            }
                         }
+
+                        Picker("Status", selection: $status) {
+                            ForEach(CardStatus.allCases, id: \.self) { cardStatus in
+                                Text(formatStatusLabel(cardStatus))
+                                    .tag(cardStatus)
+                            }
+                        }
+
+                        Picker("Priority", selection: $priority) {
+                            ForEach(Priority.allCases, id: \.self) { cardPriority in
+                                Text(cardPriority.rawValue.capitalized)
+                                    .tag(cardPriority)
+                            }
+                        }
+                    } header: {
+                        Text("Card Details")
+                            .font(.headline)
                     }
 
-                    Picker("Status", selection: $status) {
-                        ForEach(CardStatus.allCases, id: \.self) { cardStatus in
-                            Text(formatStatusLabel(cardStatus))
-                                .tag(cardStatus)
-                        }
+                    Section {
+                        TextField("Comma-separated tags", text: $tags)
+                    } header: {
+                        Text("Tags")
+                            .font(.headline)
                     }
 
-                    Picker("Priority", selection: $priority) {
-                        ForEach(Priority.allCases, id: \.self) { cardPriority in
-                            Text(cardPriority.rawValue.capitalized)
-                                .tag(cardPriority)
-                        }
-                    }
-                }
-
-                Section("Tags") {
-                    TextField("Comma-separated tags", text: $tags)
-                }
-
-                Section("Body") {
-                    ScrollView {
+                    Section {
                         TextEditor(text: $cardBody)
-                            .frame(minHeight: 100, maxHeight: 300)
+                            .frame(minHeight: 120, maxHeight: 240)
                             .font(.body)
+                    } header: {
+                        Text("Body")
+                            .font(.headline)
                     }
                 }
+                .formStyle(.grouped)
             }
             .navigationTitle("New Card")
             .toolbar {
@@ -68,7 +86,7 @@ struct NewCardSheet: View {
                 }
             }
         }
-        .frame(minWidth: 500, minHeight: 500)
+        .frame(width: 500, height: 600)
     }
 
     private func saveCard() {

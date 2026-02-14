@@ -784,6 +784,13 @@ private func saveProject() {
 
 **Purpose:** Modal sheet for creating a new project.
 
+**Design (macOS 26 compliant):**
+- Constrained dimensions (500x450) with scrollable content
+- Semantic typography (headline headers, body content, caption metadata)
+- Consistent spacing using 8pt scale
+- Clear visual hierarchy (primary fields prominent, directory picker secondary)
+- Automatic Liquid Glass treatment on toolbar
+
 **Structure:**
 
 ```swift
@@ -798,44 +805,58 @@ struct NewProjectSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Project Details") {
-                    TextField("Title", text: $title)
-                    TextField("Description", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
-                }
+            ScrollView {
+                Form {
+                    Section {
+                        TextField("Title", text: $title)
+                        TextField("Description", text: $description, axis: .vertical)
+                            .lineLimit(3...6)
+                    } header: {
+                        Text("Project Details")
+                            .font(.headline)
+                    }
 
-                Section("Tags") {
-                    TextField("Comma-separated tags", text: $tags)
-                }
+                    Section {
+                        TextField("Comma-separated tags", text: $tags)
+                    } header: {
+                        Text("Tags")
+                            .font(.headline)
+                    }
 
-                Section("Source Directory") {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
+                    Section {
+                        VStack(alignment: .leading, spacing: 8) {
                             if let sourceDirectory = sourceDirectory {
                                 Text(sourceDirectory)
                                     .font(.caption)
+                                    .foregroundStyle(.secondary)
                                     .lineLimit(2)
                                     .truncationMode(.middle)
                             } else {
                                 Text("None")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.tertiary)
+                            }
+
+                            HStack(spacing: 8) {
+                                if sourceDirectory != nil {
+                                    Button("Clear") {
+                                        self.sourceDirectory = nil
+                                    }
+                                    .buttonStyle(.borderless)
+                                }
+
+                                Button("Select Folder...") {
+                                    selectSourceDirectory()
+                                }
+                                .buttonStyle(.borderedProminent)
                             }
                         }
-                        Spacer()
-                        if sourceDirectory != nil {
-                            Button("Clear") {
-                                self.sourceDirectory = nil
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                        Button("Select Folder...") {
-                            selectSourceDirectory()
-                        }
-                        .buttonStyle(.borderedProminent)
+                    } header: {
+                        Text("Source Directory")
+                            .font(.headline)
                     }
                 }
+                .formStyle(.grouped)
             }
             .navigationTitle("New Project")
             .toolbar {
@@ -853,6 +874,7 @@ struct NewProjectSheet: View {
                 }
             }
         }
+        .frame(width: 500, height: 450)
     }
 
     // ... saveProject method
@@ -861,14 +883,23 @@ struct NewProjectSheet: View {
 
 **Key Features:**
 
-1. **NavigationStack:** Wraps Form to provide navigation bar and toolbar
-2. **Form Sections:** Grouped input fields with section headers
-3. **Title Field:** Required text field (Save button disabled if empty)
-4. **Description Field:** Multi-line text field with vertical axis and line limits
-5. **Tags Field:** Comma-separated text field for tag input
-6. **Source Directory:** NSOpenPanel-based directory picker with Clear button (optional)
-7. **Cancel Button:** Dismisses sheet without saving
-8. **Save Button:** Calls `saveProject()` and dismisses (disabled if title is empty)
+1. **NavigationStack:** Wraps ScrollView and Form to provide navigation bar and toolbar
+2. **Constrained Frame:** Fixed 500x450 dimensions prevent unbounded growth
+3. **ScrollView:** Allows content to scroll within constrained frame
+4. **Form Sections:** Grouped input fields with semantic typography in headers
+5. **Title Field:** Required text field (Save button disabled if empty)
+6. **Description Field:** Multi-line text field with vertical axis and line limits
+7. **Tags Field:** Comma-separated text field for tag input
+8. **Source Directory:** NSOpenPanel-based directory picker with Clear button (optional)
+9. **Cancel Button:** Dismisses sheet without saving
+10. **Save Button:** Calls `saveProject()` and dismisses (disabled if title is empty)
+
+**Visual Design:**
+- Section headers use `.headline` font for clear hierarchy
+- Directory path text uses `.caption` font with `.secondary` foreground style
+- Empty state shows "None" in `.tertiary` color
+- Consistent 8pt spacing between directory display and button controls
+- Buttons use standard styles (`.borderless` for secondary, `.borderedProminent` for primary action)
 
 **Save Logic:**
 
@@ -915,10 +946,13 @@ private func selectSourceDirectory() {
 3. Dismiss sheet (ViewModel handles project creation and list refresh)
 
 **Notes:**
+- Follows L17 (UI State Correctness): Constrained modal with scrollable content
+- Follows L18 (Design Is How It Works): Platform-native appearance, semantic typography, system controls
 - No error UI (errors logged to console by ViewModel)
 - No slug collision detection (future enhancement)
 - Tags are simple comma-separated strings (future: tag picker UI)
 - Source directory is optional (omitted from frontmatter if nil)
+- Automatic Liquid Glass treatment on toolbar (no custom overrides)
 
 ## CardList
 
@@ -1245,6 +1279,14 @@ struct CardSortPopover: View {
 
 **Purpose:** Modal sheet for creating a new card.
 
+**Design (macOS 26 compliant):**
+- Constrained dimensions (500x600) with scrollable content
+- Semantic typography throughout (headline headers, body content)
+- Consistent spacing using 8pt scale
+- Clear visual hierarchy (title primary, pickers secondary, body tertiary)
+- Body TextEditor constrained within scrollable area for multi-line content
+- Automatic Liquid Glass treatment on toolbar
+
 **Structure:**
 
 ```swift
@@ -1261,25 +1303,35 @@ struct NewCardSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Card Details") {
-                    TextField("Title", text: $title)
-                    Picker("Type", selection: $type) { /* ... */ }
-                    Picker("Status", selection: $status) { /* ... */ }
-                    Picker("Priority", selection: $priority) { /* ... */ }
-                }
+            ScrollView {
+                Form {
+                    Section {
+                        TextField("Title", text: $title)
+                        Picker("Type", selection: $type) { /* ... */ }
+                        Picker("Status", selection: $status) { /* ... */ }
+                        Picker("Priority", selection: $priority) { /* ... */ }
+                    } header: {
+                        Text("Card Details")
+                            .font(.headline)
+                    }
 
-                Section("Tags") {
-                    TextField("Comma-separated tags", text: $tags)
-                }
+                    Section {
+                        TextField("Comma-separated tags", text: $tags)
+                    } header: {
+                        Text("Tags")
+                            .font(.headline)
+                    }
 
-                Section("Body") {
-                    ScrollView {
+                    Section {
                         TextEditor(text: $cardBody)
-                            .frame(minHeight: 100, maxHeight: 300)
+                            .frame(minHeight: 120, maxHeight: 240)
                             .font(.body)
+                    } header: {
+                        Text("Body")
+                            .font(.headline)
                     }
                 }
+                .formStyle(.grouped)
             }
             .navigationTitle("New Card")
             .toolbar {
@@ -1292,20 +1344,30 @@ struct NewCardSheet: View {
                 }
             }
         }
-        .frame(minWidth: 500, minHeight: 500)
+        .frame(width: 500, height: 600)
     }
 }
 ```
 
 **Key Features:**
 
-1. **Form with Sections:** Grouped input fields
-2. **Title Field:** Required (Save button disabled if empty)
-3. **Type/Status/Priority Pickers:** All enum cases available
-4. **Tags Field:** Comma-separated text input
-5. **Body TextEditor:** Multi-line markdown input with scroll constraint
-6. **Cancel/Save Toolbar:** Standard sheet controls
-7. **Default Values:** task, todo, medium
+1. **NavigationStack:** Wraps ScrollView and Form to provide navigation bar and toolbar
+2. **Constrained Frame:** Fixed 500x600 dimensions prevent unbounded growth
+3. **ScrollView:** Allows content to scroll within constrained frame
+4. **Form Sections:** Grouped input fields with semantic typography in headers
+5. **Title Field:** Required (Save button disabled if empty)
+6. **Type/Status/Priority Pickers:** All enum cases available with menu picker style
+7. **Tags Field:** Comma-separated text input
+8. **Body TextEditor:** Multi-line markdown input with constrained height (120-240pt)
+9. **Cancel/Save Toolbar:** Standard sheet controls
+10. **Default Values:** task, todo, medium
+
+**Visual Design:**
+- Section headers use `.headline` font for clear hierarchy
+- TextEditor uses `.body` font for consistency with card display
+- TextEditor height constrained to 120-240pt range to prevent unbounded growth
+- Outer modal frame ensures content scrolls rather than modal expanding
+- Standard button styles and toolbar placements
 
 **Save Logic:**
 1. Parse tags by splitting on comma, trimming whitespace, filtering empty strings
@@ -1313,15 +1375,18 @@ struct NewCardSheet: View {
 3. Dismiss sheet (ViewModel handles card creation and list refresh)
 
 **Modal Sizing:**
-- Outer modal frame: `minWidth: 500, minHeight: 500` (fixed dimensions)
-- Body TextEditor: `minHeight: 100, maxHeight: 300` (scrollable within constraint)
-- TextEditor wrapped in ScrollView to enable internal scrolling when content exceeds maxHeight
+- Outer modal frame: Fixed 500x600 dimensions
+- Body TextEditor: `minHeight: 120, maxHeight: 240` (scrollable when content exceeds height)
+- TextEditor scrolls internally when content exceeds maxHeight
 - Modal container stays fixed size — content scrolls instead of growing unboundedly
 
 **Notes:**
-- Follows NewProjectSheet patterns
+- Follows L17 (UI State Correctness): Constrained modal with scrollable content
+- Follows L18 (Design Is How It Works): Platform-native appearance, semantic typography, system controls
+- Follows NewProjectSheet patterns for consistency
 - No error UI (errors logged by ViewModel)
-- TextEditor constraint prevents modal from growing infinitely when typing long body content (L17)
+- TextEditor constraint prevents modal from growing infinitely when typing long body content
+- Automatic Liquid Glass treatment on toolbar (no custom overrides)
 
 ## TakeNote Design Patterns
 
@@ -1725,14 +1790,80 @@ struct PlanList: View {
 
 **Purpose:** Modal sheet for creating a new plan.
 
-**Fields:**
-- Plan title (text field, required)
-- Plan number (integer field, required)
+**Design (macOS 26 compliant):**
+- Simple single-field modal following macOS 26 design standards
+- Constrained dimensions (400x200) with scrollable content
+- Semantic typography throughout
+- Standard spacing and visual hierarchy
+- Automatic Liquid Glass treatment on toolbar
+
+**Structure:**
+
+```swift
+struct NewPlanSheet: View {
+    @Environment(HieroglyphsVM.self) private var viewModel
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var title = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Title", text: $title)
+                } header: {
+                    Text("Plan Details")
+                        .font(.headline)
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("New Plan")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        savePlan()
+                    }
+                    .disabled(title.isEmpty)
+                }
+            }
+        }
+        .frame(width: 400, height: 200)
+    }
+}
+```
+
+**Key Features:**
+
+1. **Single Field:** Plan title is the only required field
+2. **Constrained Frame:** Fixed 400x200 dimensions for compact modal
+3. **Semantic Typography:** Section header uses `.headline` font
+4. **Grouped Form Style:** `.formStyle(.grouped)` for macOS-native appearance
+5. **Disabled State:** Save button disabled when title is empty
+6. **Standard Toolbar:** Cancel and Save buttons with standard placements
+
+**Visual Design:**
+- Section header uses `.headline` font for clear hierarchy
+- Minimal vertical space appropriate for single-field form
+- Standard button styles and toolbar placements
+
+**Save Logic:**
+- Calls `viewModel.createPlan(title:)` with entered title
+- Dismisses sheet after successful creation
+- ViewModel handles plan creation and list refresh
 
 **Notes:**
-- Save button calls `viewModel.createPlan(title:number:)`
-- Validates required fields (disables Save if empty)
-- Follows NewCardSheet pattern
+- Follows L17 (UI State Correctness): Constrained modal dimensions
+- Follows L18 (Design Is How It Works): Platform-native appearance, semantic typography
+- Simplest of the three modal sheets (only one field)
+- Validates required field (disables Save if empty)
+- Follows NewCardSheet and NewProjectSheet patterns for consistency
+- Automatic Liquid Glass treatment on toolbar (no custom overrides)
 
 ## PlanDetail
 

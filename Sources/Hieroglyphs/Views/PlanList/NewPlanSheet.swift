@@ -1,6 +1,12 @@
 import SwiftUI
 
 /// Modal sheet for creating a new plan.
+///
+/// Simple single-field modal following macOS 26 design standards:
+/// - Constrained dimensions with scrollable content
+/// - Semantic typography throughout
+/// - Standard spacing and visual hierarchy
+/// - Automatic Liquid Glass treatment on toolbar
 struct NewPlanSheet: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @Environment(\.dismiss) private var dismiss
@@ -10,10 +16,14 @@ struct NewPlanSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Plan Details") {
+                Section {
                     TextField("Title", text: $title)
+                } header: {
+                    Text("Plan Details")
+                        .font(.headline)
                 }
             }
+            .formStyle(.grouped)
             .navigationTitle("New Plan")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -30,7 +40,7 @@ struct NewPlanSheet: View {
                 }
             }
         }
-        .frame(minWidth: 400, minHeight: 200)
+        .frame(width: 400, height: 200)
     }
 
     private func savePlan() {

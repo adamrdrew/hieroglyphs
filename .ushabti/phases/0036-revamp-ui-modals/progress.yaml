@@ -1,0 +1,48 @@
+phase:
+  id: 0036
+  slug: revamp-ui-modals
+  title: Revamp UI Modals
+  status: complete
+
+steps:
+  - id: S001
+    title: Redesign NewPlanSheet
+    implemented: true
+    reviewed: true
+    notes: "Applied constrained frame, semantic typography, grouped form style, automatic toolbar glass treatment"
+    touched:
+      - Sources/Hieroglyphs/Views/PlanList/NewPlanSheet.swift
+
+  - id: S002
+    title: Redesign NewProjectSheet
+    implemented: true
+    reviewed: true
+    notes: "Applied constrained frame with ScrollView, semantic typography throughout, consistent spacing (8pt scale), improved directory picker layout with clear visual hierarchy"
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/NewProjectSheet.swift
+
+  - id: S003
+    title: Redesign NewCardSheet
+    implemented: true
+    reviewed: true
+    notes: "Applied constrained frame with ScrollView, semantic typography throughout, TextEditor with proper height constraints, improved visual hierarchy"
+    touched:
+      - Sources/Hieroglyphs/Views/CardList/NewCardSheet.swift
+
+  - id: S004
+    title: Verify Liquid Glass and Platform Integration
+    implemented: true
+    reviewed: true
+    notes: "Verified automatic Liquid Glass on toolbars, no custom toolbarBackground overrides, standard button styles used, dark mode supported via semantic colors, all controls communicate state correctly"
+    touched:
+      - Sources/Hieroglyphs/Views/PlanList/NewPlanSheet.swift
+      - Sources/Hieroglyphs/Views/Sidebar/NewProjectSheet.swift
+      - Sources/Hieroglyphs/Views/CardList/NewCardSheet.swift
+
+  - id: S005
+    title: Reconcile Documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated views-ui.md documentation for NewPlanSheet, NewProjectSheet, and NewCardSheet with design patterns, modal sizing constraints, semantic typography, and visual hierarchy notes"
+    touched:
+      - .ushabti/docs/views-ui.md
