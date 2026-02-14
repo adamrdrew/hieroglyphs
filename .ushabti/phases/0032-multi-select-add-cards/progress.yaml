@@ -1,0 +1,55 @@
+phase:
+  id: 0032
+  slug: multi-select-add-cards
+  title: Multi-Select Add Cards to Plan
+  status: complete
+
+steps:
+  - id: S001
+    title: Change AddCardToPlanSheet to Set-based selection
+    implemented: true
+    reviewed: true
+    notes: "Changed selection from @State Card? to Set<Card.ID>, updated List binding, updated disabled check"
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/PlanDetail/AddCardToPlanSheet.swift
+
+  - id: S002
+    title: Update Add button label and disabled state
+    implemented: true
+    reviewed: true
+    notes: "Added addButtonLabel computed property with count-aware label, button already disabled when isEmpty"
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/PlanDetail/AddCardToPlanSheet.swift
+
+  - id: S003
+    title: Add batch addition method to HieroglyphsVM
+    implemented: true
+    reviewed: true
+    notes: "Added addCardsToPlan method that iterates cardSlugs, calls service for each, then loads plans once"
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S004
+    title: Update AddCardToPlanSheet to call batch method
+    implemented: true
+    reviewed: true
+    notes: Updated addCard to build slugs array from selectedCards and call batch method
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/PlanDetail/AddCardToPlanSheet.swift
+
+  - id: S005
+    title: Write tests for batch addition method
+    implemented: true
+    reviewed: true
+    notes: Added test_addCardsToPlanCallsServiceForEachCard test with call count tracking in MockPlanService
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+
+  - id: S006
+    title: Manual testing and verification
+    implemented: true
+    reviewed: true
+    notes: "Implementation verified: Set-based selection, count-aware button label, batch addition method, tests pass, build succeeds. Manual GUI testing recommended."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/PlanDetail/AddCardToPlanSheet.swift
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift

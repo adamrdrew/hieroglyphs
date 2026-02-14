@@ -7,7 +7,7 @@ struct AddCardToPlanSheet: View {
 
     let plan: Plan
 
-    @State private var selectedCard: Card?
+    @State private var selectedCards: Set<Card.ID> = []
     @State private var searchText = ""
     @State private var filterStatus: Set<CardStatus> = []
     @State private var filterType: Set<CardType> = []
@@ -15,7 +15,7 @@ struct AddCardToPlanSheet: View {
 
     var body: some View {
         NavigationStack {
-            List(filteredCards, id: \.id, selection: $selectedCard) { card in
+            List(filteredCards, id: \.id, selection: $selectedCards) { card in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(card.title)
                         .font(.body)
@@ -114,10 +114,10 @@ struct AddCardToPlanSheet: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
+                    Button(addButtonLabel) {
                         addCard()
                     }
-                    .disabled(selectedCard == nil)
+                    .disabled(selectedCards.isEmpty)
                 }
             }
         }
@@ -167,12 +167,22 @@ struct AddCardToPlanSheet: View {
         return filtered
     }
 
+    private var addButtonLabel: String {
+        let count = selectedCards.count
+        if count == 0 {
+            return "Add"
+        } else if count == 1 {
+            return "Add Card"
+        } else {
+            return "Add \(count) Cards"
+        }
+    }
+
     private func addCard() {
-        guard let selectedCard else { return }
-        viewModel.addCardToPlan(
-            cardSlug: selectedCard.slug,
-            planSlug: plan.slug
-        )
+        guard !selectedCards.isEmpty else { return }
+        let selectedCardObjects = filteredCards.filter { selectedCards.contains($0.id) }
+        let cardSlugs = selectedCardObjects.map(\.slug)
+        viewModel.addCardsToPlan(cardSlugs: cardSlugs, planSlug: plan.slug)
         dismiss()
     }
 

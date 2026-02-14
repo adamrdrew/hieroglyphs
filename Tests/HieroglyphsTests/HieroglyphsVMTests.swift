@@ -1729,6 +1729,7 @@ final class MockPlanService: PlanProviding {
     var removeCardWasCalled = false
     var lastRemovedCardSlug: String?
     var lastRemovedCardProjectPath: String?
+    var addCardCallCount = 0
 
     func loadPlans(projectPath: String) throws -> [Plan] {
         if shouldThrowOnLoadPlans {
@@ -1775,6 +1776,7 @@ final class MockPlanService: PlanProviding {
     }
 
     func addCardToPlan(cardSlug: String, planSlug: String, projectPath: String) throws {
+        addCardCallCount += 1
         if shouldThrowOnAddCardToPlan {
             throw NSError(
                 domain: "MockPlanService",
@@ -2231,6 +2233,56 @@ extension HieroglyphsVMTests {
         XCTAssertNotNil(viewModel.selectedPlan)
         XCTAssertEqual(viewModel.selectedPlan!.linkedCardSlugs.count, 1)
         XCTAssertTrue(viewModel.selectedPlan!.linkedCardSlugs.contains("test-card"))
+    }
+
+    @MainActor
+    func testAddCardsToPlanCallsServiceForEachCard() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil
+        )
+
+        let plan = Plan(
+            id: UUID(),
+            title: "Test Plan",
+            number: 1,
+            slug: "0001-test-plan",
+            status: .planning,
+            created: Date(),
+            updated: Date(),
+            linkedCardSlugs: [],
+            phasePrompt: ""
+        )
+
+        mockWorkspace.mockProjects = [testProject]
+        mockPlan.mockPlans = [plan]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.plans(testProject))
+        viewModel.loadPlans()
+
+        let cardSlugs = ["card-1", "card-2", "card-3"]
+
+        XCTAssertEqual(mockPlan.addCardCallCount, 0)
+
+        viewModel.addCardsToPlan(cardSlugs: cardSlugs, planSlug: "0001-test-plan")
+
+        XCTAssertEqual(mockPlan.addCardCallCount, 3)
+        XCTAssertEqual(viewModel.plans.count, 1)
     }
 
     @MainActor

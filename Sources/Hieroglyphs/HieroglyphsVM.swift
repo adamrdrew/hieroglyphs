@@ -477,6 +477,40 @@ final class HieroglyphsVM {
         }
     }
 
+    func addCardsToPlan(cardSlugs: [String], planSlug: String) {
+        guard let selectedProject else {
+            print("Cannot add cards to plan: no project selected")
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot add cards to plan: workspace path is nil")
+            return
+        }
+
+        guard let planService else {
+            print("Cannot add cards to plan: plan service is nil")
+            return
+        }
+
+        let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+
+        for cardSlug in cardSlugs {
+            do {
+                try planService.addCardToPlan(
+                    cardSlug: cardSlug,
+                    planSlug: planSlug,
+                    projectPath: projectPath
+                )
+            } catch {
+                print("Failed to add card \(cardSlug) to plan: \(error)")
+            }
+        }
+
+        loadPlans()
+        refreshSelectedPlan()
+    }
+
     func removeCardFromPlan(cardSlug: String, planSlug: String) {
         guard let selectedProject else {
             print("Cannot remove card from plan: no project selected")
