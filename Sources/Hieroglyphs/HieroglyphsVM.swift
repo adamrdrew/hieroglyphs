@@ -218,12 +218,25 @@ final class HieroglyphsVM {
     /// Updates the selected section.
     ///
     /// Clears cross-section selection state to ensure detail column displays
-    /// content consistent with the selected section type.
+    /// content consistent with the selected section type. Clears all detail
+    /// selections when the project changes.
     ///
     /// - Parameter section: The section to select
     func selectSection(_ section: SidebarSection?) {
+        let oldProject = selectedProject
         self.selectedSection = section
+        let newProject = selectedProject
 
+        // If the project changed, clear all detail selections
+        if oldProject?.id != newProject?.id {
+            self.selectedCard = nil
+            self.selectedPlan = nil
+            self.selectedPhase = nil
+            return
+        }
+
+        // If only the section type changed within the same project,
+        // clear cross-section selections
         switch section {
         case .cards:
             self.selectedPlan = nil
@@ -287,6 +300,13 @@ final class HieroglyphsVM {
                 for: selectedProject
             )
             self.cards = loadedCards
+
+            // Clear selection if the selected card no longer exists
+            if let selectedCard,
+               !loadedCards.contains(where: { $0.id == selectedCard.id }) {
+                self.selectedCard = nil
+            }
+
             isLoadingCards = false
         } catch {
             print("Failed to load cards: \(error)")
@@ -317,16 +337,16 @@ final class HieroglyphsVM {
             return
         }
 
-        let previousSlug = selectedPhase?.slug
-
         do {
             let loadedPhases = try phaseService.loadPhases(
                 from: sourceDirectory
             )
             self.phases = loadedPhases
 
-            if let previousSlug {
-                self.selectedPhase = loadedPhases.first { $0.slug == previousSlug }
+            // Clear selection if the selected phase no longer exists
+            if let selectedPhase,
+               !loadedPhases.contains(where: { $0.id == selectedPhase.id }) {
+                self.selectedPhase = nil
             }
         } catch {
             print("Failed to load phases: \(error)")
@@ -353,14 +373,15 @@ final class HieroglyphsVM {
         }
 
         let projectPath = "\(workspacePath)/\(selectedProject.slug)"
-        let previousSlug = selectedPlan?.slug
 
         do {
             let loadedPlans = try planService.loadPlans(projectPath: projectPath)
             self.plans = loadedPlans
 
-            if let previousSlug {
-                self.selectedPlan = loadedPlans.first { $0.slug == previousSlug }
+            // Clear selection if the selected plan no longer exists
+            if let selectedPlan,
+               !loadedPlans.contains(where: { $0.id == selectedPlan.id }) {
+                self.selectedPlan = nil
             }
         } catch {
             print("Failed to load plans: \(error)")

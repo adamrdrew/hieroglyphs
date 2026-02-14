@@ -19,41 +19,47 @@ struct MainWindow: View {
 
     @ViewBuilder
     private var middleColumnContent: some View {
-        switch viewModel.selectedSection {
-        case .cards:
-            CardList()
-        case .plans:
-            PlanList()
-        case .phases:
-            PhaseList()
-        case .pharaoh(let project):
-            PharaohView(project: project)
-        case .none:
-            ContentUnavailableView(
-                "Select a Project",
-                systemImage: "folder",
-                description: Text("Choose a project section from the sidebar to get started.")
-            )
+        Group {
+            switch viewModel.selectedSection {
+            case .cards:
+                CardList()
+            case .plans:
+                PlanList()
+            case .phases:
+                PhaseList()
+            case .pharaoh(let project):
+                PharaohView(project: project)
+            case .none:
+                ContentUnavailableView(
+                    "Select a Project",
+                    systemImage: "folder",
+                    description: Text("Choose a project section from the sidebar to get started.")
+                )
+            }
         }
+        .id(viewModel.selectedProject?.id)
     }
 
     @ViewBuilder
     private var detailColumnContent: some View {
-        switch viewModel.selectedSection {
-        case .cards:
-            CardDetail()
-        case .plans:
-            PlanDetail()
-        case .phases:
-            PhaseDetail()
-        case .pharaoh(let project):
-            PharaohActivityStreamView(project: project)
-        case .none:
-            ContentUnavailableView(
-                "Select a Project",
-                systemImage: "folder",
-                description: Text("Choose a project section from the sidebar to get started.")
-            )
+        Group {
+            switch viewModel.selectedSection {
+            case .cards:
+                CardDetail()
+            case .plans:
+                PlanDetail()
+            case .phases:
+                PhaseDetail()
+            case .pharaoh(let project):
+                PharaohActivityStreamView(project: project)
+            case .none:
+                ContentUnavailableView(
+                    "Select a Project",
+                    systemImage: "folder",
+                    description: Text("Choose a project section from the sidebar to get started.")
+                )
+            }
         }
+        .id(viewModel.selectedProject?.id)
     }
 }

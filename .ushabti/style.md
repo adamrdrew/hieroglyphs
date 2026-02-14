@@ -167,6 +167,80 @@ SF Symbols exclusively. Monochrome, hierarchical rendering. Color used sparingly
 
 ---
 
+## SwiftUI UX Patterns
+
+This section defines behavioural patterns for SwiftUI views. Code correctness alone is not sufficient — views must behave correctly from the user's perspective. These patterns are as important as SOLID principles. Overseer reviews against these patterns. Builder implements according to them.
+
+### Navigation State Reset
+
+When the user changes context — selecting a different project, switching tabs, navigating to a different item — all views that depend on that context MUST update immediately. Stale content from a previous selection is a defect.
+
+**Patterns:**
+- Use `.id(selectedProject?.id)` on navigation destination views to force SwiftUI to rebuild them when the selection changes. This is the primary mechanism — it destroys and recreates the view, ensuring no stale state survives.
+- Use `onChange(of: selectedProject)` to explicitly clear local `@State` properties when the parent context changes (e.g., clear a selected card when the project changes, clear scroll position, reset disclosure states).
+- When a view depends on a parent selection, ensure it handles `nil` gracefully — show an empty state, not a stale previous state.
+
+**Anti-patterns:**
+- Views that read from a parent binding but have local `@State` that does not reset on context change. SwiftUI preserves `@State` across recompositions unless the view identity changes.
+- Navigation destinations that appear correct because the data binding updates, but local UI state (scroll position, expanded sections, edit mode, text field content) is left over from the previous item.
+
+### Async Operation Feedback
+
+Any user-initiated operation that does not complete within a single frame MUST provide visual feedback. The user must always know: (1) something is happening, (2) when it finishes, and (3) if it failed.
+
+**Patterns:**
+- Model async operations as an explicit state: `.idle`, `.loading`, `.loaded(result)`, `.failed(error)`. The view switches on this state.
+- While loading: show a `ProgressView` with a brief description. Hide or disable the triggering control so the user cannot double-fire.
+- On failure: show the error visibly — an `.alert()`, a banner in the view, or an inline error message. Never fail silently.
+- On success: transition to the loaded state. If the operation changes navigation or selection, update accordingly.
+
+**Anti-patterns:**
+- Firing an async operation and leaving the UI unchanged until it completes. The user clicks a button, nothing happens for 2 seconds, then the UI suddenly changes.
+- Catching errors in a `try?` or `catch {}` block without surfacing them. Silent failures are the worst UX defect — the user does not know whether the operation succeeded, failed, or is still in progress.
+
+### Polling and Live Data
+
+Views driven by timers or file-watching MUST be efficient. Unnecessary redraws degrade the entire app, not just the affected view.
+
+**Patterns:**
+- Before updating `@State` or `@Published` properties from polled data, compare the new data to the existing data. Only assign if the content has actually changed. SwiftUI triggers a view update on every `@State` assignment, even if the value is identical — use an explicit equality check before assigning.
+- For list data (e.g., event streams), prefer appending new items rather than replacing the entire array. Maintain stable `Identifiable` IDs so SwiftUI can diff incrementally.
+- Preserve user-controlled UI state across data refreshes: scroll position, expanded disclosure groups, text field content. The data layer updates; the interaction state does not reset.
+- Use content hashing or a simple count/timestamp comparison as a cheap guard before doing expensive parsing or array replacement.
+
+**Anti-patterns:**
+- Assigning `self.events = newEvents` on every timer tick regardless of whether anything changed. This triggers a full view diff on every tick.
+- Replacing the entire array when only one item was appended, causing SwiftUI to diff and re-render the entire list.
+- Data refreshes that reset scroll position to the top or collapse disclosure groups the user had opened.
+
+### Modal and Sheet Sizing
+
+Modals, sheets, and popovers MUST have constrained dimensions. The container defines a maximum size; the content scrolls within it.
+
+**Patterns:**
+- Use `.frame(maxWidth:maxHeight:)` on the outer container of sheet/modal content.
+- Wrap variable-length content (text editors, lists, previews) in a `ScrollView` inside the constrained frame.
+- Text input areas that accept multi-line content (e.g., card body, notes) MUST use a `ScrollView` wrapping a `TextEditor`, with the `TextEditor` constrained by `maxHeight`. The `TextEditor` scrolls; the modal does not grow.
+
+**Anti-patterns:**
+- A `TextEditor` in a sheet with no height constraint — the sheet grows infinitely as the user types.
+- A `List` or `ForEach` in a modal with no frame constraint — the modal height is determined by the number of items.
+
+### Empty States
+
+Views that can have zero items MUST display an intentional empty state. A blank area with no explanation is confusing.
+
+**Patterns:**
+- When a list or collection is empty, show a brief message explaining why and (if applicable) how to add content. Use secondary text styling and optionally an SF Symbol.
+- Layout components (filter bars, toolbars, sort controls) that only make sense with content should either hide or visually collapse when the list is empty. A full-width filter bar above an empty list dominates the view and looks broken.
+- Empty states should be visually light — they are placeholders, not features. A single line of `.secondary` text is usually sufficient.
+
+**Anti-patterns:**
+- A filter bar that expands to fill available space when the list below it is empty (SwiftUI spacer/flex behaviour can cause this when the list has zero height).
+- A completely blank detail pane with no indication of what should be there or how to populate it.
+
+---
+
 ## Testing Strategy
 
 - Every public method has tests.
@@ -230,6 +304,7 @@ Managed via SPM in Package.swift:
 
 When Overseer reviews a phase, verify:
 
+### Code Quality
 - [ ] All public methods have tests
 - [ ] Tests and lint pass
 - [ ] No dead code (unused imports, methods, types)
@@ -243,3 +318,11 @@ When Overseer reviews a phase, verify:
 - [ ] Error handling follows "do your best" philosophy
 - [ ] Code is optimized for human readability
 - [ ] Documentation is reconciled with code changes
+
+### UI State Correctness (L17)
+- [ ] Views bound to a selection reset when that selection changes (`.id()` or `onChange(of:)`)
+- [ ] Async operations show progress indication and surface errors visibly
+- [ ] Timer/polling-driven views compare content before assigning to `@State`/`@Published`
+- [ ] Modals and sheets have constrained dimensions — content scrolls, container does not grow
+- [ ] Empty states are handled — no blank areas, no layout breakage on zero items
+- [ ] User interaction state (scroll position, disclosure groups, edit mode) survives data refreshes

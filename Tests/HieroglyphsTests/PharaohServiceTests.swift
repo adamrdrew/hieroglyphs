@@ -319,6 +319,7 @@ final class PharaohServiceTests: XCTestCase {
         {"tool_name": "Bash", "input": "ls -la"}
         """
         let event = PharaohEvent(
+            id: 0,
             timestamp: Date(),
             type: .toolCall,
             summary: "Test",
@@ -334,6 +335,7 @@ final class PharaohServiceTests: XCTestCase {
         {"turn": 3, "input_tokens": 1000, "output_tokens": 500}
         """
         let event = PharaohEvent(
+            id: 0,
             timestamp: Date(),
             type: .turn,
             summary: "Test",
@@ -350,6 +352,7 @@ final class PharaohServiceTests: XCTestCase {
         {"full_text": "This is the complete text content"}
         """
         let event = PharaohEvent(
+            id: 0,
             timestamp: Date(),
             type: .text,
             summary: "Test",
@@ -364,6 +367,7 @@ final class PharaohServiceTests: XCTestCase {
         {"turns": 10, "cost_usd": 1.5}
         """
         let event = PharaohEvent(
+            id: 0,
             timestamp: Date(),
             type: .result,
             summary: "Test",
@@ -379,6 +383,7 @@ final class PharaohServiceTests: XCTestCase {
 
     func testEventDetailParsingMalformedJson() {
         let event = PharaohEvent(
+            id: 0,
             timestamp: Date(),
             type: .toolCall,
             summary: "Test",
@@ -397,6 +402,7 @@ final class PharaohServiceTests: XCTestCase {
 
     func testEventHasDetail() {
         let eventWithDetail = PharaohEvent(
+            id: 0,
             timestamp: Date(),
             type: .toolCall,
             summary: "Test",
@@ -405,11 +411,93 @@ final class PharaohServiceTests: XCTestCase {
         XCTAssertTrue(eventWithDetail.hasDetail)
 
         let eventWithoutDetail = PharaohEvent(
+            id: 1,
             timestamp: Date(),
             type: .toolCall,
             summary: "Test",
             detailJson: nil
         )
         XCTAssertFalse(eventWithoutDetail.hasDetail)
+    }
+
+    func testReadEventsReturnsStableIDs() throws {
+        let pharaohDir = tempDirectory.appendingPathComponent(".pharaoh")
+        try FileManager.default.createDirectory(at: pharaohDir, withIntermediateDirectories: true)
+
+        let eventsFile = pharaohDir.appendingPathComponent("events.jsonl")
+        let content = """
+        {"timestamp": "2024-01-01T12:00:00.000Z", "type": "tool_call", "summary": "First event"}
+        {"timestamp": "2024-01-01T12:01:00.000Z", "type": "result", "summary": "Second event"}
+        """
+        try content.write(to: eventsFile, atomically: true, encoding: .utf8)
+
+        let firstRead = service.readEvents(from: tempDirectory.path)
+        let secondRead = service.readEvents(from: tempDirectory.path)
+
+        XCTAssertEqual(firstRead.count, 2)
+        XCTAssertEqual(secondRead.count, 2)
+        XCTAssertEqual(firstRead[0].id, secondRead[0].id)
+        XCTAssertEqual(firstRead[1].id, secondRead[1].id)
+    }
+
+    func testReadEventsIndexBasedIDs() throws {
+        let pharaohDir = tempDirectory.appendingPathComponent(".pharaoh")
+        try FileManager.default.createDirectory(at: pharaohDir, withIntermediateDirectories: true)
+
+        let eventsFile = pharaohDir.appendingPathComponent("events.jsonl")
+        let content = """
+        {"timestamp": "2024-01-01T12:00:00.000Z", "type": "tool_call", "summary": "Event 0"}
+        {"timestamp": "2024-01-01T12:01:00.000Z", "type": "text", "summary": "Event 1"}
+        {"timestamp": "2024-01-01T12:02:00.000Z", "type": "result", "summary": "Event 2"}
+        """
+        try content.write(to: eventsFile, atomically: true, encoding: .utf8)
+
+        let events = service.readEvents(from: tempDirectory.path)
+
+        XCTAssertEqual(events.count, 3)
+        XCTAssertEqual(events[0].id, 0)
+        XCTAssertEqual(events[1].id, 1)
+        XCTAssertEqual(events[2].id, 2)
+        XCTAssertEqual(events[0].summary, "Event 0")
+        XCTAssertEqual(events[1].summary, "Event 1")
+        XCTAssertEqual(events[2].summary, "Event 2")
+    }
+
+    func testReadStatusReturnsEqualValuesForUnchangedFile() throws {
+        let pharaohDir = tempDirectory.appendingPathComponent(".pharaoh")
+        try FileManager.default.createDirectory(at: pharaohDir, withIntermediateDirectories: true)
+
+        let statusFile = pharaohDir.appendingPathComponent("pharaoh.json")
+        let json = """
+        {"status": "idle"}
+        """
+        try json.write(to: statusFile, atomically: true, encoding: .utf8)
+
+        let firstStatus = service.readStatus(from: tempDirectory.path)
+        let secondStatus = service.readStatus(from: tempDirectory.path)
+
+        XCTAssertEqual(firstStatus, secondStatus)
+        XCTAssertEqual(firstStatus, .idle)
+    }
+
+    func testReadEventsReturnsEqualArraysForUnchangedFile() throws {
+        let pharaohDir = tempDirectory.appendingPathComponent(".pharaoh")
+        try FileManager.default.createDirectory(at: pharaohDir, withIntermediateDirectories: true)
+
+        let eventsFile = pharaohDir.appendingPathComponent("events.jsonl")
+        let content = """
+        {"timestamp": "2024-01-01T12:00:00.000Z", "type": "tool_call", "summary": "Event 1"}
+        {"timestamp": "2024-01-01T12:01:00.000Z", "type": "result", "summary": "Event 2"}
+        """
+        try content.write(to: eventsFile, atomically: true, encoding: .utf8)
+
+        let firstRead = service.readEvents(from: tempDirectory.path)
+        let secondRead = service.readEvents(from: tempDirectory.path)
+
+        XCTAssertEqual(firstRead.count, secondRead.count)
+        XCTAssertEqual(firstRead[0].id, secondRead[0].id)
+        XCTAssertEqual(firstRead[0].summary, secondRead[0].summary)
+        XCTAssertEqual(firstRead[1].id, secondRead[1].id)
+        XCTAssertEqual(firstRead[1].summary, secondRead[1].summary)
     }
 }

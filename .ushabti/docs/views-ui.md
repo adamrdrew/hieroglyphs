@@ -111,7 +111,7 @@ struct WelcomeView: View {
 
 **File:** `Sources/Hieroglyphs/Views/MainWindow.swift`
 
-**Purpose:** Root view with three-column NavigationSplitView scaffold and section-based middle column routing.
+**Purpose:** Root view with three-column NavigationSplitView scaffold and section-based middle column routing. Manages view lifecycle with `.id()` modifiers to ensure views reset when project changes.
 
 **Structure:**
 
@@ -128,47 +128,79 @@ struct MainWindow: View {
         } detail: {
             detailColumnContent
         }
-    }
-
-    @ViewBuilder
-    private var detailColumnContent: some View {
-        if viewModel.selectedPhase != nil {
-            PhaseDetail()
-        } else {
-            CardDetail()
+        .onChange(of: viewModel.selectedProject) { _, _ in
+            viewModel.restartPhasesWatching()
         }
-    }
     }
 
     @ViewBuilder
     private var middleColumnContent: some View {
-        switch viewModel.selectedSection {
-        case .cards:
-            CardList()
-        case .plans:
-            PlanList()
-        case .phases:
-            PhaseList()
-        case .none:
-            ContentUnavailableView(
-                "Select a Project",
-                systemImage: "folder",
-                description: Text("Choose a project section from the sidebar to get started.")
-            )
+        Group {
+            switch viewModel.selectedSection {
+            case .cards:
+                CardList()
+            case .plans:
+                PlanList()
+            case .phases:
+                PhaseList()
+            case .pharaoh(let project):
+                PharaohView(project: project)
+            case .none:
+                ContentUnavailableView(
+                    "Select a Project",
+                    systemImage: "folder",
+                    description: Text("Choose a project section from the sidebar to get started.")
+                )
+            }
         }
+        .id(viewModel.selectedProject?.id)
+    }
+
+    @ViewBuilder
+    private var detailColumnContent: some View {
+        Group {
+            switch viewModel.selectedSection {
+            case .cards:
+                CardDetail()
+            case .plans:
+                PlanDetail()
+            case .phases:
+                PhaseDetail()
+            case .pharaoh(let project):
+                PharaohActivityStreamView(project: project)
+            case .none:
+                ContentUnavailableView(
+                    "Select a Project",
+                    systemImage: "folder",
+                    description: Text("Choose a project section from the sidebar to get started.")
+                )
+            }
+        }
+        .id(viewModel.selectedProject?.id)
     }
 }
 ```
 
+**View Lifecycle Management:**
+
+Both `middleColumnContent` and `detailColumnContent` use `.id(viewModel.selectedProject?.id)` to force SwiftUI to destroy and recreate views when the project changes. This is critical for correct state management:
+
+1. **Cancels Running Tasks:** When the view is destroyed, all `.task` modifiers are automatically cancelled. This prevents stale async operations (like Pharaoh status polling) from continuing after switching projects.
+2. **Resets Local State:** All `@State` properties in the views are reset to their initial values. This prevents filter bars, sort popovers, and sheet presentation state from persisting across project switches.
+3. **Triggers Fresh Lifecycle:** `onAppear` and `.task` modifiers execute again for the new project context, ensuring data loads correctly.
+
+Combined with `selectSection(_:)` clearing detail selections on project change, the `.id()` modifiers ensure views always reflect the currently selected project's data with no stale state.
+
 **Notes:**
 - Three-column layout per L10 (TakeNote consistency)
-- Sidebar column displays hierarchical project list with sections (Cards, Plans, Phases)
-- Content column switches based on `viewModel.selectedSection` value
+- Sidebar column displays hierarchical project list with sections (Cards, Plans, Phases, Pharaoh)
+- Middle column switches based on `viewModel.selectedSection` value
   - `.cards` → displays `CardList` (searchable, filterable card list)
   - `.plans` → displays `PlanList` (list of plans with linked cards)
   - `.phases` → displays `PhaseList` (list of Ushabti phases)
+  - `.pharaoh` → displays `PharaohView` (process management and status)
   - `nil` → displays empty state prompting user to select a section
-- Detail column displays card editor (metadata + click-to-edit markdown)
+- Detail column switches based on section type, showing appropriate detail view or empty state
 - `preferredCompactColumn` controls which column shows on small windows (defaults to sidebar)
 - Shown when `viewModel.workspacePath != nil` (conditional rendering in App.swift)
 

@@ -2,14 +2,14 @@ import Foundation
 
 /// Represents a single event from the Pharaoh event stream.
 struct PharaohEvent: Identifiable, Equatable {
-    let id: UUID
+    let id: Int
     let timestamp: Date
     let type: PharaohEventType
     let summary: String
     let detailJson: String?
 
     init(
-        id: UUID = UUID(),
+        id: Int,
         timestamp: Date,
         type: PharaohEventType,
         summary: String,
@@ -80,7 +80,7 @@ struct PharaohEvent: Identifiable, Equatable {
 
     /// Parse a JSON Lines string into a PharaohEvent.
     /// Returns nil if the line is malformed or cannot be parsed.
-    static func parse(line: String) -> PharaohEvent? {
+    static func parse(line: String, index: Int) -> PharaohEvent? {
         guard let data = line.data(using: .utf8) else {
             return nil
         }
@@ -117,6 +117,7 @@ struct PharaohEvent: Identifiable, Equatable {
         }
 
         return PharaohEvent(
+            id: index,
             timestamp: timestamp,
             type: type,
             summary: summary,

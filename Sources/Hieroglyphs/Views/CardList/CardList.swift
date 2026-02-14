@@ -47,6 +47,9 @@ struct CardList: View {
             }
         }
         .onChange(of: viewModel.selectedProject, initial: true) { _, _ in
+            showFilterBar = false
+            showSortPopover = false
+            cardPendingDeletion = nil
             viewModel.loadCards()
         }
         .onChange(of: viewModel.focusSearch) { _, newValue in

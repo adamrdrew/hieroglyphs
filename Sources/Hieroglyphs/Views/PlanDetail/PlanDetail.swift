@@ -55,6 +55,10 @@ struct PlanDetail: View {
                 .onAppear {
                     phasePromptContent = plan.phasePrompt
                 }
+                .onChange(of: viewModel.selectedProject) { _, _ in
+                    showingAddCardSheet = false
+                    showingDispatchConfirmation = false
+                }
                 .onChange(of: viewModel.selectedPlan) { _, newPlan in
                     phasePromptContent = newPlan?.phasePrompt ?? ""
                 }

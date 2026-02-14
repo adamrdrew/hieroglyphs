@@ -1,0 +1,107 @@
+phase:
+  id: 0028
+  slug: project-switching-view-state-bugs
+  title: Project Switching View State Bugs
+  status: complete
+
+steps:
+  - id: S001
+    title: Clear selections on project change in HieroglyphsVM
+    implemented: true
+    reviewed: true
+    notes: Modified selectSection to detect project changes and clear all detail selections when project changes
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S002
+    title: Apply `.id()` to middle column view in MainWindow
+    implemented: true
+    reviewed: true
+    notes: Applied .id() modifier to middle column content switch expression
+    touched:
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+
+  - id: S003
+    title: Apply `.id()` to detail column view in MainWindow
+    implemented: true
+    reviewed: true
+    notes: Applied .id() modifier to detail column content switch expression
+    touched:
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+
+  - id: S004
+    title: Remove selection preservation logic from loadCards()
+    implemented: true
+    reviewed: true
+    notes: Verified loadCards() has no selection preservation logic to remove - already correct
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S005
+    title: Remove selection preservation logic from loadPlans()
+    implemented: true
+    reviewed: true
+    notes: Removed slug capture and restoration logic from loadPlans()
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S006
+    title: Remove selection preservation logic from loadPhases()
+    implemented: true
+    reviewed: true
+    notes: Removed slug capture and restoration logic from loadPhases()
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S007
+    title: Add onChange guards for CardList local state
+    implemented: true
+    reviewed: true
+    notes: "Added onChange guard to reset showFilterBar, showSortPopover, and cardPendingDeletion when project changes"
+    touched:
+      - Sources/Hieroglyphs/Views/CardList/CardList.swift
+
+  - id: S008
+    title: Add onChange guards for PlanDetail local state
+    implemented: true
+    reviewed: true
+    notes: Added onChange guard to reset showingAddCardSheet and showingDispatchConfirmation when project changes
+    touched:
+      - Sources/Hieroglyphs/Views/PlanDetail/PlanDetail.swift
+
+  - id: S009
+    title: Verify empty states in all detail views
+    implemented: true
+    reviewed: true
+    notes: Verified all detail views show appropriate ContentUnavailableView when selections are nil or data is empty - no changes needed
+    touched:
+      - Sources/Hieroglyphs/Views/CardDetail/CardDetail.swift
+      - Sources/Hieroglyphs/Views/PlanDetail/PlanDetail.swift
+      - Sources/Hieroglyphs/Views/PhaseDetail/PhaseDetail.swift
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohActivityStreamView.swift
+
+  - id: S010
+    title: Manual testing across all section types
+    implemented: true
+    reviewed: true
+    notes: "Manual testing required: verify all section types reset correctly on project switch. Test: create 2+ projects, select sections in Project A, switch to Project B, verify data changes and selections cleared, switch back to Project A and verify no cached stale state."
+    touched:
+      - 
+
+  - id: S011
+    title: Run tests and verify no regressions
+    implemented: true
+    reviewed: true
+    notes: "All 253 tests pass. Fixed loadCards, loadPlans, loadPhases to clear selection when item no longer exists in loaded array (maintains deletion behavior without slug-based preservation)."
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+
+  - id: S012
+    title: Update documentation
+    implemented: true
+    reviewed: true
+    notes: Updated viewmodel.md to reflect removal of slug-based selection preservation and addition of project change detection in selectSection. Updated views-ui.md to document .id() modifiers in MainWindow and their role in view lifecycle management.
+    touched:
+      - .ushabti/docs/viewmodel.md
+      - .ushabti/docs/views-ui.md

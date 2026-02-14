@@ -91,7 +91,7 @@ Represents a single event from the Pharaoh agent execution stream:
 
 ```swift
 struct PharaohEvent: Identifiable, Equatable {
-    let id: UUID
+    let id: Int
     let timestamp: Date
     let type: PharaohEventType
     let summary: String
@@ -115,11 +115,17 @@ enum PharaohEventType: String, Equatable {
 - Each line is a JSON object with `timestamp` (ISO8601), `type`, `summary`, and optional `detail`
 - Events are appended to the file as Pharaoh executes
 
+**Event Identity:**
+- Event IDs are stable integers based on line index in the JSONL file (first event = 0, second = 1, etc.)
+- Stable IDs enable SwiftUI to efficiently diff event lists and prevent unnecessary redraws
+- Re-reading the same file produces events with identical IDs (deterministic parsing)
+
 **Event Parsing:**
-- `PharaohEvent.parse(line: String) -> PharaohEvent?` — Static method parses a single JSON Lines entry
+- `PharaohEvent.parse(line: String, index: Int) -> PharaohEvent?` — Static method parses a single JSON Lines entry with line index
 - Returns nil for malformed lines (graceful failure)
 - Timestamp parsed with ISO8601DateFormatter including fractional seconds
 - Detail object serialized to JSON string for storage (not decoded into typed structs)
+- Index parameter becomes the event's stable ID
 
 **Event Detail Properties:**
 
@@ -143,7 +149,10 @@ Detail column view that displays the real-time event stream:
 
 - ScrollView with LazyVStack of PharaohEventRow components
 - Polls events every 2 seconds via `readEvents(from:)`
-- Auto-scrolls to bottom on new events (ScrollViewReader with anchor)
+- **Conditional assignment:** Compares event count before updating state — only assigns when count changes
+- **Append-only updates:** New events appended to existing array rather than replacing entire array
+- **Truncation detection:** If new count < old count, replaces array (handles phase change / JSONL file reset)
+- Auto-scrolls to bottom only when event count increases (not on every poll tick)
 - Empty state shows ContentUnavailableView when no events exist
 
 **PharaohEventRow** (`Sources/Hieroglyphs/Views/Pharaoh/PharaohEventRow.swift`)
@@ -234,6 +243,7 @@ Full-screen view for Pharaoh management shown as middle column content:
 **Update Strategy:**
 - Polls status and server info every 2 seconds via `monitorStatus()` async task
 - Calls `readServerInfo(from:)` on each poll and updates `serverInfo` state
+- **Conditional assignment:** Compares polled values to current state before assigning — only updates when values differ
 - Detects status transitions for auto-completion and error alerts
 - Combined with file watching for responsive updates
 

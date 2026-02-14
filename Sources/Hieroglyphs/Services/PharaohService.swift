@@ -143,7 +143,10 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
 
         return content
             .split(separator: "\n")
-            .compactMap { PharaohEvent.parse(line: String($0)) }
+            .enumerated()
+            .compactMap { index, line in
+                PharaohEvent.parse(line: String(line), index: index)
+            }
     }
 
     func readServerInfo(from directory: String) -> PharaohServerInfo? {
