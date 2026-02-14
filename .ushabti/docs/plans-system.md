@@ -168,7 +168,83 @@ Set up the project repository and build infrastructure.
 - Initially empty when plan is created
 - Editable in PlanDetail view via TextEditor
 - Changes are written to disk immediately (not debounced)
-- Used by Ushabti Scribe to generate phase plans (future enhancement)
+- Can be generated automatically from linked cards using on-device AI (see Phase Prompt Generation below)
+
+## Phase Prompt Generation
+
+**Service:** `PromptGenerating` protocol, `PromptGenerator` implementation
+
+**Purpose:** Generate phase prompts automatically from linked cards using Apple's on-device FoundationModels framework.
+
+**Location:** `Sources/Hieroglyphs/Services/PromptGenerator.swift`, `Sources/Hieroglyphs/Services/PromptGenerating.swift`
+
+**How it works:**
+
+1. User clicks "Generate Phase Prompt" button in PlanDetail view
+2. PromptGenerator assembles card titles, types, priorities, and body content into a concise summary
+3. Summary is sent to SystemLanguageModel with structured instructions (see `ScribePromptInstructions.swift`)
+4. Model generates a ~500 word narrative phase prompt in markdown format
+5. Generated prompt populates PHASE_PROMPT.md content in PlanDetail TextEditor
+
+**UI behavior:**
+
+- Generate button only visible when:
+  - On-device language model is available (`PromptGenerator.isAvailable`)
+  - Plan has linked cards (`!plan.linkedCardSlugs.isEmpty`)
+  - Plan is editable (`plan.status != .inProgress`)
+- During generation:
+  - AIMessage shimmer view shows "Generating..." with animated gradient
+  - Cancel button allows user to abort generation
+  - TextEditor and Generate button are disabled
+- On success: Generated text populates TextEditor and is written to PHASE_PROMPT.md
+- On error: Alert displays error message
+
+**Token limit handling:**
+
+- FoundationModels context window is 4096 tokens
+- PromptGenerator uses character count approximation (1 token ≈ 4 chars)
+- Card titles and metadata always included
+- Card body content truncated if total exceeds limit
+- Prioritizes critical/high-priority cards (implicit in model instructions)
+
+**Cancellation:**
+
+- LanguageModelSession does not support true cancellation
+- PromptGenerator uses flag-based discard pattern:
+  - User clicks Cancel → sets `sessionCancelled` flag
+  - When response arrives, checks flag before returning result
+  - If cancelled, throws `PromptGeneratorError.generationCancelled`
+
+**System prompt:**
+
+- Defined in `Sources/Hieroglyphs/Prompts/ScribePromptInstructions.swift`
+- Instructs model to write structured phase prompts with sections:
+  - Context (why this phase exists)
+  - What to Build (features/fixes to implement)
+  - Requirements (acceptance criteria, constraints)
+  - Cards Addressed (list of card titles resolved)
+- Prose paragraphs preferred over bullet lists
+- Example output structure provided in instructions
+
+**Apple Intelligence shimmer:**
+
+- `AIMessage` view in `Sources/Hieroglyphs/Views/Shared/AIMessage.swift`
+- Displays `apple.intelligence` SF Symbol with animated gradient
+- Gradient colors: orange → pink → blue → purple → orange (rotating)
+- Symbol effects: `.bounce.down` and `.rotate`
+- Respects `accessibilityReduceMotion` (disables animation if true)
+- Ported from TakeNote's `MovingGradientForeground` pattern
+
+**Availability:**
+
+- Requires macOS 26 (Tahoe) with Apple Intelligence support
+- Depends on hardware capabilities and user settings
+- `SystemLanguageModel.default.isAvailable` checked before showing UI
+- Button hidden (not disabled) when model unavailable to avoid clutter
+
+**Reference:**
+
+TakeNote's MagicFormatter implementation: `/Users/adam/Library/Mobile Documents/com~apple~CloudDocs/Xcode Projects/TakeNote/TakeNote/Library/MagicFormatter.swift`
 
 ## Card Links
 
@@ -695,11 +771,10 @@ Plans are monitored for external changes via `FileWatcherService`. When a `plan.
 
 **Planned additions not yet implemented:**
 
-1. **Phase Prompt Generation:** Populate PHASE_PROMPT.md automatically from linked cards
-2. **Plan Templates:** Pre-defined plan structures for common workflows
-3. **Plan Reordering:** Change plan numbers and update slugs
-4. **Plan Archiving:** Move completed plans to `.plans-archive/` directory
-5. **Multi-Project Plans:** Plans that span multiple projects
-6. **Card Dependency Tracking:** Define dependencies between cards within a plan
-7. **Plan Export/Import:** Export plans to JSON or YAML for sharing
-8. **Plan Number Collision Detection:** Warn or auto-increment when creating plan with existing number
+1. **Plan Templates:** Pre-defined plan structures for common workflows
+2. **Plan Reordering:** Change plan numbers and update slugs
+3. **Plan Archiving:** Move completed plans to `.plans-archive/` directory
+4. **Multi-Project Plans:** Plans that span multiple projects
+5. **Card Dependency Tracking:** Define dependencies between cards within a plan
+6. **Plan Export/Import:** Export plans to JSON or YAML for sharing
+7. **Plan Number Collision Detection:** Warn or auto-increment when creating plan with existing number

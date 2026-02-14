@@ -10,6 +10,7 @@ struct HieroglyphsApp: App {
     private let phaseService: PhaseProviding
     private let planService: PlanProviding
     private let pharaohService: PharaohProviding
+    private let promptGenerator: PromptGenerating
 
     init() {
         let service = WorkspaceService()
@@ -19,6 +20,7 @@ struct HieroglyphsApp: App {
         let phases = PhaseService()
         let plans = PlanService()
         let pharaoh = PharaohService()
+        let generator = PromptGenerator()
         self.workspaceService = service
         self.fileWatcher = watcher
         self.tagReconciler = reconciler
@@ -26,6 +28,7 @@ struct HieroglyphsApp: App {
         self.phaseService = phases
         self.planService = plans
         self.pharaohService = pharaoh
+        self.promptGenerator = generator
         let vm = HieroglyphsVM(
             workspaceService: service,
             fileWatcher: watcher,
@@ -55,6 +58,7 @@ struct HieroglyphsApp: App {
             .environment(\.phaseService, phaseService)
             .environment(\.planService, planService)
             .environment(\.pharaohService, pharaohService)
+            .environment(\.promptGenerator, promptGenerator)
             .onAppear {
                 viewModel.loadWorkspace()
             }

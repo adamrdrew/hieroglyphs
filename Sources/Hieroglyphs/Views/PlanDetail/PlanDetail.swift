@@ -1,12 +1,36 @@
 import SwiftUI
 
+/// Generation state for prompt generation operations.
+enum GenerationState: Equatable {
+    case idle
+    case generating
+    case failed(Error)
+
+    static func == (lhs: GenerationState, rhs: GenerationState) -> Bool {
+        switch (lhs, rhs) {
+        case (.idle, .idle):
+            return true
+        case (.generating, .generating):
+            return true
+        case (.failed, .failed):
+            return true
+        default:
+            return false
+        }
+    }
+}
+
 /// Detail column view for displaying and editing a selected plan.
 struct PlanDetail: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @Environment(\.pharaohService) private var pharaohService
+    @Environment(\.promptGenerator) private var promptGenerator
     @State private var showingAddCardSheet = false
     @State private var phasePromptContent = ""
     @State private var showingDispatchConfirmation = false
+    @State private var generationState: GenerationState = .idle
+    @State private var showingGenerationError = false
+    @State private var generationError: Error?
 
     private var isEditable: Bool {
         viewModel.selectedPlan?.status != .inProgress
@@ -30,6 +54,16 @@ struct PlanDetail: View {
         return status.isIdle
     }
 
+    private var canGenerate: Bool {
+        guard let plan = viewModel.selectedPlan,
+              let generator = promptGenerator,
+              generator.isAvailable,
+              !plan.linkedCardSlugs.isEmpty else {
+            return false
+        }
+        return true
+    }
+
     var body: some View {
         Group {
             if let plan = viewModel.selectedPlan {
@@ -51,6 +85,15 @@ struct PlanDetail: View {
                     dispatchAlertButtons
                 } message: {
                     dispatchAlertMessage
+                }
+                .alert("Prompt Generation Failed", isPresented: $showingGenerationError) {
+                    Button("OK", role: .cancel) { }
+                } message: {
+                    if let error = generationError {
+                        Text(error.localizedDescription)
+                    } else {
+                        Text("An unknown error occurred during prompt generation.")
+                    }
                 }
                 .onAppear {
                     phasePromptContent = plan.phasePrompt
@@ -251,9 +294,9 @@ struct PlanDetail: View {
                 .frame(minHeight: 200)
                 .font(.body.monospaced())
                 .border(Color.secondary.opacity(0.2))
-                .disabled(!isEditable)
+                .disabled(!isEditable || generationState == .generating)
                 .onChange(of: phasePromptContent) { _, newValue in
-                    if isEditable {
+                    if isEditable && generationState != .generating {
                         viewModel.writePhasePrompt(
                             planSlug: plan.slug,
                             content: newValue
@@ -261,12 +304,29 @@ struct PlanDetail: View {
                     }
                 }
 
-            Button {
-                // Placeholder for future generation logic
-            } label: {
-                Label("Generate Phase Prompt", systemImage: "wand.and.stars")
+            if generationState == .generating {
+                HStack(spacing: 8) {
+                    AIMessage(message: "Generating prompt...", font: .subheadline)
+
+                    Spacer()
+
+                    Button("Cancel") {
+                        promptGenerator?.cancel()
+                        generationState = .idle
+                    }
+                    .buttonStyle(.borderless)
+                }
+                .padding(.vertical, 4)
+            } else if canGenerate {
+                Button {
+                    Task {
+                        await generatePrompt()
+                    }
+                } label: {
+                    Label("Generate Phase Prompt", systemImage: "wand.and.stars")
+                }
+                .disabled(!isEditable)
             }
-            .disabled(true)
         }
     }
 
@@ -310,5 +370,31 @@ struct PlanDetail: View {
     @ViewBuilder
     private var dispatchAlertMessage: some View {
         Text("This will execute the plan's phase prompt using Pharaoh and set the plan status to In Progress.")
+    }
+
+    private func generatePrompt() async {
+        guard let plan = viewModel.selectedPlan,
+              let generator = promptGenerator else {
+            return
+        }
+
+        let linkedCards = viewModel.cards.filter { card in
+            plan.linkedCardSlugs.contains(card.slug)
+        }
+
+        guard !linkedCards.isEmpty else { return }
+
+        generationState = .generating
+
+        do {
+            let result = try await generator.generate(from: linkedCards)
+            phasePromptContent = result
+            viewModel.writePhasePrompt(planSlug: plan.slug, content: result)
+            generationState = .idle
+        } catch {
+            generationState = .failed(error)
+            generationError = error
+            showingGenerationError = true
+        }
     }
 }

@@ -52,6 +52,7 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 - `PhaseProviding` / `PhaseService`: Read-only Ushabti phase data loading from `.ushabti/phases/`
 - `PlanProviding` / `PlanService`: Plan CRUD operations and card status synchronization
 - `PharaohProviding` / `PharaohService`: Pharaoh server process management and status monitoring
+- `PromptGenerating` / `PromptGenerator`: On-device phase prompt generation using FoundationModels
 - Environment keys for each service (SwiftUI dependency injection)
 
 **Dependencies:** Foundation, Yams, FrontmatterParser, SlugGenerator
@@ -138,6 +139,7 @@ App.swift
   ├─> PhaseService (created)
   ├─> PlanService (created)
   ├─> PharaohService (created)
+  ├─> PromptGenerator (created)
   ├─> HieroglyphsVM (created with all services injected)
   └─> MainWindow
        ├─> Sidebar (ViewModel + WorkspaceService via @Environment)
@@ -146,7 +148,7 @@ App.swift
        ├─> CardList (ViewModel, searchable, filter/sort)
        ├─> CardDetail (ViewModel, CodeEditorView, MarkdownUI)
        ├─> PlanList (ViewModel)
-       ├─> PlanDetail (ViewModel, PharaohService for dispatch)
+       ├─> PlanDetail (ViewModel, PharaohService, PromptGenerator)
        ├─> PhaseList (ViewModel)
        ├─> PhaseDetail (ViewModel)
        └─> PharaohView (PharaohService for process management)
@@ -178,6 +180,7 @@ Hieroglyphs uses macOS-specific capabilities per L06 (Platform Leverage):
 - **FSEvents:** For detecting external file changes via FSEventStream
 - **Extended Attributes:** One-way tag projection from frontmatter via xattr (TagReconcilerService)
 - **Spotlight (NSMetadataQuery):** Content, title, and tag search across workspace (SpotlightService)
+- **FoundationModels:** On-device AI for phase prompt generation (PromptGenerator)
 
 ## Future Architecture Extensions
 

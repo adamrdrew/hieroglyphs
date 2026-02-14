@@ -1,0 +1,112 @@
+phase:
+  id: 0033
+  slug: on-device-scribe-prompt-generation
+  title: On-Device Scribe Prompt Generation
+  status: complete
+
+steps:
+  - id: S001
+    title: Create PromptGenerating protocol
+    implemented: true
+    reviewed: true
+    notes: "Protocol created with doc comments explaining availability checks, generation flow, and token limit constraints"
+    touched:
+      - Sources/Hieroglyphs/Services/PromptGenerating.swift
+
+  - id: S002
+    title: Create PromptGenerator implementation
+    implemented: true
+    reviewed: true
+    notes: "Implemented PromptGenerator with availability checks, session management, card assembly with truncation, and cancellation flag pattern from TakeNote"
+    touched:
+      - Sources/Hieroglyphs/Services/PromptGenerator.swift
+
+  - id: S003
+    title: Create system prompt
+    implemented: true
+    reviewed: true
+    notes: Created system prompt with structured instructions and example output format for generating Scribe phase prompts
+    touched:
+      - Sources/Hieroglyphs/Prompts/ScribePromptInstructions.swift
+
+  - id: S004
+    title: Create PromptGenerator environment key
+    implemented: true
+    reviewed: true
+    notes: Created environment key following existing pattern from PharaohServiceEnvironmentKey
+    touched:
+      - Sources/Hieroglyphs/Services/PromptGeneratorEnvironmentKey.swift
+
+  - id: S005
+    title: Create Apple Intelligence shimmer view
+    implemented: true
+    reviewed: true
+    notes: "Created AIMessage shimmer view with MovingGradientForeground modifier, ported from TakeNote with accessibility support"
+    touched:
+      - Sources/Hieroglyphs/Views/Shared/AIMessage.swift
+
+  - id: S006
+    title: Wire PromptGenerator in App.swift
+    implemented: true
+    reviewed: true
+    notes: Created PromptGenerator instance and injected via environment following existing pattern for other services
+    touched:
+      - Sources/Hieroglyphs/App.swift
+
+  - id: S007
+    title: Add generation state to PlanDetail
+    implemented: true
+    reviewed: true
+    notes: "Added generation state properties including GenerationState enum, promptGenerator environment binding, error state tracking"
+    touched:
+      - Sources/Hieroglyphs/Views/PlanDetail/PlanDetail.swift
+
+  - id: S008
+    title: Implement Generate button logic
+    implemented: true
+    reviewed: true
+    notes: Replaced disabled placeholder button with functional generate button. Added canGenerate computed property and generatePrompt async method that filters linked cards and calls service
+    touched:
+      - Sources/Hieroglyphs/Views/PlanDetail/PlanDetail.swift
+
+  - id: S009
+    title: Add loading UI with shimmer
+    implemented: true
+    reviewed: true
+    notes: "Added AIMessage shimmer during generation state, Cancel button, and disabled TextEditor and Generate button while generating"
+    touched:
+      - Sources/Hieroglyphs/Views/PlanDetail/PlanDetail.swift
+
+  - id: S010
+    title: Add error alert
+    implemented: true
+    reviewed: true
+    notes: Added error alert that displays when generation fails with error message from generationError property
+    touched:
+      - Sources/Hieroglyphs/Views/PlanDetail/PlanDetail.swift
+
+  - id: S011
+    title: Test PromptGenerator service
+    implemented: true
+    reviewed: true
+    notes: "Created tests verifying availability checks, initial state, cancellation, and error descriptions. All tests pass."
+    touched:
+      - Tests/HieroglyphsTests/PromptGeneratorTests.swift
+      - Sources/Hieroglyphs/Services/PromptGenerator.swift
+      - Sources/Hieroglyphs/Services/PromptGenerating.swift
+
+  - id: S012
+    title: Update documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated plans-system.md with detailed Phase Prompt Generation section covering UI behavior, token limits, cancellation, system prompt, and shimmer. Updated architecture.md to list PromptGenerator in services and platform leverage sections."
+    touched:
+      - .ushabti/docs/plans-system.md
+      - .ushabti/docs/architecture.md
+  - id: S013
+    title: Remove stale Future Enhancements entry for Phase Prompt Generation
+    implemented: true
+    reviewed: true
+    notes: Removed stale Future Enhancements entry for Phase Prompt Generation from plans-system.md line 774 and renumbered remaining items
+    touched:
+      - .ushabti/docs/plans-system.md
