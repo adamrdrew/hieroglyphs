@@ -99,6 +99,7 @@ struct SidebarCardsItem: View {
 struct Sidebar: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @Environment(\.workspaceService) private var workspaceService
+    @State private var projectPendingDeletion: Project?
 
     var body: some View {
         @Bindable var bindableViewModel = viewModel
@@ -145,6 +146,16 @@ struct Sidebar: View {
             }
         }
         .toolbar {
+            if let selectedProject = viewModel.selectedProject {
+                ToolbarItem(placement: .automatic) {
+                    Button(role: .destructive) {
+                        projectPendingDeletion = selectedProject
+                    } label: {
+                        Label("Delete Project", systemImage: "trash")
+                    }
+                }
+            }
+
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     viewModel.showNewProjectSheet()
@@ -155,6 +166,24 @@ struct Sidebar: View {
         }
         .sheet(isPresented: $bindableViewModel.showingNewProjectSheet) {
             NewProjectSheet()
+        }
+        .alert(
+            "Delete Project",
+            isPresented: Binding(
+                get: { projectPendingDeletion != nil },
+                set: { if !$0 { projectPendingDeletion = nil } }
+            ),
+            presenting: projectPendingDeletion
+        ) { project in
+            Button("Cancel", role: .cancel) {
+                projectPendingDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                viewModel.deleteProject(project)
+                projectPendingDeletion = nil
+            }
+        } message: { project in
+            Text("Are you sure you want to delete '\(project.title)'? This will move the project and all its cards to Trash.")
         }
     }
 }

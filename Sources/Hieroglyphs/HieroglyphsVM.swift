@@ -215,6 +215,25 @@ final class HieroglyphsVM {
         }
     }
 
+    /// Deletes a project and reloads the project list.
+    ///
+    /// - Parameter project: The project to delete
+    func deleteProject(_ project: Project) {
+        guard let workspacePath else {
+            print("Cannot delete project: workspace path is nil")
+            return
+        }
+
+        do {
+            let projectPath = "\(workspacePath)/\(project.slug)"
+            try workspaceService.deleteProject(at: projectPath)
+            self.selectedSection = nil
+            loadProjects()
+        } catch {
+            print("Failed to delete project: \(error)")
+        }
+    }
+
     /// Updates the selected section.
     ///
     /// Clears cross-section selection state to ensure detail column displays
@@ -1040,8 +1059,8 @@ final class HieroglyphsVM {
             return
         }
 
-        do {
-            if let selectedCard, let selectedProject {
+        if let selectedCard, let selectedProject {
+            do {
                 let projectPath = "\(workspacePath)/\(selectedProject.slug)"
 
                 // Clean up plan links before trashing the card
@@ -1061,14 +1080,11 @@ final class HieroglyphsVM {
                 self.selectedCard = nil
                 loadCards()
                 loadPlans()
-            } else if let selectedProject {
-                let projectPath = "\(workspacePath)/\(selectedProject.slug)"
-                try workspaceService.deleteProject(at: projectPath)
-                self.selectedSection = nil
-                loadProjects()
+            } catch {
+                print("Failed to delete card: \(error)")
             }
-        } catch {
-            print("Failed to delete: \(error)")
+        } else if let selectedProject {
+            deleteProject(selectedProject)
         }
     }
 

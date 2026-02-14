@@ -5,11 +5,13 @@ import SwiftUI
 /// Serves as the label for disclosure groups in the sidebar.
 /// Card count summary is displayed on the Cards child item, not here.
 struct SidebarProjectEntry: View {
+    @Environment(HieroglyphsVM.self) private var viewModel
     let project: Project
     let workspacePath: String
     let workspaceService: WorkspaceProviding
     @State private var hasContent = false
     @State private var showingEditSheet = false
+    @State private var projectPendingDeletion: Project?
 
     var body: some View {
         HStack {
@@ -25,9 +27,33 @@ struct SidebarProjectEntry: View {
             } label: {
                 Label("Edit Project", systemImage: "pencil.circle")
             }
+
+            Button(role: .destructive) {
+                projectPendingDeletion = project
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
         }
         .sheet(isPresented: $showingEditSheet) {
             EditProjectSheet(project: project)
+        }
+        .alert(
+            "Delete Project",
+            isPresented: Binding(
+                get: { projectPendingDeletion != nil },
+                set: { if !$0 { projectPendingDeletion = nil } }
+            ),
+            presenting: projectPendingDeletion
+        ) { project in
+            Button("Cancel", role: .cancel) {
+                projectPendingDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                viewModel.deleteProject(project)
+                projectPendingDeletion = nil
+            }
+        } message: { project in
+            Text("Are you sure you want to delete '\(project.title)'? This will move the project and all its cards to Trash.")
         }
         .onAppear {
             checkContent()

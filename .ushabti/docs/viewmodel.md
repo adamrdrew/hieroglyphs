@@ -928,6 +928,67 @@ class MockWorkspaceService: WorkspaceProviding {
 - Tests use `@MainActor` to match ViewModel's main-thread isolation
 - MockWorkspaceService tracks updateCard calls and last updated card for verification
 
+### deleteProject(_:)
+
+**Signature:** `func deleteProject(_ project: Project)`
+
+**Purpose:** Delete a project and refresh the project list.
+
+**Parameters:**
+- `project` — The project to delete (must be non-nil)
+
+**Behavior:**
+
+1. Guard check `workspacePath` is not nil (log error and return if nil)
+2. Construct project path: `"\(workspacePath)/\(project.slug)"`
+3. Call `workspaceService.deleteProject(at: projectPath)` to move project directory to Trash
+4. Set `selectedSection` to nil (clears both project and section selection)
+5. Call `loadProjects()` to reload project list (excludes deleted project)
+6. If any step throws, catch error and log to console
+
+**Error Handling:**
+
+Errors are logged to console via `print()`. Project is not deleted on error. Project list is not reloaded.
+
+**Example error output:**
+```
+Cannot delete project: workspace path is nil
+Failed to delete project: directoryNotFound
+```
+
+**Usage:**
+
+Called from SidebarProjectEntry context menu, Sidebar toolbar delete button, and `deleteSelectedItem()`:
+
+```swift
+// Context menu in SidebarProjectEntry
+.contextMenu {
+    Button("Delete", systemImage: "trash", role: .destructive) {
+        projectPendingDeletion = project
+    }
+}
+.alert("Delete Project", isPresented: $showingDeleteAlert, presenting: projectPendingDeletion) { project in
+    Button("Delete", role: .destructive) {
+        viewModel.deleteProject(project)
+        projectPendingDeletion = nil
+    }
+}
+
+// Toolbar button in Sidebar
+if viewModel.selectedProject != nil {
+    Button("Delete Project", systemImage: "trash", role: .destructive) {
+        projectPendingDeletion = viewModel.selectedProject
+    }
+}
+```
+
+**Notes:**
+- Uses macOS Trash via FileManager.trashItem (reversible deletion)
+- Deletes entire project directory including all cards, plans, and subdirectories
+- Clears selection state to prevent stale content (L17: UI State Correctness)
+- Deletion requires explicit confirmation via alert dialog (L18: Design Is How It Works)
+- If workspace path is nil, operation fails silently (logs error)
+
 ### showNewProjectSheet()
 
 **Signature:** `func showNewProjectSheet()`

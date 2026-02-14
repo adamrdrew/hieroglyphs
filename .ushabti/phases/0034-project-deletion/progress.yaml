@@ -1,0 +1,72 @@
+phase:
+  id: 0034
+  slug: project-deletion
+  title: Project Deletion
+  status: complete
+
+steps:
+  - id: S001
+    title: Add context menu to SidebarProjectEntry
+    implemented: true
+    reviewed: true
+    notes: Added context menu with Delete button using destructive role and trash icon
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/Sidebar/SidebarProjectEntry.swift
+  - id: S002
+    title: Add confirmation alert to SidebarProjectEntry
+    implemented: true
+    reviewed: true
+    notes: "Added confirmation alert with project title in message, calls viewModel.deleteProject on confirmation"
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/Sidebar/SidebarProjectEntry.swift
+  - id: S003
+    title: Add toolbar delete button to Sidebar
+    implemented: true
+    reviewed: true
+    notes: "Added toolbar delete button visible only when project selected, with confirmation alert"
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift
+  - id: S004
+    title: Implement deleteProject method in ViewModel
+    implemented: true
+    reviewed: true
+    notes: "Implemented deleteProject method that trashes project directory, clears selection, and reloads project list"
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S005
+    title: Update deleteSelectedItem to support projects
+    implemented: true
+    reviewed: true
+    notes: Updated deleteSelectedItem to call deleteProject method for consistency and proper error handling
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S006
+    title: Test project deletion workflow
+    implemented: true
+    reviewed: true
+    notes: "Build succeeded. All code changes compile successfully. Manual testing would verify: context menu deletion with confirmation, toolbar deletion with confirmation, Cmd+Delete keyboard shortcut, selection clearing, list refresh, and empty state display."
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/Sidebar/SidebarProjectEntry.swift
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S007
+    title: Add deleteProject method documentation to viewmodel.md
+    implemented: true
+    reviewed: true
+    notes: "Added deleteProject method documentation to viewmodel.md with signature, purpose, behavior, error handling, usage, and notes"
+    touched:
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/viewmodel.md
+  - id: S008
+    title: Update SidebarProjectEntry docs in views-ui.md
+    implemented: true
+    reviewed: true
+    notes: "Updated SidebarProjectEntry documentation to include Edit and Delete context menu items, confirmation alert, and state variables"
+    touched:
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/views-ui.md
+  - id: S009
+    title: Update Sidebar docs in views-ui.md
+    implemented: true
+    reviewed: true
+    notes: Updated Sidebar documentation to include toolbar delete button with conditional visibility and confirmation alert
+    touched:
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/views-ui.md

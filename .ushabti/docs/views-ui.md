@@ -251,7 +251,7 @@ App.swift defines menu bar commands using `.commands()` modifier:
 
 **File:** `Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift`
 
-**Purpose:** Display hierarchical project list with section selection support and New Project button.
+**Purpose:** Display hierarchical project list with section selection support, New Project button, and Delete Project button.
 
 **Structure:**
 
@@ -259,6 +259,7 @@ App.swift defines menu bar commands using `.commands()` modifier:
 struct Sidebar: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @Environment(\.workspaceService) private var workspaceService
+    @State private var projectPendingDeletion: Project?
 
     var body: some View {
         @Bindable var bindableViewModel = viewModel
@@ -277,10 +278,13 @@ struct Sidebar: View {
                             DisclosureGroup {
                                 SidebarCardsItem(...)
                                     .tag(SidebarSection.cards(project))
-                                Text("Plans")
+                                Label("Plans", systemImage: "flowchart")
                                     .tag(SidebarSection.plans(project))
-                                Text("Phases")
+                                Label("Phases", systemImage: "list.number")
                                     .tag(SidebarSection.phases(project))
+                                if project.sourceDirectory != nil {
+                                    SidebarPharaohItem(project: project)
+                                }
                             } label: {
                                 SidebarProjectEntry(...)
                             }
@@ -290,8 +294,46 @@ struct Sidebar: View {
                 .listStyle(.sidebar)
             }
         }
-        .toolbar { /* ... */ }
-        .sheet { /* ... */ }
+        .toolbar {
+            if let selectedProject = viewModel.selectedProject {
+                ToolbarItem(placement: .automatic) {
+                    Button(role: .destructive) {
+                        projectPendingDeletion = selectedProject
+                    } label: {
+                        Label("Delete Project", systemImage: "trash")
+                    }
+                }
+            }
+
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    viewModel.showNewProjectSheet()
+                } label: {
+                    Label("New Project", systemImage: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $bindableViewModel.showingNewProjectSheet) {
+            NewProjectSheet()
+        }
+        .alert(
+            "Delete Project",
+            isPresented: Binding(
+                get: { projectPendingDeletion != nil },
+                set: { if !$0 { projectPendingDeletion = nil } }
+            ),
+            presenting: projectPendingDeletion
+        ) { project in
+            Button("Cancel", role: .cancel) {
+                projectPendingDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                viewModel.deleteProject(project)
+                projectPendingDeletion = nil
+            }
+        } message: { project in
+            Text("Are you sure you want to delete '\(project.title)'? This will move the project and all its cards to Trash.")
+        }
     }
 }
 ```
@@ -299,20 +341,51 @@ struct Sidebar: View {
 **Key Features:**
 
 1. **Empty State:** Shows `ContentUnavailableView` when no projects exist
-2. **Hierarchical Navigation:** Each project wraps in a `DisclosureGroup` with three child sections
+2. **Hierarchical Navigation:** Each project wraps in a `DisclosureGroup` with up to four child sections
 3. **List with Selection:** `List(selection:)` binds to `viewModel.selectedSection` for section-based selection
-4. **Three Sections Per Project:** Cards (with count), Plans, and Phases
+4. **Four Sections Per Project:** Cards (with count), Plans, Phases, and Pharaoh (conditional on `sourceDirectory`)
 5. **SidebarCardsItem:** Displays "Cards" with card count summary (on-demand loading)
 6. **SidebarProjectEntry:** Disclosure group label showing project icon and title
-7. **Toolbar Button:** "New Project" button with SF Symbol `plus` icon
-8. **Sheet Presentation:** Shows `NewProjectSheet` modal when button clicked
+7. **Toolbar Delete Button:** "Delete Project" button visible only when a project is selected (`.destructive` role, trash icon)
+8. **Toolbar New Button:** "New Project" button with SF Symbol `plus` icon
+9. **Sheet Presentation:** Shows `NewProjectSheet` modal when New Project button clicked
+10. **Delete Confirmation:** Shows alert dialog requiring explicit confirmation before deletion
+
+**Toolbar:**
+
+The toolbar contains two buttons with conditional visibility:
+
+1. **Delete Project Button** (conditional):
+   - **Visibility:** Only shown when `viewModel.selectedProject != nil`
+   - **Placement:** `.automatic`
+   - **Role:** `.destructive` (red button styling)
+   - **Icon:** "trash" SF Symbol
+   - **Action:** Sets `projectPendingDeletion` to trigger confirmation alert
+
+2. **New Project Button** (always visible):
+   - **Placement:** `.primaryAction`
+   - **Icon:** "plus" SF Symbol
+   - **Action:** Calls `viewModel.showNewProjectSheet()`
+
+**Delete Confirmation Alert:**
+
+- **Title:** "Delete Project"
+- **Message:** "Are you sure you want to delete '\(project.title)'? This will move the project and all its cards to Trash."
+- **Buttons:**
+  - "Cancel" with `.cancel` role (dismisses alert, clears `projectPendingDeletion`)
+  - "Delete" with `.destructive` role (calls `viewModel.deleteProject(project)`, clears `projectPendingDeletion`)
+
+**State Variables:**
+
+- `projectPendingDeletion: Project?` — Tracks project awaiting deletion confirmation
 
 **Selection Model:**
 
 Selection is managed via `SidebarSection` enum:
 - `.cards(Project)` — Displays card list in middle column
-- `.plans(Project)` — Displays plans placeholder in middle column
-- `.phases(Project)` — Displays phases placeholder in middle column
+- `.plans(Project)` — Displays plans list in middle column
+- `.phases(Project)` — Displays phases list in middle column
+- `.pharaoh(Project)` — Displays Pharaoh controls in middle column (only for projects with `sourceDirectory`)
 
 Each child item is tagged with the appropriate section case for selection tracking.
 
@@ -331,6 +404,9 @@ Each child item is tagged with the appropriate section case for selection tracki
 - `.tag(SidebarSection.*)` enables selection tracking by section identity
 - Card counts load on-demand when disclosure group is expanded
 - Empty state shows when workspace has no projects
+- Delete button visibility controlled by selection state (not just disabled) per L18
+- Deletion requires explicit confirmation per L18 (Design Is How It Works)
+- Delete operation is reversible via macOS Trash per L06 (Platform Leverage)
 
 ## SidebarCardsItem
 
@@ -402,22 +478,25 @@ struct SidebarCardsItem: View {
 
 **File:** `Sources/Hieroglyphs/Views/Sidebar/SidebarProjectEntry.swift`
 
-**Purpose:** Display project title and icon as disclosure group label.
+**Purpose:** Display project title and icon as disclosure group label with edit and delete functionality.
 
 **Structure:**
 
 ```swift
 struct SidebarProjectEntry: View {
+    @Environment(HieroglyphsVM.self) private var viewModel
     let project: Project
     let workspacePath: String
     let workspaceService: WorkspaceProviding
 
+    @State private var hasContent = false
     @State private var showingEditSheet = false
+    @State private var projectPendingDeletion: Project?
 
     var body: some View {
         HStack {
-            Image(systemName: "folder.fill")
-                .foregroundStyle(.secondary)
+            Image(systemName: hasContent ? "folder.fill" : "folder")
+                .foregroundStyle(.orange)
 
             Text(project.title)
                 .font(.body)
@@ -428,9 +507,36 @@ struct SidebarProjectEntry: View {
             } label: {
                 Label("Edit Project", systemImage: "pencil.circle")
             }
+
+            Button(role: .destructive) {
+                projectPendingDeletion = project
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
         }
         .sheet(isPresented: $showingEditSheet) {
             EditProjectSheet(project: project)
+        }
+        .alert(
+            "Delete Project",
+            isPresented: Binding(
+                get: { projectPendingDeletion != nil },
+                set: { if !$0 { projectPendingDeletion = nil } }
+            ),
+            presenting: projectPendingDeletion
+        ) { project in
+            Button("Cancel", role: .cancel) {
+                projectPendingDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                viewModel.deleteProject(project)
+                projectPendingDeletion = nil
+            }
+        } message: { project in
+            Text("Are you sure you want to delete '\(project.title)'? This will move the project and all its cards to Trash.")
+        }
+        .onAppear {
+            checkContent()
         }
     }
 }
@@ -438,46 +544,62 @@ struct SidebarProjectEntry: View {
 
 **Key Features:**
 
-1. **Icon:** `folder.fill` SF Symbol with secondary color
+1. **Icon:** Dynamic folder icon (`folder.fill` when project has content, `folder` when empty) with orange tint
 2. **Title:** Project title in body font
-3. **Context Menu:** Right-click shows "Edit Project" option
+3. **Context Menu:** Right-click shows "Edit Project" and "Delete" options
 4. **Edit Sheet:** Presents EditProjectSheet when "Edit Project" is clicked
+5. **Delete Confirmation:** Shows alert dialog requiring explicit confirmation before deletion
+6. **Content Detection:** Checks for cards and plans to determine folder icon variant
 
-**Notes:**
-- Serves as label for `DisclosureGroup` in sidebar
-- Card count summary is displayed on the "Cards" child item (via `SidebarCardsItem`), not here
-- Simplified from previous version which included card counting logic
+**State Variables:**
 
-**Card Count Computation:**
+- `hasContent: Bool` — True if project contains cards or plans (determines folder icon variant)
+- `showingEditSheet: Bool` — Controls EditProjectSheet presentation
+- `projectPendingDeletion: Project?` — Tracks project awaiting deletion confirmation
+
+**Delete Confirmation Alert:**
+
+- **Title:** "Delete Project"
+- **Message:** "Are you sure you want to delete '\(project.title)'? This will move the project and all its cards to Trash."
+- **Buttons:**
+  - "Cancel" with `.cancel` role (dismisses alert, clears `projectPendingDeletion`)
+  - "Delete" with `.destructive` role (calls `viewModel.deleteProject(project)`, clears `projectPendingDeletion`)
+
+**Content Detection:**
+
+The `checkContent()` method determines whether the project has any cards or plans to decide which folder icon to show:
 
 ```swift
-private func loadCardCounts() {
-    do {
-        let projectPath = "\(workspacePath)/\(project.slug)"
-        let cards = try workspaceService.loadCards(
-            from: projectPath,
-            for: project
-        )
-
-        var counts: [CardStatus: Int] = [:]
-        for card in cards {
-            counts[card.status, default: 0] += 1
-        }
-
-        onAppearCardCounts = counts
-    } catch {
-        print("Failed to load cards for project \(project.slug): \(error)")
-    }
+private func checkContent() {
+    let projectPath = "\(workspacePath)/\(project.slug)"
+    let cards = try? workspaceService.loadCards(
+        from: projectPath,
+        for: project
+    )
+    let hasCards = !(cards ?? []).isEmpty
+    let plansPath = "\(projectPath)/plans"
+    let hasPlans = FileManager.default
+        .fileExists(atPath: plansPath)
+        && (try? FileManager.default
+            .contentsOfDirectory(atPath: plansPath))?.isEmpty == false
+    hasContent = hasCards || hasPlans
 }
 ```
 
 **Behavior:**
-1. Construct project path from workspace path and slug
-2. Load cards via `workspaceService.loadCards()`
-3. Group cards by status and count
-4. Store counts in `@State` variable (`onAppearCardCounts`)
-5. These counts are used for non-selected projects; selected project derives from `viewModel.cards`
-5. On error, log to console and leave counts empty
+1. On appear, check if project contains cards or plans
+2. Update `hasContent` state to control folder icon variant
+3. Context menu provides Edit and Delete actions
+4. Delete action sets `projectPendingDeletion` to show confirmation alert
+5. Alert confirmation calls `viewModel.deleteProject(project)` to move project to Trash
+6. Alert cancellation clears `projectPendingDeletion` without action
+
+**Notes:**
+- Serves as label for `DisclosureGroup` in sidebar
+- Folder icon changes based on content (filled when project has cards or plans, outline when empty)
+- Deletion requires explicit confirmation (L18: Design Is How It Works)
+- Uses `.destructive` role for delete button (red text) and alert button
+- Delete operation is reversible via macOS Trash (L06: Platform Leverage)
 
 **Card Count Summary Formatting:**
 
