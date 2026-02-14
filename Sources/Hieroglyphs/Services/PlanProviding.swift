@@ -38,4 +38,9 @@ protocol PlanProviding {
     /// and returns max+1. Returns 1 if no plans exist or plans directory is missing.
     /// Malformed directory names are skipped gracefully.
     func findNextPlanNumber(projectPath: String) throws -> Int
+
+    /// Delete a plan by moving its directory to macOS Trash.
+    /// This operation is reversible via the system Trash.
+    /// Linked cards are not deleted — only the plan directory (containing plan.yaml, PHASE_PROMPT.md, and symlinks) is removed.
+    func deletePlan(planSlug: String, projectPath: String) throws
 }

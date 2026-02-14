@@ -639,6 +639,40 @@ final class HieroglyphsVM {
         }
     }
 
+    func deletePlan(_ plan: Plan) {
+        guard let selectedProject else {
+            print("Cannot delete plan: no project selected")
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot delete plan: workspace path is nil")
+            return
+        }
+
+        guard let planService else {
+            print("Cannot delete plan: plan service is nil")
+            return
+        }
+
+        let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+
+        do {
+            try planService.deletePlan(
+                planSlug: plan.slug,
+                projectPath: projectPath
+            )
+
+            if selectedPlan?.id == plan.id {
+                self.selectedPlan = nil
+            }
+
+            loadPlans()
+        } catch {
+            print("Failed to delete plan: \(error)")
+        }
+    }
+
     func dispatchPlan() {
         guard let plan = selectedPlan else {
             print("Cannot dispatch: no plan selected")

@@ -28,6 +28,7 @@ struct PlanDetail: View {
     @State private var showingAddCardSheet = false
     @State private var phasePromptContent = ""
     @State private var showingDispatchConfirmation = false
+    @State private var planPendingDeletion: Plan?
     @State private var generationState: GenerationState = .idle
     @State private var showingGenerationError = false
     @State private var generationError: Error?
@@ -80,6 +81,7 @@ struct PlanDetail: View {
                 .navigationTitle("Plan \(String(format: "%04d", plan.number)): \(plan.title)")
                 .toolbar {
                     dispatchToolbarItem
+                    deleteToolbarItem
                 }
                 .alert("Run this plan with Pharaoh?", isPresented: $showingDispatchConfirmation) {
                     dispatchAlertButtons
@@ -94,6 +96,24 @@ struct PlanDetail: View {
                     } else {
                         Text("An unknown error occurred during prompt generation.")
                     }
+                }
+                .alert(
+                    "Delete Plan",
+                    isPresented: Binding(
+                        get: { planPendingDeletion != nil },
+                        set: { if !$0 { planPendingDeletion = nil } }
+                    ),
+                    presenting: planPendingDeletion
+                ) { plan in
+                    Button("Cancel", role: .cancel) {
+                        planPendingDeletion = nil
+                    }
+                    Button("Delete", role: .destructive) {
+                        viewModel.deletePlan(plan)
+                        planPendingDeletion = nil
+                    }
+                } message: { plan in
+                    Text("Are you sure you want to delete '\(plan.title)'? This will move the plan to Trash.")
                 }
                 .onAppear {
                     phasePromptContent = plan.phasePrompt
@@ -355,6 +375,20 @@ struct PlanDetail: View {
                     Label("Dispatch to Pharaoh", systemImage: "play.circle.fill")
                 }
                 .help("Send this plan to Pharaoh for execution")
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var deleteToolbarItem: some ToolbarContent {
+        if let plan = viewModel.selectedPlan {
+            ToolbarItem(placement: .automatic) {
+                Button(role: .destructive) {
+                    planPendingDeletion = plan
+                } label: {
+                    Label("Delete Plan", systemImage: "trash")
+                }
+                .help("Delete this plan")
             }
         }
     }

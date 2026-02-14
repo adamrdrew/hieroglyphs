@@ -45,6 +45,7 @@ struct CardList: View {
                     )
                 }
             }
+            .frame(maxHeight: .infinity)
         }
         .onChange(of: viewModel.selectedProject, initial: true) { _, _ in
             showFilterBar = false

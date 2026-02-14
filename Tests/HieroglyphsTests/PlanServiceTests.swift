@@ -738,4 +738,76 @@ final class PlanServiceTests: XCTestCase {
         let number = try service.findNextPlanNumber(projectPath: projectURL.path)
         XCTAssertEqual(number, 1, "Should return 1 when all directories have non-numeric prefixes")
     }
+
+    // MARK: - deletePlan() Tests
+
+    func testDeletePlanMovesDirectoryToTrash() throws {
+        try createPlan(
+            slug: "0001-test-plan",
+            id: "123e4567-e89b-12d3-a456-426614174000",
+            title: "Test Plan",
+            number: 1
+        )
+
+        let planDir = projectURL
+            .appendingPathComponent("plans")
+            .appendingPathComponent("0001-test-plan")
+
+        XCTAssertTrue(fileManager.fileExists(atPath: planDir.path))
+
+        try service.deletePlan(
+            planSlug: "0001-test-plan",
+            projectPath: projectURL.path
+        )
+
+        XCTAssertFalse(fileManager.fileExists(atPath: planDir.path))
+    }
+
+    func testDeletePlanThrowsWhenPlanNotFound() throws {
+        XCTAssertThrowsError(
+            try service.deletePlan(
+                planSlug: "nonexistent-plan",
+                projectPath: projectURL.path
+            )
+        ) { error in
+            XCTAssertTrue(error is PlanService.PlanError)
+            if let planError = error as? PlanService.PlanError {
+                if case .planNotFound = planError {
+                    // Expected error
+                } else {
+                    XCTFail("Expected PlanError.planNotFound, got \(planError)")
+                }
+            }
+        }
+    }
+
+    func testDeletePlanPreservesLinkedCards() throws {
+        try createPlan(
+            slug: "0001-test-plan",
+            id: "123e4567-e89b-12d3-a456-426614174000",
+            title: "Test Plan",
+            number: 1
+        )
+
+        try createCard(slug: "test-card")
+
+        try service.addCardToPlan(
+            cardSlug: "test-card",
+            planSlug: "0001-test-plan",
+            projectPath: projectURL.path
+        )
+
+        let cardDir = projectURL
+            .appendingPathComponent("cards")
+            .appendingPathComponent("test-card")
+
+        XCTAssertTrue(fileManager.fileExists(atPath: cardDir.path))
+
+        try service.deletePlan(
+            planSlug: "0001-test-plan",
+            projectPath: projectURL.path
+        )
+
+        XCTAssertTrue(fileManager.fileExists(atPath: cardDir.path))
+    }
 }

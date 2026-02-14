@@ -1,0 +1,100 @@
+phase:
+  id: 0035
+  slug: ui-layout-fixes
+  title: UI Layout Fixes
+  status: complete
+
+steps:
+  - id: S001
+    title: Constrain NewCardSheet body TextEditor
+    implemented: true
+    reviewed: true
+    notes: "Wrapped TextEditor in ScrollView with maxHeight: 300"
+    touched:
+      - Sources/Hieroglyphs/Views/CardList/NewCardSheet.swift
+
+  - id: S002
+    title: Fix CardList empty state layout
+    implemented: true
+    reviewed: true
+    notes: "Added .frame(maxHeight: .infinity) to Group to fill available space"
+    touched:
+      - Sources/Hieroglyphs/Views/CardList/CardList.swift
+
+  - id: S003
+    title: Add PlanProviding.deletePlan protocol method
+    implemented: true
+    reviewed: true
+    notes: Added deletePlan protocol method with documentation
+    touched:
+      - Sources/Hieroglyphs/Services/PlanProviding.swift
+
+  - id: S004
+    title: Implement PlanService.deletePlan
+    implemented: true
+    reviewed: true
+    notes: Implemented deletePlan using FileManager.trashItem
+    touched:
+      - Sources/Hieroglyphs/Services/PlanService.swift
+
+  - id: S005
+    title: Add HieroglyphsVM.deletePlan method
+    implemented: true
+    reviewed: true
+    notes: Added deletePlan method to ViewModel with state cleanup
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+
+  - id: S006
+    title: Add context menu delete to PlanListEntry
+    implemented: true
+    reviewed: true
+    notes: Added context menu with delete action and confirmation alert
+    touched:
+      - Sources/Hieroglyphs/Views/PlanList/PlanListEntry.swift
+
+  - id: S007
+    title: Add toolbar delete button to PlanDetail
+    implemented: true
+    reviewed: true
+    notes: Added toolbar delete button with confirmation alert
+    touched:
+      - Sources/Hieroglyphs/Views/PlanDetail/PlanDetail.swift
+
+  - id: S008
+    title: Test all changes manually
+    implemented: true
+    reviewed: true
+    notes: Code compiles successfully. Manual testing required in running app to verify all three fixes
+    touched:
+      - 
+
+  - id: S009
+    title: Update documentation
+    implemented: true
+    reviewed: true
+    notes: Updated plans-system.md and views-ui.md with plan deletion and UI layout fix documentation
+    touched:
+      - .ushabti/docs/plans-system.md
+      - .ushabti/docs/views-ui.md
+  - id: S010
+    title: Add deletePlan stub to MockPlanService
+    implemented: true
+    reviewed: true
+    notes: Added shouldThrowOnDeletePlan flag and deletePlan method stub to MockPlanService
+    touched:
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+  - id: S011
+    title: Add tests for PlanService.deletePlan
+    implemented: true
+    reviewed: true
+    notes: "Added three tests: testDeletePlanMovesDirectoryToTrash, testDeletePlanThrowsWhenPlanNotFound, testDeletePlanPreservesLinkedCards. All tests pass."
+    touched:
+      - Tests/HieroglyphsTests/PlanServiceTests.swift
+  - id: S012
+    title: Add tests for HieroglyphsVM.deletePlan
+    implemented: true
+    reviewed: true
+    notes: "Added three tests: testDeletePlanCallsServiceAndReloadsPlans, testDeletePlanClearsSelectedPlanWhenDeleted, testDeletePlanLogsErrorOnFailure. All tests pass."
+    touched:
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift

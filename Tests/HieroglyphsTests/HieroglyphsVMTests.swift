@@ -1723,6 +1723,7 @@ final class MockPlanService: PlanProviding {
     var shouldThrowOnUpdatePlanStatus = false
     var shouldThrowOnWritePhasePrompt = false
     var shouldThrowOnRemoveCardSymlinks = false
+    var shouldThrowOnDeletePlan = false
 
     var mockPlans: [Plan] = []
     var removedCardSlugs: [String] = []
@@ -1837,6 +1838,17 @@ final class MockPlanService: PlanProviding {
         }
         let maxNumber = mockPlans.map { $0.number }.max() ?? 0
         return maxNumber + 1
+    }
+
+    func deletePlan(planSlug: String, projectPath: String) throws {
+        if shouldThrowOnDeletePlan {
+            throw NSError(
+                domain: "MockPlanService",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Mock error"]
+            )
+        }
+        mockPlans.removeAll { $0.slug == planSlug }
     }
 }
 
@@ -2413,5 +2425,150 @@ extension HieroglyphsVMTests {
 
         XCTAssertNotNil(viewModel.selectedPlan)
         XCTAssertEqual(viewModel.selectedPlan!.status, .ready)
+    }
+
+    @MainActor
+    func testDeletePlanCallsServiceAndReloadsPlans() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil
+        )
+
+        let testPlan = Plan(
+            id: UUID(),
+            title: "Test Plan",
+            number: 1,
+            slug: "0001-test-plan",
+            status: .planning,
+            created: Date(),
+            updated: Date(),
+            linkedCardSlugs: [],
+            phasePrompt: ""
+        )
+
+        mockWorkspace.mockProjects = [testProject]
+        mockPlan.mockPlans = [testPlan]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.plans(testProject))
+        viewModel.loadPlans()
+
+        XCTAssertEqual(viewModel.plans.count, 1)
+
+        mockPlan.mockPlans = []
+
+        viewModel.deletePlan(testPlan)
+
+        XCTAssertEqual(viewModel.plans.count, 0)
+    }
+
+    @MainActor
+    func testDeletePlanClearsSelectedPlanWhenDeleted() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil
+        )
+
+        let testPlan = Plan(
+            id: UUID(),
+            title: "Test Plan",
+            number: 1,
+            slug: "0001-test-plan",
+            status: .planning,
+            created: Date(),
+            updated: Date(),
+            linkedCardSlugs: [],
+            phasePrompt: ""
+        )
+
+        mockWorkspace.mockProjects = [testProject]
+        mockPlan.mockPlans = [testPlan]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.plans(testProject))
+        viewModel.loadPlans()
+        viewModel.selectedPlan = testPlan
+
+        XCTAssertNotNil(viewModel.selectedPlan)
+
+        mockPlan.mockPlans = []
+
+        viewModel.deletePlan(testPlan)
+
+        XCTAssertNil(viewModel.selectedPlan)
+    }
+
+    @MainActor
+    func testDeletePlanLogsErrorOnFailure() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+        mockPlan.shouldThrowOnDeletePlan = true
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil
+        )
+
+        let testPlan = Plan(
+            id: UUID(),
+            title: "Test Plan",
+            number: 1,
+            slug: "0001-test-plan",
+            status: .planning,
+            created: Date(),
+            updated: Date(),
+            linkedCardSlugs: [],
+            phasePrompt: ""
+        )
+
+        mockWorkspace.mockProjects = [testProject]
+        mockPlan.mockPlans = [testPlan]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.plans(testProject))
+        viewModel.loadPlans()
+
+        viewModel.deletePlan(testPlan)
+
+        XCTAssertEqual(viewModel.plans.count, 1)
     }
 }

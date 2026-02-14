@@ -549,6 +549,38 @@ Plan status changes map to card status updates:
 - ViewModel no longer accepts number parameter from NewPlanSheet
 - NewPlanSheet UI simplified (no number field)
 
+### deletePlan(planSlug:projectPath:)
+
+**Signature:** `func deletePlan(planSlug: String, projectPath: String) throws`
+
+**Purpose:** Delete a plan by moving its directory to macOS Trash. This operation is reversible via the system Trash.
+
+**Parameters:**
+
+- `planSlug` — Slug of plan to delete
+- `projectPath` — Absolute path to project directory
+
+**Throws:**
+
+- `PlanError.planNotFound` if plan directory does not exist
+- `PlanError.fileWriteFailed` if Trash operation fails
+
+**Behavior:**
+
+1. Construct path to `{projectPath}/plans/{planSlug}/`
+2. Check directory exists (throw `planNotFound` if missing)
+3. Move to Trash via `FileManager.trashItem(at:resultingItemURL:)`
+4. Log success message to console
+
+**Notes:**
+
+- Uses macOS Trash per L06 (Platform Leverage)
+- Deletion is reversible — user can restore from system Trash
+- Linked cards remain in workspace (only plan directory and symlinks are removed)
+- Called by `HieroglyphsVM.deletePlan(_:)` after user confirmation
+- Plan directory contains plan.yaml, PHASE_PROMPT.md, and symlinks to cards
+- Dangling symlinks in other plans are not created (each plan's links are self-contained)
+
 ## PlanService Implementation
 
 **Location:** `Sources/Hieroglyphs/Services/PlanService.swift`
@@ -597,12 +629,14 @@ Plan status changes map to card status updates:
 - `removeCardFromPlan(cardSlug:planSlug:)` — Remove card symlink
 - `updatePlanStatus(plan:status:)` — Update status and cascade to cards
 - `writePhasePrompt(planSlug:content:)` — Write phase prompt content
+- `deletePlan(_:)` — Delete plan and move to Trash
 
 **Notes:**
 
 - All methods call through to `planService`
 - Methods reload plans after mutations to reflect changes in UI
 - `updatePlanStatus()` reloads both plans and cards to reflect cascaded status changes
+- `deletePlan()` clears `selectedPlan` if deleted plan was selected, then reloads plans
 
 ## Views
 
@@ -630,8 +664,15 @@ Plan status changes map to card status updates:
 
 - Status icon (circle for planning, circle.inset.filled for ready, checkmark.circle.fill for done)
 - Plan title
+- Phase prompt preview (if non-empty, stripped of markdown formatting)
 - Subtitle: "Plan NNNN • N cards"
-- Status color: gray (planning), blue (ready), green (done)
+- Status color: gray (planning), blue (ready), orange (in-progress), green (done)
+
+**Actions:**
+
+- Context menu with "Delete Plan" option (destructive role, trash icon)
+- Delete action shows confirmation alert before calling `viewModel.deletePlan(plan)`
+- Alert message: "Are you sure you want to delete '{plan.title}'? This will move the plan to Trash."
 
 ### NewPlanSheet
 
@@ -669,12 +710,21 @@ Plan status changes map to card status updates:
 
 3. **Phase Prompt:**
    - TextEditor for PHASE_PROMPT.md content
-   - "Generate Phase Prompt" button (disabled, placeholder for future)
+   - "Generate Phase Prompt" button (uses on-device AI when available)
+
+**Toolbar Actions:**
+
+- "Dispatch to Pharaoh" button (visible only when plan is ready and Pharaoh is idle)
+- "Delete Plan" button (destructive role, trash icon)
+- Delete button shows confirmation alert before calling `viewModel.deletePlan(plan)`
+- Alert message: "Are you sure you want to delete '{plan.title}'? This will move the plan to Trash."
 
 **Notes:**
 
 - Shows empty state when no plan selected
 - Phase prompt changes are written to disk immediately via `viewModel.writePhasePrompt()`
+- Plans with `inProgress` status are non-editable (phase prompt and card links locked)
+- Delete button visible regardless of plan status
 
 ### AddCardToPlanSheet
 

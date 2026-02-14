@@ -1033,6 +1033,11 @@ Filters are applied in sequence:
 
 - **No Project Selected:** `ContentUnavailableView` with folder icon
 - **No Cards:** `ContentUnavailableView` with note.text icon
+- **Loading:** `ProgressView` with "Loading cards..." message (shown while `isLoadingCards` is true)
+
+**Layout Fix:**
+
+The Group containing empty states and the List has `.frame(maxHeight: .infinity)` to ensure it fills available vertical space. This prevents the filter bar from expanding when the card list is empty, keeping filter bar height consistent whether the list is populated or empty.
 
 **Deletion Flow:**
 
@@ -1269,9 +1274,11 @@ struct NewCardSheet: View {
                 }
 
                 Section("Body") {
-                    TextEditor(text: $cardBody)
-                        .frame(minHeight: 100)
-                        .font(.body)
+                    ScrollView {
+                        TextEditor(text: $cardBody)
+                            .frame(minHeight: 100, maxHeight: 300)
+                            .font(.body)
+                    }
                 }
             }
             .navigationTitle("New Card")
@@ -1296,7 +1303,7 @@ struct NewCardSheet: View {
 2. **Title Field:** Required (Save button disabled if empty)
 3. **Type/Status/Priority Pickers:** All enum cases available
 4. **Tags Field:** Comma-separated text input
-5. **Body TextEditor:** Multi-line markdown input
+5. **Body TextEditor:** Multi-line markdown input with scroll constraint
 6. **Cancel/Save Toolbar:** Standard sheet controls
 7. **Default Values:** task, todo, medium
 
@@ -1305,10 +1312,16 @@ struct NewCardSheet: View {
 2. Call `viewModel.createCard()` with parsed inputs
 3. Dismiss sheet (ViewModel handles card creation and list refresh)
 
+**Modal Sizing:**
+- Outer modal frame: `minWidth: 500, minHeight: 500` (fixed dimensions)
+- Body TextEditor: `minHeight: 100, maxHeight: 300` (scrollable within constraint)
+- TextEditor wrapped in ScrollView to enable internal scrolling when content exceeds maxHeight
+- Modal container stays fixed size — content scrolls instead of growing unboundedly
+
 **Notes:**
-- Minimum frame size (500x500) for comfortable editing
 - Follows NewProjectSheet patterns
 - No error UI (errors logged by ViewModel)
+- TextEditor constraint prevents modal from growing infinitely when typing long body content (L17)
 
 ## TakeNote Design Patterns
 

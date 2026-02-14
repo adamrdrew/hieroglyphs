@@ -2,6 +2,9 @@ import SwiftUI
 
 /// Individual plan row showing number, title, status, and card count.
 struct PlanListEntry: View {
+    @Environment(HieroglyphsVM.self) private var viewModel
+    @State private var planPendingDeletion: Plan?
+
     let plan: Plan
 
     var body: some View {
@@ -29,6 +32,31 @@ struct PlanListEntry: View {
             Spacer()
         }
         .padding(.vertical, 4)
+        .contextMenu {
+            Button(role: .destructive) {
+                planPendingDeletion = plan
+            } label: {
+                Label("Delete Plan", systemImage: "trash")
+            }
+        }
+        .alert(
+            "Delete Plan",
+            isPresented: Binding(
+                get: { planPendingDeletion != nil },
+                set: { if !$0 { planPendingDeletion = nil } }
+            ),
+            presenting: planPendingDeletion
+        ) { plan in
+            Button("Cancel", role: .cancel) {
+                planPendingDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                viewModel.deletePlan(plan)
+                planPendingDeletion = nil
+            }
+        } message: { plan in
+            Text("Are you sure you want to delete '\(plan.title)'? This will move the plan to Trash.")
+        }
     }
 
     private var strippedPhasePrompt: String {

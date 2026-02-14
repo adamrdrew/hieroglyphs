@@ -45,9 +45,11 @@ struct NewCardSheet: View {
                 }
 
                 Section("Body") {
-                    TextEditor(text: $cardBody)
-                        .frame(minHeight: 100)
-                        .font(.body)
+                    ScrollView {
+                        TextEditor(text: $cardBody)
+                            .frame(minHeight: 100, maxHeight: 300)
+                            .font(.body)
+                    }
                 }
             }
             .navigationTitle("New Card")

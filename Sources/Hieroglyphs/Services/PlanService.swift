@@ -514,4 +514,23 @@ final class PlanService: PlanProviding {
 
         return maxNumber + 1
     }
+
+    func deletePlan(planSlug: String, projectPath: String) throws {
+        let projectURL = URL(fileURLWithPath: projectPath)
+        let plansURL = projectURL.appendingPathComponent("plans")
+        let planURL = plansURL.appendingPathComponent(planSlug)
+
+        // Check that plan directory exists
+        guard fileManager.fileExists(atPath: planURL.path) else {
+            throw PlanError.planNotFound
+        }
+
+        // Move to Trash using FileManager
+        do {
+            try fileManager.trashItem(at: planURL, resultingItemURL: nil)
+            print("Plan deleted (moved to Trash): \(planSlug)")
+        } catch {
+            throw PlanError.fileWriteFailed(error)
+        }
+    }
 }
