@@ -241,6 +241,201 @@ Views that can have zero items MUST display an intentional empty state. A blank 
 
 ---
 
+## Visual Design & Interaction Quality
+
+This section defines how the app looks, feels, and communicates. L18 establishes the law: design is how it works. This section tells you how to honour that law. These patterns are reviewed by the Overseer with the same rigour as code quality.
+
+### Platform Nativeness
+
+Hieroglyphs is a macOS app. It should be indistinguishable from a well-made first-party app in its use of system resources.
+
+**Colours:**
+- Use system semantic colours: `Color.primary`, `.secondary`, `Color.accentColor`, `Color(nsColor: .controlBackgroundColor)`, `Color(nsColor: .separatorColor)`.
+- Never hardcode colour literals (e.g., `Color(red: 0.2, green: 0.4, blue: 0.6)`) for UI chrome. Hardcoded colours break dark mode, break accessibility, and fight the system.
+- Semantic colour for status and priority (e.g., red for critical, green for done) is acceptable — but prefer SF Symbol colour rendering over background fills where possible.
+
+**Materials, Vibrancy, and Liquid Glass:**
+- Sidebars use `.sidebar` list style, which gets system vibrancy and Liquid Glass treatment automatically.
+- Standard controls (toolbars, tab bars, search bars) receive Liquid Glass treatment automatically when built with Xcode 26. Do not fight this or override it.
+- For custom navigation-layer chrome (floating panels, custom overlays), apply `.glassEffect(.regular)` explicitly. See the Liquid Glass section below for details.
+- Traditional materials (`.ultraThinMaterial`, `.regularMaterial`) remain valid for content-layer translucent backgrounds — but glass is now the standard for navigation chrome.
+- Remove any custom `.toolbarBackground()` overrides. They fight the system glass treatment.
+
+**Dark Mode:**
+- Automatic. If you use system colours, materials, and glass, dark mode works. If you have to write `if colorScheme == .dark`, something is wrong.
+
+### Controls and Affordances
+
+Every control communicates what it does and what state it is in. No ambiguity.
+
+**Disabled states:**
+- If a button cannot be pressed, apply `.disabled(true)`. SwiftUI dims it automatically. The user sees it exists but understands it is not available.
+- If a control makes no sense in the current context (not just temporarily unavailable, but semantically irrelevant), hide it entirely. Do not show disabled controls that will never become enabled in that context.
+
+**Loading states:**
+- Already covered by L17 and the Async Operation Feedback patterns, but worth reiterating: the user must never be left wondering whether something is happening. A `ProgressView` with a brief label is always appropriate.
+
+**Destructive actions:**
+- Destructive actions (delete, remove, clear) use `.destructive` button role. SwiftUI renders them red. No custom styling needed.
+- Destructive actions that cannot be undone MUST require confirmation. Use `.confirmationDialog()` or `.alert()`.
+
+**Toolbar actions:**
+- Use `.toolbar {}` with appropriate placement (`.primaryAction`, `.secondaryAction`, `.navigation`).
+- Toolbar buttons use SF Symbols, not text labels, unless the action is ambiguous without a label.
+- Group related actions using `ToolbarItemGroup`. Use `ToolbarSpacer(.fixed)` to visually separate groups within the toolbar.
+- Use `.buttonStyle(.glass)` for standard toolbar buttons and `.buttonStyle(.glassProminent)` for primary/confirmation actions. SwiftUI applies `.glassProminent` automatically for `.confirmationAction` placement.
+- Do not apply custom `.toolbarBackground()` — let the system Liquid Glass treatment apply naturally.
+
+### Typography
+
+Use system font styles exclusively. Let the platform handle sizing, weight, and Dynamic Type.
+
+**Hierarchy (most to least prominent):**
+- `.title`, `.title2`, `.title3` — section headings, view titles (use sparingly)
+- `.headline` — list entry primary text, card titles in lists
+- `.body` — default reading text, card body content, descriptions
+- `.subheadline` — supporting information next to headlines
+- `.caption`, `.caption2` — metadata, timestamps, secondary labels
+- `.footnote` — supplementary detail, counts, status text
+
+**Rules:**
+- Never use `.font(.system(size: N))` to set an arbitrary point size. Use the semantic styles above.
+- Use `.fontWeight()` to adjust emphasis within a style when needed, but prefer choosing the right semantic style first.
+- Use `.foregroundStyle(.secondary)` or `.foregroundStyle(.tertiary)` to de-emphasise text rather than changing font size. Hierarchy comes from colour weight as much as size.
+
+### SF Symbols
+
+SF Symbols are the only icon system. No custom icons, no image assets for UI chrome.
+
+**Rules:**
+- Match symbol weight to surrounding text. If the label is `.body` (regular weight), the symbol should be regular weight. Use `.symbolVariant()` and `.fontWeight()` to match.
+- Use `.symbolRenderingMode(.hierarchical)` as the default for toolbar and navigation symbols. It provides depth without requiring colour.
+- Use `.symbolRenderingMode(.monochrome)` for inline symbols next to text (status indicators, list decorators).
+- Use `.symbolRenderingMode(.multicolor)` sparingly — only where Apple provides meaningful multicolour variants (e.g., folder icons, warning signs).
+- Consistent sizing within a context. All sidebar icons should be the same size. All toolbar icons should be the same size. Do not mix.
+
+### Spacing and Layout
+
+**Principles:**
+- SwiftUI's default spacing is generally correct. Do not override it without reason.
+- When you do override, use a consistent scale: 4, 8, 12, 16, 20, 24. No arbitrary values like 7 or 13.
+- Padding within a container should be consistent on all sides unless there is a deliberate visual reason to vary it.
+
+**macOS density:**
+- macOS apps are denser than iOS apps. List rows should be compact enough to show many items without scrolling, but not so cramped that they are hard to scan or click.
+- Do not add excessive vertical padding to list entries. The default SwiftUI list row height is usually right.
+- Side-by-side information is good. macOS screens are wide. Use horizontal space rather than stacking everything vertically.
+
+**Alignment:**
+- Leading-align text. Do not centre-align body text or list content.
+- Centre alignment is appropriate for empty states, placeholder messages, and single-line status indicators only.
+
+### Information Hierarchy
+
+Every view should have a clear visual hierarchy: the most important information is the most prominent, and supporting detail recedes.
+
+**Patterns:**
+- Primary content (card title, project name) uses `.headline` or `.body` with `.primary` colour.
+- Secondary content (status, priority, dates) uses `.caption` or `.footnote` with `.secondary` colour.
+- Tertiary content (IDs, file paths, technical metadata) uses `.caption2` with `.tertiary` colour, or is hidden behind a disclosure.
+- Do not give equal visual weight to everything. A card list entry that shows title, status, priority, type, dates, and tags all at the same size and weight is unreadable. Pick 2–3 things to show prominently. The rest is supporting detail.
+
+**Anti-patterns:**
+- Flat lists where every piece of metadata has the same font size and colour. The eye has nowhere to land.
+- Showing too much information by default. Progressive disclosure is a virtue — show the summary, let the user drill into the detail.
+
+### macOS 26 Liquid Glass
+
+macOS 26 introduced Liquid Glass as its defining design language. Hieroglyphs targets macOS 26 exclusively (L07) and MUST adopt it fully. This is not optional modernisation — it is the platform's visual identity.
+
+**Core principle:** Glass is for the **navigation layer** — toolbars, tab bars, sidebars, floating action buttons, navigation chrome. Glass is NEVER for the **content layer** — list rows, cards, table cells, media containers.
+
+**Automatic adoption:**
+Standard SwiftUI components built with Xcode 26 receive glass treatment automatically. This includes:
+- Toolbars and toolbar items
+- Tab bars (when using the `Tab` struct)
+- Sidebars in `NavigationSplitView`
+- Search bars via `.searchable()`
+- Segmented controls, toggles, sliders
+
+For these, do nothing. The system handles it. Do not apply custom backgrounds or materials that would fight the automatic glass.
+
+**Explicit glass for custom chrome:**
+When building custom navigation-layer UI (floating panels, custom action bars, overlay controls), apply glass explicitly:
+
+```swift
+// Standard glass — use for most navigation chrome
+customControl.glassEffect(.regular, in: .capsule)
+
+// Clear glass — only over media-rich backgrounds where dimming is acceptable
+overlay.glassEffect(.clear, in: RoundedRectangle(cornerRadius: 12))
+```
+
+**Tinting:**
+Glass tint is for **semantic meaning only** — not decoration. A tinted glass element says "this is different from the others" (e.g., active filter, destructive action). Lower opacity tints often read better:
+
+```swift
+.glassEffect(.regular.tint(.blue.opacity(0.8)))
+```
+
+**Grouping with GlassEffectContainer:**
+Glass cannot composite on top of other glass. When multiple glass elements sit near each other, wrap them in a `GlassEffectContainer`:
+
+```swift
+GlassEffectContainer(spacing: 40.0) {
+    ForEach(actions) { action in
+        ActionButton(action).glassEffect()
+    }
+}
+```
+
+**Morphing transitions with glassEffectID:**
+When a glass element changes shape or position (e.g., compact ↔ expanded), use `glassEffectID` within a `GlassEffectContainer` and a shared `@Namespace` for smooth morphing:
+
+```swift
+@Namespace var ns
+
+GlassEffectContainer {
+    if isExpanded {
+        ExpandedView().glassEffect().glassEffectID("panel", in: ns)
+    } else {
+        CompactView().glassEffect().glassEffectID("panel", in: ns)
+    }
+}
+```
+
+**Scroll edge effects:**
+Control the visual treatment at scroll boundaries:
+
+```swift
+.scrollEdgeEffectStyle(.soft)   // Rounded, diffused edge — default for most content
+.scrollEdgeEffectStyle(.hard)   // Sharp dividing line — for dense data views
+```
+
+**Tab bars:**
+Use the `Tab` struct, not the deprecated `.tabItem()`:
+
+```swift
+TabView {
+    Tab("Cards", systemImage: "rectangle.stack") { CardsView() }
+    Tab("Plans", systemImage: "list.bullet.clipboard") { PlansView() }
+    Tab("Search", systemImage: "magnifyingglass", role: .search) { SearchView() }
+}
+```
+
+**Anti-patterns:**
+- Applying `.glassEffect()` to content elements (list rows, card views, table cells). Glass is navigation, not content.
+- Layering glass on glass. It does not composite correctly — use `GlassEffectContainer` to group.
+- Adding `.blur()`, `.opacity()`, or `.background()` modifiers to glass views. These fight the glass rendering pipeline.
+- Putting solid fills behind glass elements. Glass needs to see through to the content behind it.
+- Using `.toolbarBackground()` to override the system glass treatment.
+- Mixing `.regular` and `.clear` glass variants in the same visual group.
+- Using tint for decorative purposes. Tint communicates meaning — active state, category, urgency.
+
+**Reference:** Full API details and examples in `/Users/adam/Claude Projects/Alan/notes/liquid-glass-swiftui-reference.md`.
+
+---
+
 ## Testing Strategy
 
 - Every public method has tests.
@@ -326,3 +521,24 @@ When Overseer reviews a phase, verify:
 - [ ] Modals and sheets have constrained dimensions — content scrolls, container does not grow
 - [ ] Empty states are handled — no blank areas, no layout breakage on zero items
 - [ ] User interaction state (scroll position, disclosure groups, edit mode) survives data refreshes
+
+### Visual Design & Interaction Quality (L18)
+- [ ] No hardcoded colour literals for UI chrome — system semantic colours only
+- [ ] Dark mode works without any `colorScheme` conditionals
+- [ ] Disabled controls are visually disabled (`.disabled(true)`) or hidden when irrelevant
+- [ ] Destructive actions use `.destructive` role and require confirmation if irreversible
+- [ ] Typography uses system semantic styles (`.headline`, `.body`, `.caption`) — no arbitrary point sizes
+- [ ] SF Symbols match surrounding text weight and use appropriate rendering mode
+- [ ] Spacing uses consistent scale values (4/8/12/16/20/24) — no arbitrary numbers
+- [ ] Clear information hierarchy — primary, secondary, tertiary content visually distinct
+- [ ] Toolbar uses `.toolbar {}` with correct placement and SF Symbol buttons
+- [ ] Standard SwiftUI controls used — no custom reimplementations of system affordances
+
+### macOS 26 Liquid Glass (L18)
+- [ ] No custom `.toolbarBackground()` overrides — system glass treatment applies naturally
+- [ ] `.tabItem()` not used — `Tab` struct used instead
+- [ ] `.glassEffect()` applied only to navigation-layer elements, never to content (list rows, cards, cells)
+- [ ] No glass-on-glass layering — proximate glass elements grouped in `GlassEffectContainer`
+- [ ] No `.blur()`, `.opacity()`, or `.background()` modifiers on glass views
+- [ ] Glass tint used for semantic meaning only, not decoration
+- [ ] Toolbar buttons use `.buttonStyle(.glass)` or `.buttonStyle(.glassProminent)` as appropriate

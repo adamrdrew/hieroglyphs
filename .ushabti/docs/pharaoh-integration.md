@@ -222,7 +222,8 @@ Full-screen view for Pharaoh management shown as middle column content:
 - "Start Pharaoh" button
 - Description text explaining Pharaoh functionality
 - Model picker (segmented): Opus/Sonnet/Haiku — selection passed to `--model` flag on start
-- Error display if process start failed
+- Loading state (while starting): ProgressView with 'Starting Pharaoh…' label, Start button and model picker hidden
+- Start error alert shown via modal with title 'Failed to Start Pharaoh' and error message, dismissible with OK button
 
 **Running State:**
 - **Server Information Section** (shown when `serverInfo` is non-nil):

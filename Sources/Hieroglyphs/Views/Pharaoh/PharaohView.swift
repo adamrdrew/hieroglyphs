@@ -8,9 +8,11 @@ struct PharaohView: View {
     @State private var status: PharaohStatus = .notRunning
     @State private var previousStatus: PharaohStatus = .notRunning
     @State private var serverInfo: PharaohServerInfo?
-    @State private var startError: String?
+    @State private var startErrorMessage = ""
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
+    @State private var isStarting = false
+    @State private var showStartErrorAlert = false
 
     var body: some View {
         ScrollView {
@@ -32,50 +34,51 @@ struct PharaohView: View {
         } message: {
             Text(errorMessage)
         }
+        .alert("Failed to Start Pharaoh", isPresented: $showStartErrorAlert) {
+            Button("OK") { }
+        } message: {
+            Text(startErrorMessage)
+        }
     }
 
     @ViewBuilder
     private var notRunningStateView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Pharaoh Server")
-                .font(.headline)
+        if isStarting {
+            VStack(spacing: 12) {
+                ProgressView()
+                Text("Starting Pharaoh…")
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Pharaoh Server")
+                    .font(.headline)
 
-            Text("Pharaoh executes Ushabti development phases automatically. Start the server to enable plan dispatch and phase execution.")
-                .foregroundStyle(.secondary)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Model")
-                    .font(.subheadline)
+                Text("Pharaoh executes Ushabti development phases automatically. Start the server to enable plan dispatch and phase execution.")
                     .foregroundStyle(.secondary)
 
-                @Bindable var bindableViewModel = viewModel
-                Picker("Model", selection: $bindableViewModel.pharaohModel) {
-                    Text("Opus").tag("opus")
-                    Text("Sonnet").tag("sonnet")
-                    Text("Haiku").tag("haiku")
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-            }
-
-            if let error = startError {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
-                    Text(error)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Model")
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
-                }
-                .padding()
-                .background(Color.orange.opacity(0.1))
-                .cornerRadius(8)
-            }
 
-            Button {
-                startPharaoh()
-            } label: {
-                Label("Start Pharaoh", systemImage: "play.fill")
+                    @Bindable var bindableViewModel = viewModel
+                    Picker("Model", selection: $bindableViewModel.pharaohModel) {
+                        Text("Opus").tag("opus")
+                        Text("Sonnet").tag("sonnet")
+                        Text("Haiku").tag("haiku")
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                }
+
+                Button {
+                    startPharaoh()
+                } label: {
+                    Label("Start Pharaoh", systemImage: "play.fill")
+                }
+                .buttonStyle(.borderedProminent)
             }
-            .buttonStyle(.borderedProminent)
         }
     }
 
@@ -241,17 +244,22 @@ struct PharaohView: View {
     }
 
     private func startPharaoh() {
+        isStarting = true
+
         guard let sourceDirectory = project.sourceDirectory,
               let service = pharaohService else {
-            startError = "No source directory configured"
+            startErrorMessage = "No source directory configured"
+            isStarting = false
+            showStartErrorAlert = true
             return
         }
 
         do {
             try service.start(in: sourceDirectory, model: viewModel.pharaohModel)
-            startError = nil
         } catch {
-            startError = error.localizedDescription
+            startErrorMessage = error.localizedDescription
+            isStarting = false
+            showStartErrorAlert = true
         }
     }
 
@@ -287,6 +295,10 @@ struct PharaohView: View {
         previousStatus = status
         if newStatus != status {
             status = newStatus
+        }
+
+        if newStatus != .notRunning && isStarting {
+            isStarting = false
         }
     }
 

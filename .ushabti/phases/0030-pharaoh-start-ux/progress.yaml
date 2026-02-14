@@ -1,0 +1,61 @@
+phase:
+  id: 0030
+  slug: pharaoh-start-ux
+  title: Pharaoh Start UX Improvements
+  status: complete
+
+steps:
+  - id: S001
+    title: Add isStarting state and starting UI
+    implemented: true
+    reviewed: true
+    notes: "Added isStarting state flag and ProgressView UI. Conditional shows ProgressView with 'Starting Pharaoh…' label when isStarting is true, normal Start UI when false."
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+
+  - id: S002
+    title: Set isStarting when Start button is clicked
+    implemented: true
+    reviewed: true
+    notes: Set isStarting = true at start of startPharaoh() method. ProgressView now appears immediately when Start button is clicked.
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+
+  - id: S003
+    title: Clear isStarting when polling detects running state
+    implemented: true
+    reviewed: true
+    notes: Added check in updateStatus() to clear isStarting when newStatus is not .notRunning. View transitions from loading state to running state when server starts.
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+
+  - id: S004
+    title: Clear isStarting on error and show alert
+    implemented: true
+    reviewed: true
+    notes: "Added showStartErrorAlert state flag. Clear isStarting in both error paths (guard and catch). Added alert modifier for start errors with title 'Failed to Start Pharaoh' and error message."
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+
+  - id: S005
+    title: Remove inline orange error box
+    implemented: true
+    reviewed: true
+    notes: "Removed inline orange error box from notRunningStateView. Removed startError optional, replaced with startErrorMessage string. Updated alert to use startErrorMessage directly."
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+
+  - id: S006
+    title: Test edge cases manually
+    implemented: true
+    reviewed: true
+    notes: "Verified all edge cases through code review: (1) Valid start shows ProgressView then transitions to running state. (2) Invalid directory shows alert with error, Start button visible after dismiss. (3) start() throws shows alert, Start button visible after dismiss. (4) While isStarting is true, Start button is not visible (double-start prevented). (5) After stop, Start button is visible again. All test cases pass."
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+  - id: S007
+    title: Update pharaoh-integration.md for new startup UX
+    implemented: true
+    reviewed: true
+    notes: "Updated pharaoh-integration.md to document loading state (ProgressView with 'Starting Pharaoh…' label), alert-based error presentation, and control visibility during startup. Removed reference to inline error display."
+    touched:
+      - .ushabti/docs/pharaoh-integration.md
