@@ -1,0 +1,69 @@
+phase:
+  id: 0031
+  slug: fix-plan-reactivity
+  title: Fix Plan Reactivity
+  status: complete
+
+steps:
+  - id: S001
+    title: Add refreshSelectedPlan helper
+    implemented: true
+    reviewed: true
+    notes: Added refreshSelectedPlan() helper following updateProject() pattern
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S002
+    title: Call refreshSelectedPlan in addCardToPlan
+    implemented: true
+    reviewed: true
+    notes: Called refreshSelectedPlan() after loadPlans() in addCardToPlan()
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S003
+    title: Call refreshSelectedPlan in removeCardFromPlan
+    implemented: true
+    reviewed: true
+    notes: Called refreshSelectedPlan() after loadPlans() in removeCardFromPlan()
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S004
+    title: Call refreshSelectedPlan in updatePlanStatus
+    implemented: true
+    reviewed: true
+    notes: Called refreshSelectedPlan() after loadPlans() and loadCards() in updatePlanStatus()
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S005
+    title: Test addCardToPlan refreshes selectedPlan
+    implemented: true
+    reviewed: true
+    notes: Added test verifying selectedPlan refreshes after addCardToPlan()
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+  - id: S006
+    title: Test removeCardFromPlan refreshes selectedPlan
+    implemented: true
+    reviewed: true
+    notes: Added test verifying selectedPlan refreshes after removeCardFromPlan()
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+  - id: S007
+    title: Test updatePlanStatus refreshes selectedPlan
+    implemented: true
+    reviewed: true
+    notes: Added test verifying selectedPlan refreshes after updatePlanStatus()
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+  - id: S008
+    title: Verify all tests and lint pass
+    implemented: true
+    reviewed: true
+    notes: "All tests pass. No swiftlint installed, compiler warnings checked via build."
+    touched: []
+  - id: S009
+    title: Update viewmodel.md documentation
+    implemented: true
+    reviewed: true
+    notes: "Documented refreshSelectedPlan() method in viewmodel.md with rationale, usage, and examples"
+    touched:
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/viewmodel.md

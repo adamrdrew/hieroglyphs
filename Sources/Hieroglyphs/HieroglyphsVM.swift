@@ -471,6 +471,7 @@ final class HieroglyphsVM {
                 projectPath: projectPath
             )
             loadPlans()
+            refreshSelectedPlan()
         } catch {
             print("Failed to add card to plan: \(error)")
         }
@@ -501,6 +502,7 @@ final class HieroglyphsVM {
                 projectPath: projectPath
             )
             loadPlans()
+            refreshSelectedPlan()
         } catch {
             print("Failed to remove card from plan: \(error)")
         }
@@ -532,8 +534,26 @@ final class HieroglyphsVM {
             )
             loadPlans()
             loadCards()
+            refreshSelectedPlan()
         } catch {
             print("Failed to update plan status: \(error)")
+        }
+    }
+
+    /// Refreshes selectedPlan to point to the updated Plan in the plans array.
+    ///
+    /// Called after reloading plans from disk following a mutation. Since Plan
+    /// is a value type, the old selectedPlan and the reloaded plan are separate
+    /// copies. This method finds the updated plan by slug and updates the
+    /// selection to point to the fresh object.
+    ///
+    /// If selectedPlan is nil or the plan is no longer in the array (deleted),
+    /// this method does nothing.
+    private func refreshSelectedPlan() {
+        guard let currentPlan = selectedPlan else { return }
+
+        if let updatedPlan = plans.first(where: { $0.slug == currentPlan.slug }) {
+            self.selectedPlan = updatedPlan
         }
     }
 

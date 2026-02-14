@@ -2164,4 +2164,202 @@ extension HieroglyphsVMTests {
         viewModel.showDoneAndArchived = false
         XCTAssertFalse(viewModel.showDoneAndArchived, "showDoneAndArchived should be false after toggling back")
     }
+
+    // MARK: - Plan Mutation Tests
+
+    @MainActor
+    func testAddCardToPlanRefreshesSelectedPlan() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil
+        )
+
+        let originalPlan = Plan(
+            id: UUID(),
+            title: "Original Plan",
+            number: 1,
+            slug: "0001-original-plan",
+            status: .planning,
+            created: Date(),
+            updated: Date(),
+            linkedCardSlugs: [],
+            phasePrompt: ""
+        )
+
+        let updatedPlan = Plan(
+            id: originalPlan.id,
+            title: "Original Plan",
+            number: 1,
+            slug: "0001-original-plan",
+            status: .planning,
+            created: originalPlan.created,
+            updated: Date(),
+            linkedCardSlugs: ["test-card"],
+            phasePrompt: ""
+        )
+
+        mockWorkspace.mockProjects = [testProject]
+        mockPlan.mockPlans = [originalPlan]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.plans(testProject))
+        viewModel.loadPlans()
+
+        viewModel.selectedPlan = originalPlan
+        XCTAssertNotNil(viewModel.selectedPlan)
+        XCTAssertTrue(viewModel.selectedPlan!.linkedCardSlugs.isEmpty)
+
+        // Simulate service mutation by updating mock to return updated plan
+        mockPlan.mockPlans = [updatedPlan]
+
+        viewModel.addCardToPlan(cardSlug: "test-card", planSlug: "0001-original-plan")
+
+        XCTAssertNotNil(viewModel.selectedPlan)
+        XCTAssertEqual(viewModel.selectedPlan!.linkedCardSlugs.count, 1)
+        XCTAssertTrue(viewModel.selectedPlan!.linkedCardSlugs.contains("test-card"))
+    }
+
+    @MainActor
+    func testRemoveCardFromPlanRefreshesSelectedPlan() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil
+        )
+
+        let originalPlan = Plan(
+            id: UUID(),
+            title: "Original Plan",
+            number: 1,
+            slug: "0001-original-plan",
+            status: .planning,
+            created: Date(),
+            updated: Date(),
+            linkedCardSlugs: ["test-card"],
+            phasePrompt: ""
+        )
+
+        let updatedPlan = Plan(
+            id: originalPlan.id,
+            title: "Original Plan",
+            number: 1,
+            slug: "0001-original-plan",
+            status: .planning,
+            created: originalPlan.created,
+            updated: Date(),
+            linkedCardSlugs: [],
+            phasePrompt: ""
+        )
+
+        mockWorkspace.mockProjects = [testProject]
+        mockPlan.mockPlans = [originalPlan]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.plans(testProject))
+        viewModel.loadPlans()
+
+        viewModel.selectedPlan = originalPlan
+        XCTAssertNotNil(viewModel.selectedPlan)
+        XCTAssertEqual(viewModel.selectedPlan!.linkedCardSlugs.count, 1)
+
+        // Simulate service mutation by updating mock to return updated plan
+        mockPlan.mockPlans = [updatedPlan]
+
+        viewModel.removeCardFromPlan(cardSlug: "test-card", planSlug: "0001-original-plan")
+
+        XCTAssertNotNil(viewModel.selectedPlan)
+        XCTAssertTrue(viewModel.selectedPlan!.linkedCardSlugs.isEmpty)
+    }
+
+    @MainActor
+    func testUpdatePlanStatusRefreshesSelectedPlan() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil
+        )
+
+        let originalPlan = Plan(
+            id: UUID(),
+            title: "Original Plan",
+            number: 1,
+            slug: "0001-original-plan",
+            status: .planning,
+            created: Date(),
+            updated: Date(),
+            linkedCardSlugs: [],
+            phasePrompt: ""
+        )
+
+        let updatedPlan = Plan(
+            id: originalPlan.id,
+            title: "Original Plan",
+            number: 1,
+            slug: "0001-original-plan",
+            status: .ready,
+            created: originalPlan.created,
+            updated: Date(),
+            linkedCardSlugs: [],
+            phasePrompt: ""
+        )
+
+        mockWorkspace.mockProjects = [testProject]
+        mockPlan.mockPlans = [originalPlan]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.plans(testProject))
+        viewModel.loadPlans()
+
+        viewModel.selectedPlan = originalPlan
+        XCTAssertNotNil(viewModel.selectedPlan)
+        XCTAssertEqual(viewModel.selectedPlan!.status, .planning)
+
+        // Simulate service mutation by updating mock to return updated plan
+        mockPlan.mockPlans = [updatedPlan]
+
+        viewModel.updatePlanStatus(plan: originalPlan, status: .ready)
+
+        XCTAssertNotNil(viewModel.selectedPlan)
+        XCTAssertEqual(viewModel.selectedPlan!.status, .ready)
+    }
 }

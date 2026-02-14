@@ -1011,6 +1011,57 @@ Button("Delete") {
 - Flag is reset to false by CardList after use (one-shot trigger)
 - Uses `.searchable(isPresented:)` modifier to control search field visibility
 
+### refreshSelectedPlan()
+
+**Signature:** `private func refreshSelectedPlan()`
+
+**Purpose:** Refresh selectedPlan to point to the updated Plan object in the plans array after reloading from disk.
+
+**Behavior:**
+
+1. Guard check `selectedPlan` is not nil (returns early if nil)
+2. Find plan in `plans` array matching `selectedPlan.slug`
+3. If found, set `selectedPlan` to the updated Plan object from the array
+4. If not found (plan was deleted), do nothing (leave `selectedPlan` as-is)
+
+**Rationale:**
+
+Plan is a value type (struct). After calling `loadPlans()`, the plans array contains fresh Plan objects loaded from disk. The old `selectedPlan` and the new plan in the array are separate copies. Without this refresh, `selectedPlan` points to stale data, causing views to display outdated information (L17: UI State Correctness).
+
+This method follows the same pattern as `updateProject()`, which refreshes `selectedSection` to point to the updated Project object after reloading projects.
+
+**Usage:**
+
+Called after `loadPlans()` in all three plan mutation methods:
+- `addCardToPlan()` — after adding a card to a plan
+- `removeCardFromPlan()` — after removing a card from a plan
+- `updatePlanStatus()` — after changing plan status
+
+**Example:**
+
+```swift
+func addCardToPlan(cardSlug: String, planSlug: String) {
+    // ... guards and setup ...
+    do {
+        try planService.addCardToPlan(
+            cardSlug: cardSlug,
+            planSlug: planSlug,
+            projectPath: projectPath
+        )
+        loadPlans()           // Reload plans from disk
+        refreshSelectedPlan() // Update selectedPlan to point to fresh plan
+    } catch {
+        print("Failed to add card to plan: \(error)")
+    }
+}
+```
+
+**Notes:**
+- Private method (internal implementation detail)
+- Safe to call even if `selectedPlan` is nil or plan no longer exists
+- Does NOT clear selection if plan is deleted — that's handled by `loadPlans()`
+- Ensures PlanDetail view displays updated data after mutations
+
 ## Future Enhancements
 
 **Planned features not yet implemented:**
