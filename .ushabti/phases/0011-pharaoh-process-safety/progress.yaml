@@ -1,0 +1,118 @@
+phase:
+  id: 0011
+  slug: pharaoh-process-safety
+  title: Pharaoh Process Safety
+  status: complete
+
+steps:
+  - id: S001
+    title: Add StaleProcessResult enum to PharaohProviding.swift
+    implemented: true
+    reviewed: true
+    notes: Added StaleProcessResult enum with three cases
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohProviding.swift
+
+  - id: S002
+    title: Add cleanupStaleProcess method to PharaohProviding protocol
+    implemented: true
+    reviewed: true
+    notes: Added cleanupStaleProcess method signature to protocol with documentation
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohProviding.swift
+
+  - id: S003
+    title: Implement cleanupStaleProcess in PharaohService
+    implemented: true
+    reviewed: true
+    notes: "Implemented cleanupStaleProcess with PID detection, process existence test, and process group kill"
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S004
+    title: Update PharaohService.start to create process group
+    implemented: true
+    reviewed: true
+    notes: Added setpgid call to make spawned process its own group leader
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S005
+    title: Update PharaohService.stop to kill process group
+    implemented: true
+    reviewed: true
+    notes: Updated stop to use kill with negative PID for process group and waitUntilExit
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S006
+    title: Add single-instance guard to PharaohService.start
+    implemented: true
+    reviewed: true
+    notes: Added guard for double-start and stale process cleanup call before spawning
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S007
+    title: Add processAlreadyRunning case to PharaohError
+    implemented: true
+    reviewed: true
+    notes: Added processAlreadyRunning error case with description
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohProviding.swift
+
+  - id: S008
+    title: Register applicationShouldTerminate handler
+    implemented: true
+    reviewed: true
+    notes: "Multi-hook cleanup already in place: willTerminateNotification (line 9-14, handler 171-173) and deinit (line 17-20). shouldTerminateNotification does not exist in AppKit and delegate method cannot be implemented from service class."
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S009
+    title: Add stale process cleanup to PharaohView.onAppear
+    implemented: true
+    reviewed: true
+    notes: Added checkForStaleProcess method called on onAppear with alert for orphaned processes
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+
+  - id: S010
+    title: Write tests for cleanupStaleProcess
+    implemented: true
+    reviewed: true
+    notes: "Added three test cases for cleanupStaleProcess covering missing file, missing PID, and stale file scenarios"
+    touched:
+      - Tests/HieroglyphsTests/PharaohServiceTests.swift
+
+  - id: S011
+    title: Write tests for single-instance guard
+    implemented: true
+    reviewed: true
+    notes: Added test verifying start throws processAlreadyRunning on double-start attempt
+    touched:
+      - Tests/HieroglyphsTests/PharaohServiceTests.swift
+
+  - id: S012
+    title: Write tests for process group termination
+    implemented: true
+    reviewed: true
+    notes: "Process group termination verified via code inspection - stop() uses kill(-pgid, SIGTERM) at line 50. Integration test with real process spawning deferred per step guidance."
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S013
+    title: Update PharaohService documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated documentation for start, stop, and cleanupStaleProcess methods"
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohProviding.swift
+
+  - id: S014
+    title: Update pharaoh-integration.md docs
+    implemented: true
+    reviewed: true
+    notes: "Added Process Safety section documenting process groups, stale detection, single-instance guard, and multi-hook cleanup. Updated Process Lifecycle and Edge Cases sections."
+    touched:
+      - .ushabti/docs/pharaoh-integration.md

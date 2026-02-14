@@ -500,4 +500,48 @@ final class PharaohServiceTests: XCTestCase {
         XCTAssertEqual(firstRead[1].id, secondRead[1].id)
         XCTAssertEqual(firstRead[1].summary, secondRead[1].summary)
     }
+
+    func testCleanupStaleProcessReturnsNoStaleProcessWhenFileDoesNotExist() {
+        let result = service.cleanupStaleProcess(in: tempDirectory.path)
+        XCTAssertEqual(result, .noStaleProcess)
+    }
+
+    func testCleanupStaleProcessReturnsNoStaleProcessWhenPidFieldMissing() throws {
+        let pharaohDir = tempDirectory.appendingPathComponent(".pharaoh")
+        try FileManager.default.createDirectory(at: pharaohDir, withIntermediateDirectories: true)
+
+        let statusFile = pharaohDir.appendingPathComponent("pharaoh.json")
+        let json = """
+        {"status": "idle"}
+        """
+        try json.write(to: statusFile, atomically: true, encoding: .utf8)
+
+        let result = service.cleanupStaleProcess(in: tempDirectory.path)
+        XCTAssertEqual(result, .noStaleProcess)
+    }
+
+    func testCleanupStaleProcessReturnsStaleFileOnlyWhenProcessNotRunning() throws {
+        let pharaohDir = tempDirectory.appendingPathComponent(".pharaoh")
+        try FileManager.default.createDirectory(at: pharaohDir, withIntermediateDirectories: true)
+
+        let statusFile = pharaohDir.appendingPathComponent("pharaoh.json")
+        let json = """
+        {"status": "idle", "pid": 999999}
+        """
+        try json.write(to: statusFile, atomically: true, encoding: .utf8)
+
+        let result = service.cleanupStaleProcess(in: tempDirectory.path)
+        XCTAssertEqual(result, .staleFileOnly)
+    }
+
+    func testStartRefusesDoubleStart() throws {
+        try service.start(in: tempDirectory.path, model: "opus")
+
+        XCTAssertThrowsError(try service.start(in: tempDirectory.path, model: "opus")) { error in
+            guard case PharaohError.processAlreadyRunning = error else {
+                XCTFail("Expected processAlreadyRunning error")
+                return
+            }
+        }
+    }
 }

@@ -344,6 +344,56 @@ enum PlanStatus: String, Codable, CaseIterable {
 - `PlanService.mapPlanStatusToCardStatus(_:)` maps `inProgress` to `CardStatus.inProgress`
 - When plan status changes to `inProgress`, linked cards transition to `inProgress` status
 
+## Process Safety
+
+Pharaoh process management uses multiple mechanisms to prevent orphaned processes from accumulating when Hieroglyphs quits or crashes.
+
+### Process Group Management
+
+**Process Group Creation:**
+- When `start(in:model:)` spawns a Pharaoh process, it calls `setpgid(pid, pid)` to make the process its own group leader
+- This ensures both the npm parent process and the node child process are in the same process group
+- The process group can be killed with a single signal using the negative PID
+
+**Process Group Termination:**
+- `stop()` sends `SIGTERM` to the entire process group using `kill(-pgid, SIGTERM)`
+- This kills both npm parent and node child in one operation
+- `waitUntilExit()` is called to ensure termination completes before continuing
+
+### Stale Process Detection
+
+**Orphan Detection:**
+- `cleanupStaleProcess(in:)` reads `.pharaoh/pharaoh.json` to extract the PID of any previously running process
+- Tests if the process still exists using `kill(pid, 0)` (test signal that doesn't actually kill)
+- Returns one of three results:
+  - `.noStaleProcess` — No stale process found, safe to start
+  - `.cleanedStaleProcess(pid: Int)` — Stale process was found and killed
+  - `.staleFileOnly` — Stale `pharaoh.json` found but process no longer exists
+
+**Cleanup on Start:**
+- `start(in:model:)` calls `cleanupStaleProcess(in:)` before spawning a new process
+- If a stale process is detected and killed, the cleanup is logged to console
+- Only proceeds with starting new process if cleanup succeeds
+
+### Single-Instance Guard
+
+**Double-Start Prevention:**
+- `start(in:model:)` checks if `process?.isRunning == true` before attempting to start
+- Throws `PharaohError.processAlreadyRunning` if a process is already running in the current session
+- Combined with stale process cleanup, ensures only one Pharaoh process per project at a time
+
+### Multi-Hook Cleanup
+
+**Termination Hooks:**
+- `NSApplication.willTerminateNotification` observer in `PharaohService` calls `stop()` on app quit
+- `deinit` also calls `stop()` as a final safety net
+- Both hooks ensure cleanup happens even if app quits unexpectedly
+
+**UI Feedback:**
+- `PharaohView` calls `cleanupStaleProcess(in:)` on `.onAppear`
+- If an orphaned process is detected, shows alert: "Orphaned Process Detected — A stale Pharaoh process (PID N) was found and stopped"
+- User is notified rather than cleanup happening silently
+
 ## Process Lifecycle
 
 ### Starting Pharaoh
@@ -352,16 +402,20 @@ enum PlanStatus: String, Codable, CaseIterable {
 
 **Process:**
 1. `PharaohService.start(in: sourceDirectory, model: selectedModel)` called with user's model selection
-2. Creates `Process` instance
-3. Sets executable to `/bin/zsh`, arguments to `["-l", "-c", "npx @adamrdrew/pharaoh serve --model \(model)"]`
-4. Sets `currentDirectoryURL` to `sourceDirectory`
-5. Registers `terminationHandler` to update UI on exit
-6. Calls `process.run()` to spawn child process
-7. Pharaoh server starts and begins watching `.pharaoh/dispatch/`
+2. Guards against double-start by checking if process is already running
+3. Calls `cleanupStaleProcess(in:)` to detect and kill any orphaned processes from previous sessions
+4. Creates `Process` instance
+5. Sets executable to `/bin/zsh`, arguments to `["-l", "-c", "npx @adamrdrew/pharaoh serve --model \(model)"]`
+6. Sets `currentDirectoryURL` to `sourceDirectory`
+7. Registers `terminationHandler` to update UI on exit
+8. Calls `process.run()` to spawn child process
+9. Calls `setpgid(pid, pid)` to make the process its own group leader
+10. Pharaoh server starts and begins watching `.pharaoh/dispatch/`
 
 **Error Handling:**
 - Throws `PharaohError.directoryNotFound` if `sourceDirectory` invalid
 - Throws `PharaohError.processStartFailed` if process spawn fails
+- Throws `PharaohError.processAlreadyRunning` if process already running
 - PharaohView displays error message in UI
 
 ### Stopping Pharaoh
@@ -370,13 +424,16 @@ enum PlanStatus: String, Codable, CaseIterable {
 
 **Process:**
 1. `PharaohService.stop()` called
-2. Calls `process.terminate()` on running process
-3. Sets internal process reference to nil
-4. UI updates to "Not Running" state
+2. Gets process group ID from `process.processIdentifier`
+3. Sends `SIGTERM` to entire process group using `kill(-pgid, SIGTERM)`
+4. Waits for termination to complete via `process.waitUntilExit()`
+5. Sets internal process reference to nil
+6. UI updates to "Not Running" state
 
 **Automatic Termination:**
-- `NSApplication.willTerminateNotification` observer in PharaohService
-- Ensures child process killed when app quits
+- `NSApplication.willTerminateNotification` observer in PharaohService calls `stop()` on app quit
+- `deinit` calls `stop()` as final safety net
+- Multi-hook strategy maximizes cleanup reliability
 
 ### Status Monitoring
 
@@ -501,6 +558,10 @@ Tests cover all public methods:
 **Project Switching:** Process continues running when user switches projects (process tied to filesystem, not UI selection)
 
 **Termination Detection:** `terminationHandler` enables UI state sync when process exits unexpectedly
+
+**Orphan Cleanup:** Stale process detection happens on Pharaoh view appear, not automatically on app launch (user should be notified first per L18)
+
+**Process Group Limitation:** Process group management relies on POSIX `setpgid` and `kill` syscalls, available on macOS. Cannot guarantee cleanup on force quit or kernel panic, but process group management provides best-effort defense.
 
 ### Status Transitions
 

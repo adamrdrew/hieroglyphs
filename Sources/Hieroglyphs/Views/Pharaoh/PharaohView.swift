@@ -13,6 +13,8 @@ struct PharaohView: View {
     @State private var errorMessage = ""
     @State private var isStarting = false
     @State private var showStartErrorAlert = false
+    @State private var staleCleanupResult: StaleProcessResult?
+    @State private var showStaleAlert = false
 
     var body: some View {
         ScrollView {
@@ -26,6 +28,9 @@ struct PharaohView: View {
             .padding()
         }
         .navigationTitle("Pharaoh")
+        .onAppear {
+            checkForStaleProcess()
+        }
         .task {
             await monitorStatus()
         }
@@ -38,6 +43,13 @@ struct PharaohView: View {
             Button("OK") { }
         } message: {
             Text(startErrorMessage)
+        }
+        .alert("Orphaned Process Detected", isPresented: $showStaleAlert) {
+            Button("OK") { }
+        } message: {
+            if case .cleanedStaleProcess(let pid) = staleCleanupResult {
+                Text("A stale Pharaoh process (PID \(pid)) was found and stopped.")
+            }
         }
     }
 
@@ -311,6 +323,19 @@ struct PharaohView: View {
 
         viewModel.updatePlanStatus(plan: matchingPlan, status: .done)
         print("[Hieroglyphs] Auto-completed plan: \(phase)")
+    }
+
+    private func checkForStaleProcess() {
+        guard let sourceDirectory = project.sourceDirectory,
+              let service = pharaohService else {
+            return
+        }
+
+        let result = service.cleanupStaleProcess(in: sourceDirectory)
+        if case .cleanedStaleProcess = result {
+            staleCleanupResult = result
+            showStaleAlert = true
+        }
     }
 
     private func monitorStatus() async {

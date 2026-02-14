@@ -20,6 +20,15 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
     }
 
     func start(in directory: String, model: String) throws {
+        guard process?.isRunning != true else {
+            throw PharaohError.processAlreadyRunning
+        }
+
+        let cleanupResult = cleanupStaleProcess(in: directory)
+        if case .cleanedStaleProcess(let pid) = cleanupResult {
+            print("[PharaohService] Cleaned up stale process with PID \(pid)")
+        }
+
         let directoryURL = URL(fileURLWithPath: directory)
         guard FileManager.default.fileExists(atPath: directory) else {
             throw PharaohError.directoryNotFound(directory)
@@ -38,6 +47,8 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
 
         do {
             try process.run()
+            let pid = process.processIdentifier
+            setpgid(pid, pid)
             self.process = process
         } catch {
             throw PharaohError.processStartFailed(error.localizedDescription)
@@ -46,7 +57,9 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
 
     func stop() {
         guard let process = process else { return }
-        process.terminate()
+        let pgid = process.processIdentifier
+        kill(-pgid, SIGTERM)
+        process.waitUntilExit()
         self.process = nil
     }
 
@@ -166,6 +179,40 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
         }
 
         return PharaohServerInfo.parse(json: json)
+    }
+
+    func cleanupStaleProcess(in directory: String) -> StaleProcessResult {
+        let statusPath = directory + "/.pharaoh/pharaoh.json"
+        let statusURL = URL(fileURLWithPath: statusPath)
+
+        guard FileManager.default.fileExists(atPath: statusPath) else {
+            return .noStaleProcess
+        }
+
+        guard let data = try? Data(contentsOf: statusURL) else {
+            return .noStaleProcess
+        }
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return .noStaleProcess
+        }
+
+        guard let pid = json["pid"] as? Int else {
+            return .noStaleProcess
+        }
+
+        if let currentProcess = process, currentProcess.processIdentifier == Int32(pid) {
+            return .noStaleProcess
+        }
+
+        let processExists = kill(pid_t(pid), 0) == 0
+
+        if processExists {
+            kill(-pid_t(pid), SIGTERM)
+            return .cleanedStaleProcess(pid: pid)
+        } else {
+            return .staleFileOnly
+        }
     }
 
     @objc private func applicationWillTerminate() {
