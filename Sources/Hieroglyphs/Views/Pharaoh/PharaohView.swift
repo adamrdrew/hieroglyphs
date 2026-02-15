@@ -15,6 +15,7 @@ struct PharaohView: View {
     @State private var showStartErrorAlert = false
     @State private var staleCleanupResult: StaleProcessResult?
     @State private var showStaleAlert = false
+    @State private var hasCheckedForStale = false
 
     var body: some View {
         ScrollView {
@@ -29,7 +30,10 @@ struct PharaohView: View {
         }
         .navigationTitle("Pharaoh")
         .onAppear {
-            checkForStaleProcess()
+            if !hasCheckedForStale {
+                checkForStaleProcess()
+                hasCheckedForStale = true
+            }
         }
         .task {
             await monitorStatus()

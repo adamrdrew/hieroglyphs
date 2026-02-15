@@ -191,6 +191,10 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
     }
 
     func cleanupStaleProcess(in directory: String) -> StaleProcessResult {
+        if processes[directory]?.isRunning == true {
+            return .noStaleProcess
+        }
+
         let statusPath = directory + "/.pharaoh/pharaoh.json"
         let statusURL = URL(fileURLWithPath: statusPath)
 
