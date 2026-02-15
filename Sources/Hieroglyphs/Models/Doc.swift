@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents a documentation file from the Ushabti docs directory.
-struct Doc: Identifiable, Equatable {
+struct Doc: Identifiable, Equatable, Hashable {
     let id: UUID
     let title: String
     let slug: String

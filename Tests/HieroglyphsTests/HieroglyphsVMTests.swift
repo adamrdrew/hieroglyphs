@@ -320,7 +320,11 @@ final class HieroglyphsVMTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "project",
-            sourceDirectory: "/source"
+            sourceDirectory: "/source",
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         mockService.mockProjects = [projectWithSource]
@@ -348,7 +352,11 @@ final class HieroglyphsVMTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         mockService.mockProjects = [projectWithoutSource]
@@ -377,7 +385,11 @@ final class HieroglyphsVMTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "project",
-            sourceDirectory: "/source"
+            sourceDirectory: "/source",
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         mockService.mockProjects = [projectWithSource]
@@ -826,7 +838,11 @@ final class HieroglyphsVMTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "project",
-            sourceDirectory: tempDir.path
+            sourceDirectory: tempDir.path,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
         mockService.mockProjects = [projectWithSource]
 
@@ -912,7 +928,11 @@ final class HieroglyphsVMTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "project",
-            sourceDirectory: tempDir.path
+            sourceDirectory: tempDir.path,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
         mockService.mockProjects = [projectWithSource]
 
@@ -1450,7 +1470,7 @@ final class HieroglyphsVMTests: XCTestCase {
 
 // MARK: - Mock Workspace Service
 
-final class MockSearchService: SearchProviding {
+final class MockSearchService: SearchProviding, @unchecked Sendable {
     var shouldReturnResults = true
     var mockResults: [SearchResult] = []
 
@@ -1507,7 +1527,11 @@ final class MockWorkspaceService: WorkspaceProviding {
                 created: Date(),
                 updated: Date(),
                 slug: "mock-project-1",
-                sourceDirectory: nil
+                sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
             ),
             Project(
                 id: UUID(),
@@ -1517,7 +1541,11 @@ final class MockWorkspaceService: WorkspaceProviding {
                 created: Date(),
                 updated: Date(),
                 slug: "mock-project-2",
-                sourceDirectory: nil
+                sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
             )
         ]
     }
@@ -1576,6 +1604,10 @@ final class MockWorkspaceService: WorkspaceProviding {
         description: String,
         tags: [String],
         sourceDirectory: String?,
+        docsDirectory: String?,
+        buildCommand: String?,
+        runCommand: String?,
+        publishCommand: String?,
         at workspacePath: String
     ) throws -> Project {
         if shouldThrowOnCreateProject {
@@ -1590,7 +1622,11 @@ final class MockWorkspaceService: WorkspaceProviding {
             created: Date(),
             updated: Date(),
             slug: title.lowercased().replacingOccurrences(of: " ", with: "-"),
-            sourceDirectory: sourceDirectory
+            sourceDirectory: sourceDirectory,
+            docsDirectory: docsDirectory,
+            buildCommand: buildCommand,
+            runCommand: runCommand,
+            publishCommand: publishCommand
         )
 
         mockProjects.append(newProject)
@@ -1908,7 +1944,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: "/test/source"
+            sourceDirectory: "/test/source",
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         mockPhases.mockPhases = [
@@ -1950,7 +1990,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let viewModel = HieroglyphsVM(
@@ -1994,7 +2038,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: "/test/source"
+            sourceDirectory: "/test/source",
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         mockPhases.shouldThrowOnLoadPhases = true
@@ -2025,7 +2073,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: "/test/source"
+            sourceDirectory: "/test/source",
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let phase1 = Phase(
@@ -2088,7 +2140,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: "/test/source"
+            sourceDirectory: "/test/source",
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let phase1 = Phase(
@@ -2152,7 +2208,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: "/test/source"
+            sourceDirectory: "/test/source",
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let phase1 = Phase(
@@ -2234,7 +2294,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let originalPlan = Plan(
@@ -2300,7 +2364,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let plan = Plan(
@@ -2350,7 +2418,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let originalPlan = Plan(
@@ -2415,7 +2487,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let originalPlan = Plan(
@@ -2480,7 +2556,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let testPlan = Plan(
@@ -2529,7 +2609,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let testPlan = Plan(
@@ -2580,7 +2664,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let testPlan = Plan(
@@ -2628,7 +2716,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         mockWorkspace.mockProjects = [testProject]
@@ -2694,7 +2786,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let viewModel = HieroglyphsVM(
@@ -2737,7 +2833,11 @@ extension HieroglyphsVMTests {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         mockWorkspace.mockProjects = [testProject]

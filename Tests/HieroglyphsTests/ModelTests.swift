@@ -121,7 +121,11 @@ final class ModelTests: XCTestCase {
             created: created,
             updated: updated,
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         XCTAssertEqual(project.id, projectId)
@@ -146,7 +150,11 @@ final class ModelTests: XCTestCase {
             created: created,
             updated: updated,
             slug: "test",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let project2 = Project(
@@ -157,7 +165,11 @@ final class ModelTests: XCTestCase {
             created: created,
             updated: updated,
             slug: "test",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         XCTAssertEqual(project1, project2)
@@ -176,7 +188,11 @@ final class ModelTests: XCTestCase {
             created: created,
             updated: updated,
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let encoder = JSONEncoder()
@@ -199,7 +215,11 @@ final class ModelTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "test",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            docsDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         XCTAssertEqual(project.id, projectId)

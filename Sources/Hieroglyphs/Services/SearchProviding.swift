@@ -5,7 +5,7 @@ import Foundation
 /// Implementations use platform-specific search capabilities to find
 /// projects and cards matching query strings. Results are delivered
 /// asynchronously via completion handler on the main thread.
-protocol SearchProviding {
+protocol SearchProviding: Sendable {
     /// Performs a search for projects and cards matching the query.
     ///
     /// Searches both file content (markdown bodies) and metadata (title, tags).

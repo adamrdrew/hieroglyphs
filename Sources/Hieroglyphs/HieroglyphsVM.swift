@@ -186,6 +186,7 @@ final class HieroglyphsVM {
                 description: description,
                 tags: tags,
                 sourceDirectory: sourceDirectory,
+                docsDirectory: nil,
                 buildCommand: buildCommand,
                 runCommand: runCommand,
                 publishCommand: publishCommand,

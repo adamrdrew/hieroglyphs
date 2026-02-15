@@ -102,6 +102,7 @@ struct EditProjectSheet: View {
             updated: Date(),
             slug: project.slug,
             sourceDirectory: sourceDirectory,
+            docsDirectory: project.docsDirectory,
             buildCommand: project.buildCommand,
             runCommand: project.runCommand,
             publishCommand: project.publishCommand

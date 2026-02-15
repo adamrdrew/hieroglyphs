@@ -56,7 +56,8 @@ final class WorkspaceServiceTests: XCTestCase {
         tags: [String] = [],
         created: String = "2026-01-01T10:00:00Z",
         updated: String = "2026-01-02T10:00:00Z",
-        sourceDirectory: String? = nil
+        sourceDirectory: String? = nil,
+        docsDirectory: String? = nil
     ) throws {
         let projectDir = workspaceURL.appendingPathComponent(slug)
         try fileManager.createDirectory(
@@ -66,6 +67,7 @@ final class WorkspaceServiceTests: XCTestCase {
 
         let tagsYAML = tags.isEmpty ? "[]" : "\n  - " + tags.joined(separator: "\n  - ")
         let sourceDirectoryLine = sourceDirectory.map { "\nsource_directory: \($0)" } ?? ""
+        let docsDirectoryLine = docsDirectory.map { "\ndocs_directory: \($0)" } ?? ""
         let projectContent = """
         ---
         id: \(id)
@@ -73,7 +75,7 @@ final class WorkspaceServiceTests: XCTestCase {
         description: \(description)
         tags: \(tagsYAML)
         created: \(created)
-        updated: \(updated)\(sourceDirectoryLine)
+        updated: \(updated)\(sourceDirectoryLine)\(docsDirectoryLine)
         ---
 
         Project body content.
@@ -284,6 +286,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -315,6 +318,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "empty-project",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -359,6 +363,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -441,6 +446,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -530,6 +536,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -568,6 +575,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -651,6 +659,7 @@ final class WorkspaceServiceTests: XCTestCase {
             description: "A test project",
             tags: ["test", "demo"],
             sourceDirectory: nil,
+            docsDirectory: nil,
             at: workspaceURL.path
         )
 
@@ -681,6 +690,7 @@ final class WorkspaceServiceTests: XCTestCase {
             description: "",
             tags: [],
             sourceDirectory: nil,
+            docsDirectory: nil,
             at: workspaceURL.path
         )
 
@@ -700,6 +710,7 @@ final class WorkspaceServiceTests: XCTestCase {
             description: "",
             tags: [],
             sourceDirectory: nil,
+            docsDirectory: nil,
             at: workspaceURL.path
         )
         let afterCreate = Date()
@@ -718,6 +729,7 @@ final class WorkspaceServiceTests: XCTestCase {
             description: "Testing frontmatter",
             tags: ["yaml", "test"],
             sourceDirectory: nil,
+            docsDirectory: nil,
             at: workspaceURL.path
         )
 
@@ -913,6 +925,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "update-test",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -965,6 +978,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "preserve-test",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -1002,6 +1016,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "timestamp-test",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -1040,6 +1055,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "nonexistent",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -1313,6 +1329,7 @@ final class WorkspaceServiceTests: XCTestCase {
             description: "Has source directory",
             tags: [],
             sourceDirectory: sourceDir,
+            docsDirectory: nil,
             at: workspaceURL.path
         )
 
@@ -1335,6 +1352,7 @@ final class WorkspaceServiceTests: XCTestCase {
             description: "No source directory",
             tags: [],
             sourceDirectory: nil,
+            docsDirectory: nil,
             at: workspaceURL.path
         )
 
@@ -1354,7 +1372,8 @@ final class WorkspaceServiceTests: XCTestCase {
             slug: "with-source",
             id: "12345678-1234-1234-1234-123456789012",
             title: "With Source",
-            sourceDirectory: "/path/to/source"
+            sourceDirectory: "/path/to/source",
+            docsDirectory: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -1400,6 +1419,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "add-source",
             sourceDirectory: "/new/source/path",
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -1421,7 +1441,8 @@ final class WorkspaceServiceTests: XCTestCase {
             slug: "remove-source",
             id: "cccccccc-4444-5555-6666-dddddddddddd",
             title: "Remove Source",
-            sourceDirectory: "/old/source/path"
+            sourceDirectory: "/old/source/path",
+            docsDirectory: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -1435,6 +1456,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "remove-source",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -1485,6 +1507,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "preserve-all",
             sourceDirectory: "/updated/source",
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -1512,6 +1535,7 @@ final class WorkspaceServiceTests: XCTestCase {
             description: "Has commands",
             tags: [],
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: "swift build",
             runCommand: "swift run",
             publishCommand: "swift package archive",
@@ -1541,6 +1565,7 @@ final class WorkspaceServiceTests: XCTestCase {
             description: "No commands",
             tags: [],
             sourceDirectory: nil,
+            docsDirectory: nil,
             at: workspaceURL.path
         )
 
@@ -1612,6 +1637,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "add-commands",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: "make",
             runCommand: "./run.sh",
             publishCommand: "make publish"
@@ -1666,6 +1692,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "remove-commands",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -1718,6 +1745,7 @@ final class WorkspaceServiceTests: XCTestCase {
             updated: Date(),
             slug: "preserve-commands",
             sourceDirectory: nil,
+            docsDirectory: nil,
             buildCommand: "updated build",
             runCommand: nil,
             publishCommand: "new publish"

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Protocol for loading documentation files from the filesystem.
-protocol DocsProviding {
+protocol DocsProviding: Sendable {
     /// Loads all documentation files from the specified directory.
     ///
     /// - Parameter docsDirectory: Path to the docs directory

@@ -1,11 +1,11 @@
-import Foundation
+@preconcurrency import Foundation
 
 /// Spotlight-powered search service using NSMetadataQuery.
 ///
 /// Searches workspace files for content and metadata matches.
 /// Scopes queries to workspace directory and delivers results
 /// on main thread via completion handler.
-final class SpotlightService: SearchProviding {
+final class SpotlightService: SearchProviding, @unchecked Sendable {
     private var activeQuery: NSMetadataQuery?
 
     func performSearch(
@@ -76,8 +76,9 @@ final class SpotlightService: SearchProviding {
             forName: .NSMetadataQueryDidFinishGathering,
             object: query,
             queue: .main
-        ) { [weak self] _ in
-            self?.handleQueryResults(query: query, completion: completion)
+        ) { [weak self, weak query] _ in
+            guard let self, let query else { return }
+            self.handleQueryResults(query: query, completion: completion)
         }
     }
 

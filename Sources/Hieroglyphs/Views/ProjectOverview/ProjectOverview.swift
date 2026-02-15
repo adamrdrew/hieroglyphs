@@ -224,6 +224,7 @@ struct ProjectOverview: View {
             updated: Date(),
             slug: project.slug,
             sourceDirectory: editedSourceDirectory,
+            docsDirectory: project.docsDirectory,
             buildCommand: editedBuildCommand.isEmpty ? nil : editedBuildCommand,
             runCommand: editedRunCommand.isEmpty ? nil : editedRunCommand,
             publishCommand: editedPublishCommand.isEmpty ? nil : editedPublishCommand

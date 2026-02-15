@@ -1,0 +1,76 @@
+phase:
+  id: 0046
+  slug: fix-docs-integration-build-errors
+  title: Fix Docs Integration Build Errors
+  status: complete
+
+steps:
+  - id: S001
+    title: Add Sendable conformance to DocsProviding protocol
+    implemented: true
+    reviewed: true
+    notes: Added Sendable conformance to DocsProviding protocol
+    touched:
+      - Sources/Hieroglyphs/Services/DocsProviding.swift
+
+  - id: S002
+    title: Add Hashable conformance to Doc model
+    implemented: true
+    reviewed: true
+    notes: Added Hashable conformance to Doc model
+    touched:
+      - Sources/Hieroglyphs/Models/Doc.swift
+
+  - id: S003
+    title: Add docsDirectory parameter to WorkspaceProviding.createProject protocol
+    implemented: true
+    reviewed: true
+    notes: Added docsDirectory parameter to WorkspaceProviding.createProject protocol signature
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceProviding.swift
+
+  - id: S004
+    title: Fix SpotlightService concurrency warnings
+    implemented: true
+    reviewed: true
+    notes: Annotated SpotlightService with @MainActor to ensure thread safety and fix Sendable closure capture warnings
+    touched:
+      - Sources/Hieroglyphs/Services/SpotlightService.swift
+
+  - id: S005
+    title: Update ProjectOverview.swift to pass docsDirectory
+    implemented: true
+    reviewed: true
+    notes: "Added docsDirectory parameter to Project init call in ProjectOverview.swift, preserving existing value from original project"
+    touched:
+      - Sources/Hieroglyphs/Views/ProjectOverview/ProjectOverview.swift
+
+  - id: S006
+    title: Update EditProjectSheet.swift to pass docsDirectory
+    implemented: true
+    reviewed: true
+    notes: "Added docsDirectory parameter to Project init call in EditProjectSheet.swift, preserving existing value from original project"
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/EditProjectSheet.swift
+
+  - id: S007
+    title: Run build and verify all errors resolved
+    implemented: true
+    reviewed: true
+    notes: "Build passes with exit code 0, no errors or warnings"
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+      - Sources/Hieroglyphs/Services/DocsService.swift
+      - Sources/Hieroglyphs/Services/SearchProviding.swift
+      - Sources/Hieroglyphs/Services/SpotlightService.swift
+      - Sources/Hieroglyphs/Services/SpotlightServiceEnvironmentKey.swift
+
+  - id: S008
+    title: Run tests and verify they pass
+    implemented: true
+    reviewed: true
+    notes: All tests pass successfully
+    touched:
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+      - Tests/HieroglyphsTests/ModelTests.swift
