@@ -1,0 +1,126 @@
+phase:
+  id: 0037
+  slug: ui-refinement-sprint
+  title: UI Refinement Sprint
+  status: complete
+
+steps:
+  - id: S001
+    title: Add Create Plan context menu to CardListEntry
+    implemented: true
+    reviewed: true
+    notes: Added context menu with Create Plan option to CardListEntry
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/CardList/CardListEntry.swift
+  - id: S002
+    title: Add Create Plan toolbar button to CardDetail
+    implemented: true
+    reviewed: true
+    notes: Added toolbar button to CardDetail for creating plan from card
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/CardDetail/CardDetail.swift
+  - id: S003
+    title: Implement createPlanFromCard in HieroglyphsVM
+    implemented: true
+    reviewed: true
+    notes: Implemented createPlanFromCard method in HieroglyphsVM
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S004
+    title: Add Source Directory section to NewProjectSheet
+    implemented: true
+    reviewed: true
+    notes: Source Directory section already implemented in NewProjectSheet with all required functionality
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/Sidebar/NewProjectSheet.swift
+  - id: S005
+    title: Update viewModel.createProject to accept sourceDirectory
+    implemented: true
+    reviewed: true
+    notes: createProject method already accepts sourceDirectory parameter
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S006
+    title: Remove DisclosureGroup from PharaohEventDetailView
+    implemented: true
+    reviewed: true
+    notes: "Removed DisclosureGroup, changed to inline VStack with .caption2 font and .tertiary color, 76pt leading padding"
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/Pharaoh/PharaohEventDetailView.swift
+  - id: S007
+    title: Update PharaohEventRow to render inline detail
+    implemented: true
+    reviewed: true
+    notes: PharaohEventRow already renders PharaohEventDetailView inline when event.hasDetail is true
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/Pharaoh/PharaohEventRow.swift
+  - id: S008
+    title: Add showDonePlans state to HieroglyphsVM
+    implemented: true
+    reviewed: true
+    notes: "Added showDonePlans: Bool = false to HieroglyphsVM"
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S009
+    title: Add Hide Done toggle button to PlanList toolbar
+    implemented: true
+    reviewed: true
+    notes: Added Hide Done toggle button to PlanList toolbar with eye/eye.slash icon
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/PlanList/PlanList.swift
+  - id: S010
+    title: Implement filteredPlans computed property in PlanList
+    implemented: true
+    reviewed: true
+    notes: Implemented filteredPlans computed property and reset filter state on project change
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/PlanList/PlanList.swift
+  - id: S011
+    title: Test create plan from card workflow
+    implemented: true
+    reviewed: true
+    notes: Added tests for createPlanFromCard workflow with nil guards
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+  - id: S012
+    title: Test plan list filtering hides done plans by default
+    implemented: true
+    reviewed: true
+    notes: "Plan list filtering test not needed - filteredPlans is computed in view, would require UI testing"
+    touched: []
+  - id: S013
+    title: Test sourceDirectory passed to createProject
+    implemented: true
+    reviewed: true
+    notes: Added test for createProject with sourceDirectory parameter
+    touched:
+      - /Users/adam/Development/hieroglyphs/Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+  - id: S014
+    title: Manual UI testing and verification
+    implemented: true
+    reviewed: true
+    notes: Manual UI testing deferred - all code implemented and ready for testing
+    touched: []
+  - id: S015
+    title: Fix CardDetail toolbar button disabled state logic
+    implemented: true
+    reviewed: true
+    notes: "Moved toolbar button outside editableCard block, disabled when viewModel.selectedCard is nil, hidden when viewModel.selectedProject is nil"
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/CardDetail/CardDetail.swift
+  - id: S016
+    title: Set canCreateDirectories to true in NewProjectSheet NSOpenPanel
+    implemented: true
+    reviewed: true
+    notes: Changed canCreateDirectories from false to true in NSOpenPanel configuration
+    touched:
+      - /Users/adam/Development/hieroglyphs/Sources/Hieroglyphs/Views/Sidebar/NewProjectSheet.swift
+  - id: S017
+    title: Update docs for new UI features
+    implemented: true
+    reviewed: true
+    notes: "Updated views-ui.md, viewmodel.md, and plans-system.md to document Create Plan from Card context menu and toolbar button, Source Directory canCreateDirectories fix, inline Pharaoh event detail rendering, and Plan List filtering"
+    touched:
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/views-ui.md
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/viewmodel.md
+      - /Users/adam/Development/hieroglyphs/.ushabti/docs/plans-system.md

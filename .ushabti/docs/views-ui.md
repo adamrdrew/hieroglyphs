@@ -738,7 +738,7 @@ Section("Source Directory") {
 - `canChooseFiles = false` — Only directories selectable
 - `canChooseDirectories = true` — Directories enabled
 - `allowsMultipleSelection = false` — Single selection only
-- `canCreateDirectories = false` — User cannot create new folders
+- `canCreateDirectories = true` — User can create new folders in picker
 
 **Save Logic:**
 
@@ -929,7 +929,7 @@ private func selectSourceDirectory() {
     panel.canChooseFiles = false
     panel.canChooseDirectories = true
     panel.allowsMultipleSelection = false
-    panel.canCreateDirectories = false
+    panel.canCreateDirectories = true
     panel.message = "Select the source directory for this project"
     panel.prompt = "Select"
 
@@ -1098,7 +1098,7 @@ The Group containing empty states and the List has `.frame(maxHeight: .infinity)
 
 **File:** `Sources/Hieroglyphs/Views/CardList/CardListEntry.swift`
 
-**Purpose:** Individual card row showing title, type badge, priority indicator, and status.
+**Purpose:** Individual card row showing title, type badge, priority indicator, and status with context menu for quick actions.
 
 **Structure:**
 
@@ -1130,9 +1130,20 @@ struct CardListEntry: View {
             Spacer()
         }
         .padding(.vertical, 4)
+        .contextMenu {
+            Button {
+                viewModel.createPlanFromCard(card)
+            } label: {
+                Label("Create Plan", systemImage: "flowchart")
+            }
+        }
     }
 }
 ```
+
+**Context Menu Actions:**
+
+- **Create Plan:** Creates a new plan from the selected card with auto-incremented number, title derived from card title (e.g., "Implement {card.title}"), card symlinked to plan, plan created in `planning` status
 
 **Visual Elements:**
 
@@ -1420,7 +1431,7 @@ Empty states use `ContentUnavailableView` (macOS 14+) throughout:
 
 **File:** `Sources/Hieroglyphs/Views/CardDetail/CardDetail.swift`
 
-**Purpose:** Display and edit selected card metadata and markdown body in the detail column.
+**Purpose:** Display and edit selected card metadata and markdown body in the detail column with toolbar actions.
 
 **Structure:**
 
@@ -1447,6 +1458,21 @@ struct CardDetail: View {
                 )
             }
         }
+        .toolbar {
+            if viewModel.selectedProject != nil {
+                ToolbarItem(placement: .automatic) {
+                    Button {
+                        if let card = viewModel.selectedCard {
+                            viewModel.createPlanFromCard(card)
+                        }
+                    } label: {
+                        Label("Create Plan", systemImage: "flowchart")
+                    }
+                    .disabled(viewModel.selectedCard == nil)
+                    .help("Create a new plan from this card")
+                }
+            }
+        }
         .onChange(of: viewModel.selectedCard) { _, newCard in
             viewModel.flushPendingCardUpdates()
             editableCard = newCard
@@ -1463,6 +1489,7 @@ struct CardDetail: View {
 4. **Dual Save Paths:** Debounced saves for continuous typing (title, body), immediate saves for discrete actions (pickers, tags)
 5. **Flush on Deselection:** Pending writes flushed before loading new card
 6. **Navigation Title:** Shows card title in detail column navigation bar
+7. **Create Plan Toolbar Button:** Flowchart icon button (disabled when no card selected, hidden when no project selected) calls `viewModel.createPlanFromCard(card)` to create plan with auto-incremented number and card linked
 
 **Behavior:**
 
@@ -1713,7 +1740,7 @@ Used in `CardMetadataEditor` within a `FlowLayout` to display all card tags. Eac
 
 **File:** `Sources/Hieroglyphs/Views/PlanList/PlanList.swift`
 
-**Purpose:** Middle column view that displays all plans for the selected project.
+**Purpose:** Middle column view that displays all plans for the selected project with status-based filtering.
 
 **Structure:**
 
@@ -1721,6 +1748,14 @@ Used in `CardMetadataEditor` within a `FlowLayout` to display all card tags. Eac
 struct PlanList: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @State private var showNewPlanSheet = false
+
+    private var filteredPlans: [Plan] {
+        if viewModel.showDonePlans {
+            return viewModel.plans
+        } else {
+            return viewModel.plans.filter { $0.status != .done }
+        }
+    }
 
     var body: some View {
         Group {
@@ -1738,7 +1773,7 @@ struct PlanList: View {
                 )
             } else {
                 List(selection: $viewModel.selectedPlan) {
-                    ForEach(viewModel.plans) { plan in
+                    ForEach(filteredPlans) { plan in
                         PlanListEntry(plan: plan)
                             .tag(plan)
                     }
@@ -1747,14 +1782,27 @@ struct PlanList: View {
         }
         .navigationTitle("Plans")
         .toolbar {
-            Button("New Plan") {
-                showNewPlanSheet = true
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    viewModel.showDonePlans.toggle()
+                } label: {
+                    Label(viewModel.showDonePlans ? "Hide Done" : "Show Done",
+                          systemImage: viewModel.showDonePlans ? "eye" : "eye.slash")
+                }
+                .help(viewModel.showDonePlans ? "Hide done plans" : "Show done plans")
+            }
+
+            ToolbarItem(placement: .primaryAction) {
+                Button("New Plan") {
+                    showNewPlanSheet = true
+                }
             }
         }
         .sheet(isPresented: $showNewPlanSheet) {
             NewPlanSheet(isPresented: $showNewPlanSheet)
         }
-        .onChange(of: viewModel.selectedProject) {
+        .onChange(of: viewModel.selectedProject) { _, _ in
+            viewModel.showDonePlans = false
             viewModel.loadPlans()
             viewModel.loadCards()
         }
@@ -1762,12 +1810,21 @@ struct PlanList: View {
 }
 ```
 
+**Key Features:**
+
+- **Hide Done Toggle:** Toolbar button with eye/eye.slash icon (matches CardList pattern)
+- **Default State:** Done plans hidden by default (`showDonePlans = false`)
+- **Filter Computation:** `filteredPlans` excludes plans with `.done` status when `showDonePlans` is false
+- **Filter Reset:** Filter state resets to false on project change
+- **Filter Persistence:** Filter state is ephemeral (not persisted)
+
 **Notes:**
 - Displayed when Plans section is selected in sidebar
 - Three states: no project selected, no plans exist, plans list
 - Toolbar button shows NewPlanSheet for creating plans
 - Auto-loads plans when selectedProject changes
 - Selection binding to `viewModel.selectedPlan`
+- Filter pattern consistent with CardList's "Hide Done/Archived" toggle
 
 ## PlanListEntry
 
@@ -2144,19 +2201,20 @@ PharaohView has two states:
 
 **File:** `Sources/Hieroglyphs/Views/Pharaoh/PharaohEventRow.swift`
 
-**Purpose:** Individual event row displaying timestamp, icon, and summary.
+**Purpose:** Individual event row displaying timestamp, icon, summary, and inline detail when available.
 
 **Structure:**
 
 Two rendering modes:
 
-1. **Standard Event Row:** HStack with timestamp, icon, and summary
+1. **Standard Event Row:** HStack with timestamp, icon, and summary, followed by inline detail if `event.hasDetail` is true
 2. **Turn Separator:** VStack with Divider and small "Turn N" label (for turn events)
 
 **Standard Event Layout:**
 - Relative timestamp: `Text(style: .relative)` in caption2 monospaced font, tertiary color, 60pt fixed width, trailing alignment
 - Type icon: SF Symbol in 16pt fixed-width frame, color-coded by event type
 - Summary: Truncated text with font varying by event type (callout or callout.monospaced() or callout.bold())
+- **Inline Detail:** When `event.hasDetail` is true, PharaohEventDetailView renders detail content directly inline below summary with 76pt leading padding, `.caption2` font, `.tertiary` color
 
 **Event Type Icons and Colors:**
 - `toolCall`: wrench.fill, accent color, monospaced font
@@ -2173,10 +2231,18 @@ Two rendering modes:
 - VStack with Divider and small "Turn N" label (caption2, tertiary)
 - No icon or timestamp
 
+**Inline Detail Rendering:**
+- No DisclosureGroup or expand/collapse interaction
+- Detail content shown directly inline when `event.hasDetail` is true
+- Indented 76pt from leading edge (aligned with summary text column)
+- Uses `.caption2` font and `.tertiary` foreground for all detail text
+- Empty/nil detail fields omitted gracefully (no blank rows)
+
 **Notes:**
 - Vertical padding: 2pt for standard rows, 4pt for turn separators
 - Summary text limited to single line with tail truncation
 - Icons follow TakeNote SF Symbol patterns
+- Detail content includes: tool name, tool input, turn metrics, full text, result metrics as appropriate for event type
 
 ## Accessibility
 

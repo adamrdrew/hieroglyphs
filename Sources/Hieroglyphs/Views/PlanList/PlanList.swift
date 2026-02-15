@@ -15,7 +15,7 @@ struct PlanList: View {
                 noPlanState
             } else {
                 List(selection: $bindableViewModel.selectedPlan) {
-                    ForEach(viewModel.plans) { plan in
+                    ForEach(filteredPlans) { plan in
                         PlanListEntry(plan: plan)
                             .tag(plan)
                     }
@@ -24,10 +24,23 @@ struct PlanList: View {
             }
         }
         .onChange(of: viewModel.selectedProject, initial: true) { _, _ in
+            viewModel.showDonePlans = false
             viewModel.loadPlans()
             viewModel.loadCards()
         }
         .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    viewModel.showDonePlans.toggle()
+                } label: {
+                    Label(
+                        viewModel.showDonePlans ? "Hide Done" : "Show Done",
+                        systemImage: viewModel.showDonePlans ? "eye" : "eye.slash"
+                    )
+                }
+                .help(viewModel.showDonePlans ? "Hide done plans" : "Show done plans")
+            }
+
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     showingNewPlanSheet = true
@@ -56,5 +69,13 @@ struct PlanList: View {
             systemImage: "list.bullet.clipboard",
             description: Text("Create a plan to group cards into a bounded unit of work.")
         )
+    }
+
+    private var filteredPlans: [Plan] {
+        if viewModel.showDonePlans {
+            return viewModel.plans
+        } else {
+            return viewModel.plans.filter { $0.status != .done }
+        }
     }
 }

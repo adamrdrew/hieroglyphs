@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Individual card row showing title, type badge, priority indicator, and status.
 struct CardListEntry: View {
+    @Environment(HieroglyphsVM.self) private var viewModel
     let card: Card
 
     var body: some View {
@@ -37,6 +38,13 @@ struct CardListEntry: View {
             Spacer()
         }
         .padding(.vertical, 4)
+        .contextMenu {
+            Button {
+                viewModel.createPlanFromCard(card)
+            } label: {
+                Label("Create Plan", systemImage: "flowchart")
+            }
+        }
     }
 
     private var typeColor : Color {

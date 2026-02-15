@@ -35,6 +35,21 @@ struct CardDetail: View {
                 )
             }
         }
+        .toolbar {
+            if viewModel.selectedProject != nil {
+                ToolbarItem(placement: .automatic) {
+                    Button {
+                        if let card = viewModel.selectedCard {
+                            viewModel.createPlanFromCard(card)
+                        }
+                    } label: {
+                        Label("Create Plan", systemImage: "flowchart")
+                    }
+                    .disabled(viewModel.selectedCard == nil)
+                    .help("Create a new plan from this card")
+                }
+            }
+        }
         .onChange(of: viewModel.selectedCard) { _, newCard in
             viewModel.flushPendingCardUpdates()
             editableCard = newCard

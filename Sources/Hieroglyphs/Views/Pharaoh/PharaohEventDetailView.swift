@@ -1,30 +1,28 @@
 import SwiftUI
 
-/// Displays expandable detail information for a Pharaoh event.
+/// Displays inline detail information for a Pharaoh event.
 struct PharaohEventDetailView: View {
     let event: PharaohEvent
 
     var body: some View {
-        DisclosureGroup("Details") {
-            VStack(alignment: .leading, spacing: 4) {
-                switch event.type {
-                case .toolCall:
-                    toolCallDetail
-                case .turn:
-                    turnDetail
-                case .text:
-                    textDetail
-                case .result:
-                    resultDetail
-                default:
-                    EmptyView()
-                }
+        VStack(alignment: .leading, spacing: 4) {
+            switch event.type {
+            case .toolCall:
+                toolCallDetail
+            case .turn:
+                turnDetail
+            case .text:
+                textDetail
+            case .result:
+                resultDetail
+            default:
+                EmptyView()
             }
-            .font(.caption.monospaced())
-            .foregroundStyle(.secondary)
-            .padding(.top, 4)
         }
-        .padding(.leading, 84)
+        .font(.caption2)
+        .foregroundStyle(.tertiary)
+        .padding(.leading, 76)
+        .padding(.top, 4)
     }
 
     @ViewBuilder

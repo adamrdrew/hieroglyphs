@@ -618,12 +618,14 @@ Plan status changes map to card status updates:
 
 - `@Published var plans: [Plan] = []` — Array of loaded plans
 - `@Published var selectedPlan: Plan?` — Currently selected plan
+- `@Published var showDonePlans: Bool = false` — Toggle for showing/hiding done plans (default: false, state is ephemeral)
 - `private let planService: PlanProviding?` — Injected service
 
 **Methods:**
 
 - `loadPlans()` — Load plans for selected project
 - `createPlan(title:number:)` — Create new plan
+- `createPlanFromCard(_:)` — Create new plan from card with auto-incremented number, title derived from card, and card symlinked
 - `updatePlan(_:)` — Update plan metadata
 - `addCardToPlan(cardSlug:planSlug:)` — Add card symlink
 - `removeCardFromPlan(cardSlug:planSlug:)` — Remove card symlink
@@ -637,6 +639,8 @@ Plan status changes map to card status updates:
 - Methods reload plans after mutations to reflect changes in UI
 - `updatePlanStatus()` reloads both plans and cards to reflect cascaded status changes
 - `deletePlan()` clears `selectedPlan` if deleted plan was selected, then reloads plans
+- `createPlanFromCard()` provides quick plan creation from card context (context menu or toolbar button)
+- `showDonePlans` controls plan list filtering (matches CardList's `showDoneAndArchived` pattern)
 
 ## Views
 
@@ -644,12 +648,17 @@ Plan status changes map to card status updates:
 
 **Location:** `Sources/Hieroglyphs/Views/PlanList/PlanList.swift`
 
-**Purpose:** Middle column view displaying plans for a project.
+**Purpose:** Middle column view displaying plans for a project with status-based filtering.
 
 **Features:**
 
 - Shows empty state when no project selected or no plans exist
-- Displays list of plans with selection binding to `viewModel.selectedPlan`
+- Displays filtered list of plans with selection binding to `viewModel.selectedPlan`
+- "Hide Done" toggle toolbar button (eye/eye.slash icon, matches CardList pattern)
+- Default state: done plans hidden (`showDonePlans = false`)
+- Filter computation: `filteredPlans` excludes plans with `.done` status when `showDonePlans` is false
+- Filter state resets to false on project change
+- Filter state is ephemeral (not persisted)
 - "New Plan" toolbar button (disabled when no project selected)
 - Shows `NewPlanSheet` modal for creating plans
 - Auto-loads plans when `selectedProject` changes
@@ -801,6 +810,44 @@ private var canDispatch: Bool {
 ```
 
 **Rationale:** Hidden (not disabled) when conditions not met to avoid visual clutter and confusion.
+
+## Plan Creation from Card
+
+Plans can be created directly from a card via two UI entry points:
+
+### CardListEntry Context Menu
+
+Right-click a card in the card list to show a context menu with "Create Plan" option (flowchart icon). Clicking the menu item calls `viewModel.createPlanFromCard(card)`.
+
+### CardDetail Toolbar Button
+
+When a card is selected in CardDetail, a toolbar button appears with flowchart icon and "Create Plan" label. The button is:
+- Disabled when no card is selected (`viewModel.selectedCard == nil`)
+- Hidden when no project is selected (`viewModel.selectedProject == nil`)
+
+Clicking the button calls `viewModel.createPlanFromCard(card)`.
+
+### Creation Behavior
+
+When `createPlanFromCard(card)` is called:
+1. Next plan number is automatically determined via `planService.findNextPlanNumber()`
+2. Plan title is generated from card title: `"Implement {card.title}"` (e.g., "Implement Add dark mode")
+3. Plan is created with:
+   - Auto-incremented number
+   - Generated title
+   - `planning` status
+   - Empty phase prompt
+4. Card is immediately symlinked to the new plan via `addCardToPlan()`
+5. Plan list is reloaded to show the new plan
+
+**No modal or sheet is shown** — plan creation is immediate and silent (success indicated by new plan appearing in plan list).
+
+**Example workflow:**
+1. User creates card "Add dark mode" in card list
+2. User right-clicks card → "Create Plan"
+3. New plan "0001-implement-add-dark-mode" is created instantly
+4. Plan appears in plan list with "Add dark mode" card linked
+5. User can navigate to plan to edit phase prompt and add more cards
 
 ## File Watching
 

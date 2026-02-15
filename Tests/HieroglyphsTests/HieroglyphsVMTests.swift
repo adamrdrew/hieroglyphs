@@ -2571,4 +2571,207 @@ extension HieroglyphsVMTests {
 
         XCTAssertEqual(viewModel.plans.count, 1)
     }
+
+    // MARK: - createPlanFromCard() Tests
+
+    @MainActor
+    func testCreatePlanFromCard() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+        mockWorkspace.shouldThrowOnLoadCards = false
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil
+        )
+
+        mockWorkspace.mockProjects = [testProject]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.cards(testProject))
+        viewModel.loadCards()
+
+        let testCard = viewModel.cards.first!
+        let initialPlanCount = mockPlan.mockPlans.count
+
+        viewModel.createPlanFromCard(testCard)
+
+        XCTAssertEqual(mockPlan.mockPlans.count, initialPlanCount + 1)
+        XCTAssertTrue(mockPlan.mockPlans.contains { $0.title == "Implement \(testCard.title)" })
+        XCTAssertEqual(mockPlan.addCardCallCount, 1)
+    }
+
+    @MainActor
+    func testCreatePlanFromCardWithNilSelectedProject() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+
+        let testCard = Card(
+            id: UUID(),
+            title: "Test Card",
+            type: .task,
+            status: .todo,
+            priority: .medium,
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-card",
+            body: ""
+        )
+
+        let initialPlanCount = mockPlan.mockPlans.count
+
+        viewModel.createPlanFromCard(testCard)
+
+        XCTAssertEqual(mockPlan.mockPlans.count, initialPlanCount)
+    }
+
+    @MainActor
+    func testCreatePlanFromCardWithNilWorkspacePath() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil
+        )
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+
+        viewModel.selectedSection = .cards(testProject)
+
+        let testCard = Card(
+            id: UUID(),
+            title: "Test Card",
+            type: .task,
+            status: .todo,
+            priority: .medium,
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-card",
+            body: ""
+        )
+
+        let initialPlanCount = mockPlan.mockPlans.count
+
+        viewModel.createPlanFromCard(testCard)
+
+        XCTAssertEqual(mockPlan.mockPlans.count, initialPlanCount)
+    }
+
+    @MainActor
+    func testCreatePlanFromCardWithNilPlanService() {
+        let mockWorkspace = MockWorkspaceService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil
+        )
+
+        mockWorkspace.mockProjects = [testProject]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: nil
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.cards(testProject))
+
+        let testCard = Card(
+            id: UUID(),
+            title: "Test Card",
+            type: .task,
+            status: .todo,
+            priority: .medium,
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-card",
+            body: ""
+        )
+
+        viewModel.createPlanFromCard(testCard)
+
+        XCTAssertEqual(viewModel.plans.count, 0)
+    }
+
+    // MARK: - showDonePlans Tests
+
+    @MainActor
+    func testShowDonePlansDefaultValue() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        XCTAssertFalse(viewModel.showDonePlans, "showDonePlans should default to false")
+    }
+
+    @MainActor
+    func testShowDonePlansToggle() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        viewModel.showDonePlans = true
+        XCTAssertTrue(viewModel.showDonePlans, "showDonePlans should be true after setting")
+
+        viewModel.showDonePlans = false
+        XCTAssertFalse(viewModel.showDonePlans, "showDonePlans should be false after toggling back")
+    }
+
+    // MARK: - createProject() with sourceDirectory Tests
+
+    @MainActor
+    func testCreateProjectWithSourceDirectory() {
+        let mockService = MockWorkspaceService()
+        mockService.shouldThrowOnLoadConfig = false
+        mockService.shouldThrowOnCreateProject = false
+
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+        viewModel.loadWorkspace()
+
+        let initialCount = viewModel.projects.count
+        viewModel.createProject(
+            title: "New Project",
+            description: "Description",
+            tags: ["tag1"],
+            sourceDirectory: "/test/source"
+        )
+
+        XCTAssertEqual(viewModel.projects.count, initialCount + 1)
+        let newProject = viewModel.projects.first { $0.title == "New Project" }
+        XCTAssertNotNil(newProject)
+        XCTAssertEqual(newProject?.sourceDirectory, "/test/source")
+    }
 }

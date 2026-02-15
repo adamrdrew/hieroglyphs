@@ -119,7 +119,7 @@ struct NewProjectSheet: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = false
+        panel.canCreateDirectories = true
         panel.message = "Select the source directory for this project"
         panel.prompt = "Select"
 

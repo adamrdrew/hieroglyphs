@@ -43,6 +43,7 @@ enum SidebarSection: Hashable {
 - `sortBy: CardSortOption` — Sort criteria (created, updated, priority, status, title)
 - `sortOrder: SortOrder` — Sort direction (forward = ascending, reverse = descending)
 - `showDoneAndArchived: Bool` — Toggle for showing/hiding done and archived cards (default: false, state is ephemeral)
+- `showDonePlans: Bool` — Toggle for showing/hiding done plans (default: false, state is ephemeral)
 - `showingNewProjectSheet: Bool` — Controls New Project sheet presentation (false = hidden)
 - `showingNewCardSheet: Bool` — Controls New Card sheet presentation (false = hidden)
 - `focusSearch: Bool` — Triggers search field focus when set to true (resets to false after use)
@@ -1071,6 +1072,71 @@ Button("Delete") {
 **Notes:**
 - Flag is reset to false by CardList after use (one-shot trigger)
 - Uses `.searchable(isPresented:)` modifier to control search field visibility
+
+### createPlanFromCard(_:)
+
+**Signature:** `func createPlanFromCard(_ card: Card)`
+
+**Purpose:** Create a new plan from a card in a single operation, automatically linking the card and setting the plan title.
+
+**Parameters:**
+- `card` — The card to create a plan from
+
+**Behavior:**
+
+1. Guard check `selectedProject` is not nil (log error and return if nil)
+2. Guard check `workspacePath` is not nil (log error and return if nil)
+3. Guard check `planService` is not nil (log error and return if nil)
+4. Call `planService.findNextPlanNumber(projectPath:)` to get next plan number
+5. Generate plan title: `"Implement \(card.title)"`
+6. Call `planService.createPlan(title:number:projectPath:)` to create plan
+7. Call `planService.addCardToPlan(cardSlug:planSlug:projectPath:)` to link card
+8. Call `loadPlans()` to refresh plan list
+9. If any step throws, catch error and log to console
+
+**Error Handling:**
+
+Errors are logged to console via `print()`. Plan is not created on error. Plan list is not updated.
+
+**Example error output:**
+```
+Cannot create plan from card: no project selected
+Cannot create plan from card: workspace path is nil
+Failed to create plan from card: planNotFound
+```
+
+**Usage:**
+
+Called from CardListEntry context menu and CardDetail toolbar button:
+
+```swift
+// Context menu in CardListEntry
+.contextMenu {
+    Button {
+        viewModel.createPlanFromCard(card)
+    } label: {
+        Label("Create Plan", systemImage: "flowchart")
+    }
+}
+
+// Toolbar button in CardDetail
+Button {
+    if let card = viewModel.selectedCard {
+        viewModel.createPlanFromCard(card)
+    }
+} label: {
+    Label("Create Plan", systemImage: "flowchart")
+}
+.disabled(viewModel.selectedCard == nil)
+```
+
+**Notes:**
+- Auto-increments plan number (no manual number entry required)
+- Generates plan title from card title (e.g., "Implement Add dark mode")
+- Creates plan in `planning` status with empty phase prompt
+- Links card immediately after plan creation
+- No modal or sheet shown (immediate creation)
+- Reloads plan list to reflect new plan
 
 ### refreshSelectedPlan()
 

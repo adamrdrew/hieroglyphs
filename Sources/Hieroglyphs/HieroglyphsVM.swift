@@ -67,6 +67,7 @@ final class HieroglyphsVM {
     var sortBy: CardSortOption = .updated
     var sortOrder: SortOrder = .forward
     var showDoneAndArchived: Bool = false
+    var showDonePlans: Bool = false
 
     var searchResults: [SearchResult] = []
 
@@ -436,6 +437,46 @@ final class HieroglyphsVM {
             loadPlans()
         } catch {
             print("Failed to create plan: \(error)")
+        }
+    }
+
+    func createPlanFromCard(_ card: Card) {
+        guard let selectedProject else {
+            print("Cannot create plan from card: no project selected")
+            return
+        }
+
+        guard let workspacePath else {
+            print("Cannot create plan from card: workspace path is nil")
+            return
+        }
+
+        guard let planService else {
+            print("Cannot create plan from card: plan service is nil")
+            return
+        }
+
+        let projectPath = "\(workspacePath)/\(selectedProject.slug)"
+
+        do {
+            let number = try planService.findNextPlanNumber(projectPath: projectPath)
+            let planTitle = "Implement \(card.title)"
+
+            let plan = try planService.createPlan(
+                title: planTitle,
+                number: number,
+                projectPath: projectPath
+            )
+
+            try planService.addCardToPlan(
+                cardSlug: card.slug,
+                planSlug: plan.slug,
+                projectPath: projectPath
+            )
+
+            loadPlans()
+        } catch {
+            print("Failed to create plan from card: \(error)")
         }
     }
 
