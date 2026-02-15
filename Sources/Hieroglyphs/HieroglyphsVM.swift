@@ -220,6 +220,8 @@ final class HieroglyphsVM {
             if let updatedProject = reloadedProjects.first(where: { $0.id == project.id }),
                let currentSection = selectedSection {
                 switch currentSection {
+                case .overview:
+                    self.selectedSection = .overview(updatedProject)
                 case .cards:
                     self.selectedSection = .cards(updatedProject)
                 case .plans:
@@ -277,6 +279,10 @@ final class HieroglyphsVM {
         // If only the section type changed within the same project,
         // clear cross-section selections
         switch section {
+        case .overview:
+            self.selectedCard = nil
+            self.selectedPlan = nil
+            self.selectedPhase = nil
         case .cards:
             self.selectedPlan = nil
             self.selectedPhase = nil

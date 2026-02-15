@@ -9,7 +9,7 @@ struct CommandResult {
 }
 
 /// Protocol defining command execution capability.
-protocol CommandExecutionProviding {
+protocol CommandExecutionProviding: Sendable {
     /// Executes a shell command in the specified working directory.
     ///
     /// - Parameters:
@@ -24,7 +24,7 @@ protocol CommandExecutionProviding {
 }
 
 /// Service for executing shell commands via Foundation.Process.
-final class CommandExecutionService: CommandExecutionProviding {
+final class CommandExecutionService: CommandExecutionProviding, @unchecked Sendable {
     enum CommandError: Error {
         case processLaunchFailed
         case timeout

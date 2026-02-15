@@ -101,7 +101,10 @@ struct EditProjectSheet: View {
             created: project.created,
             updated: Date(),
             slug: project.slug,
-            sourceDirectory: sourceDirectory
+            sourceDirectory: sourceDirectory,
+            buildCommand: project.buildCommand,
+            runCommand: project.runCommand,
+            publishCommand: project.publishCommand
         )
 
         viewModel.updateProject(updatedProject)
