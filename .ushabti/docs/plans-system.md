@@ -182,9 +182,17 @@ Set up the project repository and build infrastructure.
 
 1. User clicks "Generate Phase Prompt" button in PlanDetail view
 2. PromptGenerator assembles card titles, types, priorities, and body content into a concise summary
-3. Summary is sent to SystemLanguageModel with structured instructions (see `ScribePromptInstructions.swift`)
-4. Model generates a ~500 word narrative phase prompt in markdown format
-5. Generated prompt populates PHASE_PROMPT.md content in PlanDetail TextEditor
+3. Cards are sorted by priority (critical > high > medium > low) to ensure important cards appear first
+4. Summary is sent to SystemLanguageModel with greedy sampling and structured output constraints
+5. Model generates structured response via `@Generable` schema with explicit fields
+6. Generated response is formatted into markdown and populates PHASE_PROMPT.md
+
+**Generation approach (Phase 0040):**
+
+- **Greedy sampling:** `GenerationOptions(sampling: .greedy)` eliminates randomness, producing deterministic output
+- **Structured output:** `@Generable PhasePromptSchema` constrains model to specific fields, reducing hallucination
+- **Hardened system prompt:** Explicitly forbids invention of context not present in input cards
+- **Token measurement:** Input and output token counts logged to monitor context window usage (4096 token limit)
 
 **UI behavior:**
 
@@ -201,11 +209,13 @@ Set up the project repository and build infrastructure.
 
 **Token limit handling:**
 
-- FoundationModels context window is 4096 tokens
+- FoundationModels context window is 4096 tokens (input + output combined)
 - PromptGenerator uses character count approximation (1 token ≈ 4 chars)
 - Card titles and metadata always included
-- Card body content truncated if total exceeds limit
-- Prioritizes critical/high-priority cards (implicit in model instructions)
+- Card body content truncated at 500 chars per card
+- Cards sorted by priority (critical first) to ensure important content appears early
+- Warning logged if input exceeds 3000 tokens (75% of context window)
+- Total input truncated with marker if exceeds context limit
 
 **Cancellation:**
 
@@ -218,13 +228,21 @@ Set up the project repository and build infrastructure.
 **System prompt:**
 
 - Defined in `Sources/Hieroglyphs/Prompts/ScribePromptInstructions.swift`
-- Instructs model to write structured phase prompts with sections:
-  - Context (why this phase exists)
-  - What to Build (features/fixes to implement)
-  - Requirements (acceptance criteria, constraints)
-  - Cards Addressed (list of card titles resolved)
-- Prose paragraphs preferred over bullet lists
-- Example output structure provided in instructions
+- Explicitly forbids adding, inferring, or describing anything not in input cards
+- Forbids describing current application behavior, UI flows, menus, or interaction patterns
+- Instructs model to act as a "prompt formatter" rather than a creative writer
+- Removes example output to avoid encouraging hallucination patterns
+
+**Structured output schema:**
+
+- `PhasePromptSchema` defined with `@Generable` macro in `PromptGenerator.swift`
+- Fields:
+  - `context: String` — Why this phase exists (2-3 sentences from cards only)
+  - `whatToBuild: String` — Features/fixes from card bodies only
+  - `requirements: String` — Acceptance criteria from cards only
+  - `cardsAddressed: [String]` — Exact card titles from input
+- Each field has `@Guide` annotation reinforcing "use only provided input"
+- Formatted into markdown after generation completes
 
 **Apple Intelligence shimmer:**
 

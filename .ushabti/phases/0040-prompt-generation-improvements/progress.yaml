@@ -1,0 +1,62 @@
+phase:
+  id: 0040
+  slug: prompt-generation-improvements
+  title: Prompt Generation Improvements
+  status: complete
+
+steps:
+  - id: S001
+    title: Configure greedy sampling
+    implemented: true
+    reviewed: true
+    notes: "Added GenerationOptions(sampling: .greedy) to session.respond() call"
+    touched:
+      - Sources/Hieroglyphs/Services/PromptGenerator.swift
+
+  - id: S002
+    title: Harden the system prompt
+    implemented: true
+    reviewed: true
+    notes: Rewrote system prompt to explicitly forbid hallucination and invention. Removed example that might encourage creativity.
+    touched:
+      - Sources/Hieroglyphs/Prompts/ScribePromptInstructions.swift
+
+  - id: S003
+    title: Implement @Generable structured output
+    implemented: true
+    reviewed: true
+    notes: Implemented PhasePromptSchema with @Generable macro and field-level @Guide annotations. Updated generate() to use structured output and format into markdown.
+    touched:
+      - Sources/Hieroglyphs/Services/PromptGenerator.swift
+
+  - id: S004
+    title: Add token measurement and logging
+    implemented: true
+    reviewed: true
+    notes: Added estimateTokenCount() method and logging for input/output token consumption. Warns if input exceeds 3000 tokens (75% of 4096 context window).
+    touched:
+      - Sources/Hieroglyphs/Services/PromptGenerator.swift
+
+  - id: S005
+    title: Refine card summary assembly
+    implemented: true
+    reviewed: true
+    notes: "Sorted cards by priority (critical > high > normal > low) to prioritize important cards. Simplified markdown formatting to reduce noise."
+    touched:
+      - Sources/Hieroglyphs/Services/PromptGenerator.swift
+
+  - id: S006
+    title: Write tests for generation quality
+    implemented: true
+    reviewed: true
+    notes: "Added comprehensive tests for error handling, state management, and generation API with multiple card types (bug, feature, minimal, multi-card). Tests verify API correctness without relying on live model availability."
+    touched:
+      - Tests/HieroglyphsTests/PromptGeneratorTests.swift
+
+  - id: S007
+    title: Update documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated plans-system.md to document greedy sampling, structured output via @Generable, hardened system prompt, token measurement, and priority-based card sorting."
+    touched:
+      - .ushabti/docs/plans-system.md
