@@ -8,6 +8,7 @@ import Observation
 /// selecting a section determines both the project context and which
 /// middle-column view to display.
 enum SidebarSection: Hashable {
+    case overview(Project)
     case cards(Project)
     case plans(Project)
     case phases(Project)
@@ -32,6 +33,8 @@ final class HieroglyphsVM {
     /// Returns nil if no section is selected.
     var selectedProject: Project? {
         switch selectedSection {
+        case .overview(let project):
+            return project
         case .cards(let project):
             return project
         case .plans(let project):
@@ -155,11 +158,17 @@ final class HieroglyphsVM {
     ///   - description: Project description
     ///   - tags: Project tags
     ///   - sourceDirectory: Optional path to source directory
+    ///   - buildCommand: Optional build command
+    ///   - runCommand: Optional run command
+    ///   - publishCommand: Optional publish command
     func createProject(
         title: String,
         description: String,
         tags: [String],
-        sourceDirectory: String? = nil
+        sourceDirectory: String? = nil,
+        buildCommand: String? = nil,
+        runCommand: String? = nil,
+        publishCommand: String? = nil
     ) {
         guard let workspacePath else {
             print("Cannot create project: workspace path is nil")
@@ -172,6 +181,9 @@ final class HieroglyphsVM {
                 description: description,
                 tags: tags,
                 sourceDirectory: sourceDirectory,
+                buildCommand: buildCommand,
+                runCommand: runCommand,
+                publishCommand: publishCommand,
                 at: workspacePath
             )
 

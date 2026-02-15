@@ -1,0 +1,119 @@
+phase:
+  id: 0039
+  slug: project-overview
+  title: Project Overview
+  status: complete
+
+steps:
+  - id: S001
+    title: Extend Project model with command fields
+    implemented: true
+    reviewed: true
+    notes: "Added buildCommand, runCommand, publishCommand optional String properties to Project model"
+    touched:
+      - Sources/Hieroglyphs/Models/Project.swift
+
+  - id: S002
+    title: Update WorkspaceService to persist command fields
+    implemented: true
+    reviewed: true
+    notes: "Updated WorkspaceService to persist command fields in frontmatter, added tests for command field round-trip"
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+      - Sources/Hieroglyphs/Services/WorkspaceProviding.swift
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S003
+    title: Add SidebarSection.overview case and wire in Sidebar
+    implemented: true
+    reviewed: true
+    notes: Added SidebarSection.overview case and overview row in Sidebar
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+      - Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift
+
+  - id: S004
+    title: Update MainWindow middle/detail routing
+    implemented: true
+    reviewed: true
+    notes: Added overview routing to MainWindow middle and detail columns
+    touched:
+      - Sources/Hieroglyphs/Views/MainWindow.swift
+
+  - id: S005
+    title: Create ProjectOverview view
+    implemented: true
+    reviewed: true
+    notes: Created ProjectOverview view with editable form fields and git branch detection
+    touched:
+      - Sources/Hieroglyphs/Views/ProjectOverview/ProjectOverview.swift
+
+  - id: S006
+    title: Create ProjectReadme view
+    implemented: true
+    reviewed: true
+    notes: Created ProjectReadme view with markdown rendering and empty states
+    touched:
+      - Sources/Hieroglyphs/Views/ProjectOverview/ProjectReadme.swift
+
+  - id: S007
+    title: Create CommandExecutionService protocol and implementation
+    implemented: true
+    reviewed: true
+    notes: Created CommandExecutionService with protocol and implementation using Foundation.Process
+    touched:
+      - Sources/Hieroglyphs/Services/CommandExecutionService.swift
+
+  - id: S008
+    title: Add CommandExecutionService tests
+    implemented: true
+    reviewed: true
+    notes: "Added CommandExecutionService tests covering success, failure, output capture"
+    touched:
+      - Tests/HieroglyphsTests/CommandExecutionServiceTests.swift
+
+  - id: S009
+    title: Add toolbar buttons to ProjectOverview
+    implemented: true
+    reviewed: true
+    notes: Added Build/Run/Publish toolbar buttons with progressive disclosure and disabled states
+    touched:
+      - Sources/Hieroglyphs/Views/ProjectOverview/ProjectOverview.swift
+
+  - id: S010
+    title: Create CommandExecutionModal view
+    implemented: true
+    reviewed: true
+    notes: Created CommandExecutionModal with running/success/failure states and constrained dimensions
+    touched:
+      - Sources/Hieroglyphs/Views/ProjectOverview/CommandExecutionModal.swift
+
+  - id: S011
+    title: Wire CommandExecutionModal to ProjectOverview
+    implemented: true
+    reviewed: true
+    notes: Wired CommandExecutionModal to ProjectOverview toolbar buttons with sheet presentation
+    touched:
+      - Sources/Hieroglyphs/Views/ProjectOverview/ProjectOverview.swift
+  - id: S012
+    title: Fix ProjectOverview to use viewModel.updateProject instead of direct service calls
+    implemented: true
+    reviewed: true
+    notes: "Removed direct workspaceService calls from ProjectOverview, now delegates to viewModel.updateProject()"
+    touched:
+      - Sources/Hieroglyphs/Views/ProjectOverview/ProjectOverview.swift
+  - id: S013
+    title: Update models.md to document command fields
+    implemented: true
+    reviewed: true
+    notes: "Updated models.md to document buildCommand, runCommand, publishCommand fields on Project model"
+    touched:
+      - .ushabti/docs/models.md
+  - id: S014
+    title: Update views-ui.md to document ProjectOverview and ProjectReadme
+    implemented: true
+    reviewed: true
+    notes: "Updated views-ui.md to document ProjectOverview, ProjectReadme, CommandExecutionModal views and overview section routing"
+    touched:
+      - .ushabti/docs/views-ui.md

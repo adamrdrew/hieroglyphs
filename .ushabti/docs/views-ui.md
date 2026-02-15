@@ -23,6 +23,10 @@ Sources/Hieroglyphs/Views/
 │   ├── Sidebar.swift             # Project list with toolbar
 │   ├── SidebarProjectEntry.swift # Individual project row
 │   └── NewProjectSheet.swift     # Project creation form
+├── ProjectOverview/              # ProjectOverview feature components
+│   ├── ProjectOverview.swift     # Project configuration form
+│   ├── ProjectReadme.swift       # README.md markdown viewer
+│   └── CommandExecutionModal.swift # Command execution feedback modal
 ├── CardList/                     # CardList feature components
 │   ├── CardList.swift            # Card list with search, filter, sort
 │   ├── CardListEntry.swift       # Individual card row
@@ -193,14 +197,17 @@ Combined with `selectSection(_:)` clearing detail selections on project change, 
 
 **Notes:**
 - Three-column layout per L10 (TakeNote consistency)
-- Sidebar column displays hierarchical project list with sections (Cards, Plans, Phases, Pharaoh)
+- Sidebar column displays hierarchical project list with sections (Overview, Cards, Plans, Phases, Pharaoh)
 - Middle column switches based on `viewModel.selectedSection` value
+  - `.overview` → displays `ProjectOverview` (editable project configuration form)
   - `.cards` → displays `CardList` (searchable, filterable card list)
   - `.plans` → displays `PlanList` (list of plans with linked cards)
   - `.phases` → displays `PhaseList` (list of Ushabti phases)
   - `.pharaoh` → displays `PharaohView` (process management and status)
   - `nil` → displays empty state prompting user to select a section
 - Detail column switches based on section type, showing appropriate detail view or empty state
+  - `.overview` → displays `ProjectReadme` (README.md markdown viewer)
+  - All other sections → displays section-specific detail views
 - `preferredCompactColumn` controls which column shows on small windows (defaults to sidebar)
 - Shown when `viewModel.workspacePath != nil` (conditional rendering in App.swift)
 
@@ -382,6 +389,7 @@ The toolbar contains two buttons with conditional visibility:
 **Selection Model:**
 
 Selection is managed via `SidebarSection` enum:
+- `.overview(Project)` — Displays project overview in middle column
 - `.cards(Project)` — Displays card list in middle column
 - `.plans(Project)` — Displays plans list in middle column
 - `.phases(Project)` — Displays phases list in middle column
@@ -777,6 +785,359 @@ private func saveProject() {
 - Allows adding, changing, or removing source directory
 - No slug editing (slug is immutable)
 - No error UI (errors logged to console by ViewModel)
+
+## ProjectOverview
+
+**File:** `Sources/Hieroglyphs/Views/ProjectOverview/ProjectOverview.swift`
+
+**Purpose:** Middle-column view displaying editable project configuration when the overview section is selected.
+
+**Design (macOS 26 compliant):**
+- Semantic typography throughout (headline headers, body content, caption metadata)
+- Grouped form style for clean sectioned layout
+- Progressive disclosure: command toolbar buttons visible only when commands configured
+- Disabled states: toolbar buttons disabled when no source directory
+- Automatic Liquid Glass treatment on toolbar
+
+**Structure:**
+
+```swift
+struct ProjectOverview: View {
+    @Environment(HieroglyphsVM.self) private var viewModel
+    let project: Project
+
+    @State private var title = ""
+    @State private var description = ""
+    @State private var tags = ""
+    @State private var sourceDirectory: String?
+    @State private var buildCommand = ""
+    @State private var runCommand = ""
+    @State private var publishCommand = ""
+    @State private var gitBranch: String?
+    @State private var executingCommand: CommandType?
+
+    var body: some View {
+        Form {
+            Section("Project Details") { /* ... */ }
+            Section("Source Directory") { /* ... */ }
+            Section("Build Commands") { /* ... */ }
+            Section("Git Info") { /* ... */ }
+        }
+        .formStyle(.grouped)
+        .navigationTitle(project.title)
+        .toolbar {
+            if !buildCommand.isEmpty {
+                ToolbarItem(placement: .automatic) {
+                    Button { executingCommand = .build } label: {
+                        Label("Build", systemImage: "hammer")
+                    }
+                    .disabled(sourceDirectory == nil)
+                }
+            }
+            // Similar for runCommand and publishCommand
+        }
+        .sheet(item: $executingCommand) { commandType in
+            CommandExecutionModal(/* ... */)
+        }
+        .onAppear {
+            populateFields()
+            if let sourceDirectory = sourceDirectory {
+                readGitBranch(from: sourceDirectory)
+            }
+        }
+    }
+}
+```
+
+**Key Features:**
+
+1. **Project Details Section:**
+   - Title: TextField with immediate save on change
+   - Description: Multi-line TextField with vertical axis and line limits
+   - Tags: Comma-separated TextField
+   - All fields save via `viewModel.updateProject()` on change
+
+2. **Source Directory Section:**
+   - Display: Shows current path or "None" placeholder
+   - Select Folder button: NSOpenPanel-based directory picker
+   - Clear button: Removes source directory (visible only when path is set)
+
+3. **Build Commands Section:**
+   - Three TextFields: buildCommand, runCommand, publishCommand
+   - All fields optional (empty strings mean no command configured)
+   - Save immediately on change
+
+4. **Git Info Section:**
+   - Current Branch: Read-only text field showing git branch name
+   - Reads `.git/HEAD` from source directory
+   - Parses `ref: refs/heads/{branch}` format (no regex)
+   - Shows "Unknown" if `.git/HEAD` missing or unparseable
+   - Updates when source directory changes
+
+5. **Toolbar Command Buttons:**
+   - **Build button** (hammer icon): Visible only when buildCommand is non-empty, disabled when no source directory
+   - **Run button** (play.fill icon): Visible only when runCommand is non-empty, disabled when no source directory
+   - **Publish button** (arrow.up.doc icon): Visible only when publishCommand is non-empty, disabled when no source directory
+   - Each button sets `executingCommand` state to trigger modal
+
+6. **Command Execution Modal:**
+   - Presented via `.sheet(item: $executingCommand)`
+   - Passes command string, source directory, and command title
+   - Modal handles execution, progress indication, and result display
+
+**Progressive Disclosure Pattern:**
+
+Commands are hidden by default and revealed only when configured:
+- New projects have no commands configured, so no toolbar buttons appear
+- User fills in buildCommand field → Build button appears in toolbar
+- User clears buildCommand field → Build button disappears from toolbar
+- Buttons disabled (not hidden) when source directory is missing
+
+**Git Branch Detection:**
+
+```swift
+private func readGitBranch(from sourceDirectory: String) {
+    let gitHeadPath = "\(sourceDirectory)/.git/HEAD"
+    guard let headContent = try? String(contentsOfFile: gitHeadPath) else {
+        gitBranch = nil
+        return
+    }
+
+    let trimmed = headContent.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.hasPrefix("ref: refs/heads/") {
+        gitBranch = String(trimmed.dropFirst("ref: refs/heads/".count))
+    } else {
+        gitBranch = nil
+    }
+}
+```
+
+**Save Logic:**
+
+All fields save immediately on change (no explicit Save button). Each field binding calls `saveProject()` which:
+1. Parses tags by splitting on comma, trimming whitespace, filtering empty strings
+2. Creates updated Project instance with new values
+3. Calls `viewModel.updateProject(updatedProject)`
+4. ViewModel persists changes to disk and refreshes project list
+
+**Notes:**
+- Displayed when `.overview(project)` section is selected
+- Follows NewProjectSheet form layout patterns
+- Uses NSOpenPanel for directory selection (AppKit integration)
+- Git branch detection uses string operations only (no regex per L09)
+- All fields optional except title (inherited from project, always has value)
+- Command fields persist to frontmatter only when non-empty (L02 compliance)
+- Toolbar buttons follow L18 progressive disclosure and disabled state patterns
+- Form auto-saves on every change (no explicit Save button)
+
+## ProjectReadme
+
+**File:** `Sources/Hieroglyphs/Views/ProjectOverview/ProjectReadme.swift`
+
+**Purpose:** Detail-column view displaying README.md content from project's source directory.
+
+**Structure:**
+
+```swift
+struct ProjectReadme: View {
+    let project: Project
+
+    @State private var readmeContent = ""
+    @State private var readmeExists = false
+
+    var body: some View {
+        Group {
+            if let sourceDirectory = project.sourceDirectory, readmeExists {
+                ScrollView {
+                    Markdown(readmeContent)
+                        .padding()
+                }
+            } else {
+                ContentUnavailableView(
+                    "No README",
+                    systemImage: "doc.text",
+                    description: Text(emptyStateMessage)
+                )
+            }
+        }
+        .navigationTitle("README")
+        .onAppear {
+            loadReadme()
+        }
+    }
+}
+```
+
+**Key Features:**
+
+1. **Markdown Rendering:**
+   - Uses swift-markdown-ui `Markdown()` component
+   - Renders headings, lists, code blocks, links, emphasis
+   - Same rendering as CardBodyEditor preview mode
+   - ScrollView for long content
+
+2. **Empty States:**
+   - **No Source Directory:** "Configure a source directory to view the project README"
+   - **README Not Found:** "README.md not found in source directory"
+   - Uses `ContentUnavailableView` with doc.text icon
+
+3. **File Loading:**
+   - Reads from `{sourceDirectory}/README.md` on appear
+   - Sets `readmeExists = false` if file missing or unreadable
+   - Sets `readmeContent` to file contents on success
+   - Errors logged to console, user sees empty state
+
+**Behavior:**
+
+- When user selects overview section, ProjectReadme displays in detail column
+- On appear, attempts to read README.md from source directory
+- If file exists and is readable, renders markdown content
+- If file missing or source directory not configured, shows appropriate empty state
+- Read-only view (no editing)
+
+**Notes:**
+- Displayed when `.overview(project)` section is selected
+- Follows CardBodyEditor preview mode layout (ScrollView + Markdown)
+- No error alerts (failures show as empty state)
+- Assumes markdown format (no HTML or other formats supported)
+- File read happens on every appear (no caching)
+
+## CommandExecutionModal
+
+**File:** `Sources/Hieroglyphs/Views/ProjectOverview/CommandExecutionModal.swift`
+
+**Purpose:** Modal sheet for executing shell commands with progress indication and result feedback.
+
+**Design (macOS 26 compliant):**
+- Constrained dimensions (600x400) with scrollable output
+- Three-state UI: running, success, failure
+- Progress indication during execution
+- Clear visual feedback with color-coded icons
+- Cannot dismiss while running (no close button during execution)
+- Automatic Liquid Glass treatment on toolbar
+
+**Structure:**
+
+```swift
+struct CommandExecutionModal: View {
+    @Binding var isPresented: Bool
+    @Environment(\.commandExecutionService) private var commandExecutionService
+
+    let command: String
+    let workingDirectory: String
+    let title: String
+
+    @State private var state: ExecutionState = .running
+
+    enum ExecutionState {
+        case running
+        case success(output: String)
+        case failure(error: String)
+    }
+
+    var body: some View {
+        VStack(spacing: 20) {
+            switch state {
+            case .running:
+                ProgressView()
+                Text("Executing...")
+                    .font(.headline)
+            case .success(let output):
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.largeTitle)
+                    .foregroundStyle(.green)
+                Text("\(title) Complete")
+                    .font(.headline)
+                ScrollView {
+                    Text(output)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                }
+                Button("Done") {
+                    isPresented = false
+                }
+                .buttonStyle(.borderedProminent)
+            case .failure(let error):
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.largeTitle)
+                    .foregroundStyle(.red)
+                Text("Failed")
+                    .font(.headline)
+                ScrollView {
+                    Text(error)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.red)
+                }
+                Button("Close") {
+                    isPresented = false
+                }
+            }
+        }
+        .frame(width: 600, height: 400)
+        .padding()
+        .task {
+            await executeCommand()
+        }
+    }
+}
+```
+
+**Key Features:**
+
+1. **Running State:**
+   - ProgressView (spinning indicator)
+   - "Executing..." message
+   - No close button (modal cannot be dismissed)
+   - Command runs asynchronously via `.task` modifier
+
+2. **Success State:**
+   - Green checkmark icon (checkmark.circle.fill)
+   - "{Title} Complete" message (e.g., "Build Complete")
+   - ScrollView with command output (monospaced caption font, secondary color)
+   - "Done" button (bordered prominent) dismisses modal
+
+3. **Failure State:**
+   - Red exclamation triangle icon (exclamationmark.triangle.fill)
+   - "Failed" message
+   - ScrollView with error output (monospaced caption font, red color)
+   - "Close" button dismisses modal
+
+**Execution Logic:**
+
+```swift
+private func executeCommand() async {
+    do {
+        let result = try await commandExecutionService.executeCommand(
+            command: command,
+            workingDirectory: workingDirectory
+        )
+        state = .success(output: result.output)
+    } catch {
+        state = .failure(error: error.localizedDescription)
+    }
+}
+```
+
+**Modal Sizing:**
+
+- Fixed 600x400 frame prevents unbounded growth
+- Output ScrollView allows long output to scroll
+- Modal container stays fixed size
+
+**Dismissal Behavior:**
+
+- **Running:** Cannot dismiss (no close button, no tap outside to dismiss)
+- **Success:** Dismiss via "Done" button
+- **Failure:** Dismiss via "Close" button
+- Escape key works in success/failure states (system behavior)
+
+**Notes:**
+- Follows L17 (UI State Correctness): Constrained modal, async feedback
+- Follows L18 (Design Is How It Works): Loading states, success/error surfaces, disabled/hidden controls
+- Presented via `.sheet(item:)` binding to `executingCommand` in ProjectOverview
+- Command execution uses CommandExecutionService via environment injection
+- Output display is read-only (no copying or exporting UI, but user can select text)
+- Monospaced font for output preserves formatting (important for compiler output, logs)
 
 ## NewProjectSheet
 

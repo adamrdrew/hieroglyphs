@@ -116,6 +116,9 @@ struct Sidebar: View {
                     ForEach(viewModel.projects) { project in
                         if let workspacePath = viewModel.workspacePath {
                             DisclosureGroup {
+                                Label("Overview", systemImage: "folder.badge.gearshape")
+                                    .tag(SidebarSection.overview(project))
+
                                 SidebarCardsItem(
                                     project: project,
                                     workspacePath: workspacePath,

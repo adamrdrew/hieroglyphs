@@ -21,6 +21,8 @@ struct MainWindow: View {
     private var middleColumnContent: some View {
         Group {
             switch viewModel.selectedSection {
+            case .overview(let project):
+                ProjectOverview(project: project)
             case .cards:
                 CardList()
             case .plans:
@@ -44,6 +46,8 @@ struct MainWindow: View {
     private var detailColumnContent: some View {
         Group {
             switch viewModel.selectedSection {
+            case .overview(let project):
+                ProjectReadme(project: project)
             case .cards:
                 CardDetail()
             case .plans:

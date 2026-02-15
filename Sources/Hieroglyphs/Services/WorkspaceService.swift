@@ -150,6 +150,9 @@ final class WorkspaceService: WorkspaceProviding {
         }
 
         let sourceDirectory = frontmatter["source_directory"] as? String
+        let buildCommand = frontmatter["build_command"] as? String
+        let runCommand = frontmatter["run_command"] as? String
+        let publishCommand = frontmatter["publish_command"] as? String
 
         return Project(
             id: id,
@@ -159,7 +162,10 @@ final class WorkspaceService: WorkspaceProviding {
             created: created,
             updated: updated,
             slug: slug,
-            sourceDirectory: sourceDirectory
+            sourceDirectory: sourceDirectory,
+            buildCommand: buildCommand,
+            runCommand: runCommand,
+            publishCommand: publishCommand
         )
     }
 
@@ -384,6 +390,9 @@ When working with this workspace:
         description: String,
         tags: [String],
         sourceDirectory: String?,
+        buildCommand: String? = nil,
+        runCommand: String? = nil,
+        publishCommand: String? = nil,
         at workspacePath: String
     ) throws -> Project {
         let slug = SlugGenerator.generateSlug(from: title)
@@ -419,6 +428,18 @@ When working with this workspace:
             frontmatter["source_directory"] = sourceDirectory
         }
 
+        if let buildCommand = buildCommand {
+            frontmatter["build_command"] = buildCommand
+        }
+
+        if let runCommand = runCommand {
+            frontmatter["run_command"] = runCommand
+        }
+
+        if let publishCommand = publishCommand {
+            frontmatter["publish_command"] = publishCommand
+        }
+
         let markdown = try FrontmatterParser.serialize(
             frontmatter: frontmatter,
             body: ""
@@ -440,7 +461,10 @@ When working with this workspace:
             created: created,
             updated: updated,
             slug: slug,
-            sourceDirectory: sourceDirectory
+            sourceDirectory: sourceDirectory,
+            buildCommand: buildCommand,
+            runCommand: runCommand,
+            publishCommand: publishCommand
         )
     }
 
@@ -550,6 +574,24 @@ When working with this workspace:
             frontmatter["source_directory"] = sourceDirectory
         } else {
             frontmatter.removeValue(forKey: "source_directory")
+        }
+
+        if let buildCommand = project.buildCommand {
+            frontmatter["build_command"] = buildCommand
+        } else {
+            frontmatter.removeValue(forKey: "build_command")
+        }
+
+        if let runCommand = project.runCommand {
+            frontmatter["run_command"] = runCommand
+        } else {
+            frontmatter.removeValue(forKey: "run_command")
+        }
+
+        if let publishCommand = project.publishCommand {
+            frontmatter["publish_command"] = publishCommand
+        } else {
+            frontmatter.removeValue(forKey: "publish_command")
         }
 
         let markdown = try FrontmatterParser.serialize(

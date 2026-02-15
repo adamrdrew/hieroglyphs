@@ -34,6 +34,9 @@ Models support L09 (Sandi Metz: plain data types separate from persistence) and 
 - `updated: Date` — ISO8601 timestamp of last update
 - `slug: String` — Filesystem-safe slug used as directory name (e.g., `my-project`)
 - `sourceDirectory: String?` — Optional path to project source directory (typically `.ushabti/phases/` directory)
+- `buildCommand: String?` — Optional shell command for building the project (e.g., `swift build`)
+- `runCommand: String?` — Optional shell command for running the project (e.g., `swift run`)
+- `publishCommand: String?` — Optional shell command for publishing/deploying the project (e.g., `git push`)
 
 **Conformances:** `Identifiable`, `Codable`, `Equatable`, `Hashable`
 
@@ -42,6 +45,8 @@ Models support L09 (Sandi Metz: plain data types separate from persistence) and 
 - Projects are stored in `{workspacePath}/{slug}/project.md` with YAML frontmatter
 - `id` is a UUID string in frontmatter, used for stable identity independent of title changes
 - `tags` are stored as YAML arrays and projected one-way to extended attributes (L08)
+- Command fields (`buildCommand`, `runCommand`, `publishCommand`) are optional and only appear in frontmatter when set
+- Commands are executed in the `sourceDirectory` when invoked via ProjectOverview toolbar buttons
 
 **Example frontmatter:**
 
@@ -57,10 +62,13 @@ created: 2026-01-15T10:30:00Z
 updated: 2026-01-20T14:22:00Z
 slug: my-project
 source_directory: /Users/alice/code/my-project/.ushabti/phases
+build_command: swift build
+run_command: swift run
+publish_command: git push origin main
 ---
 ```
 
-Note: `source_directory` is optional and only appears in frontmatter when set.
+Note: `source_directory` and command fields are optional and only appear in frontmatter when set.
 
 ## Card
 

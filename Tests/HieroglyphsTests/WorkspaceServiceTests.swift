@@ -283,7 +283,10 @@ final class WorkspaceServiceTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -311,7 +314,10 @@ final class WorkspaceServiceTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "empty-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -352,7 +358,10 @@ final class WorkspaceServiceTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -431,7 +440,10 @@ final class WorkspaceServiceTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -517,7 +529,10 @@ final class WorkspaceServiceTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -552,7 +567,10 @@ final class WorkspaceServiceTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "test-project",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         let service = WorkspaceService(fileManager: fileManager)
@@ -894,7 +912,10 @@ final class WorkspaceServiceTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "update-test",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         try service.updateProject(updatedProject, at: workspaceURL.path)
@@ -943,7 +964,10 @@ final class WorkspaceServiceTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "preserve-test",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         try service.updateProject(updatedProject, at: workspaceURL.path)
@@ -977,7 +1001,10 @@ final class WorkspaceServiceTests: XCTestCase {
             created: ISO8601DateFormatter().date(from: "2026-01-01T10:00:00Z")!,
             updated: Date(),
             slug: "timestamp-test",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         try service.updateProject(project, at: workspaceURL.path)
@@ -1012,7 +1039,10 @@ final class WorkspaceServiceTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "nonexistent",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         XCTAssertThrowsError(try service.updateProject(project, at: workspaceURL.path)) { error in
@@ -1369,7 +1399,10 @@ final class WorkspaceServiceTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "add-source",
-            sourceDirectory: "/new/source/path"
+            sourceDirectory: "/new/source/path",
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         try service.updateProject(updatedProject, at: workspaceURL.path)
@@ -1401,7 +1434,10 @@ final class WorkspaceServiceTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "remove-source",
-            sourceDirectory: nil
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         try service.updateProject(updatedProject, at: workspaceURL.path)
@@ -1448,7 +1484,10 @@ final class WorkspaceServiceTests: XCTestCase {
             created: Date(),
             updated: Date(),
             slug: "preserve-all",
-            sourceDirectory: "/updated/source"
+            sourceDirectory: "/updated/source",
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
         )
 
         try service.updateProject(updatedProject, at: workspaceURL.path)
@@ -1459,6 +1498,241 @@ final class WorkspaceServiceTests: XCTestCase {
 
         XCTAssertEqual(parsed.frontmatter["title"] as? String, "Updated")
         XCTAssertEqual(parsed.frontmatter["source_directory"] as? String, "/updated/source")
+        XCTAssertEqual(parsed.frontmatter["custom_field"] as? String, "custom_value")
+    }
+
+    // MARK: - Command Fields Tests
+
+    func testCreateProjectWithCommandFields() throws {
+        try createFixtureWorkspace()
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let project = try service.createProject(
+            title: "Project with Commands",
+            description: "Has commands",
+            tags: [],
+            sourceDirectory: nil,
+            buildCommand: "swift build",
+            runCommand: "swift run",
+            publishCommand: "swift package archive",
+            at: workspaceURL.path
+        )
+
+        XCTAssertEqual(project.buildCommand, "swift build")
+        XCTAssertEqual(project.runCommand, "swift run")
+        XCTAssertEqual(project.publishCommand, "swift package archive")
+
+        let projectFilePath = workspaceURL
+            .appendingPathComponent(project.slug)
+            .appendingPathComponent("project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+
+        XCTAssertTrue(content.contains("build_command: swift build"))
+        XCTAssertTrue(content.contains("run_command: swift run"))
+        XCTAssertTrue(content.contains("publish_command: swift package archive"))
+    }
+
+    func testCreateProjectWithoutCommandFields() throws {
+        try createFixtureWorkspace()
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let project = try service.createProject(
+            title: "Project without Commands",
+            description: "No commands",
+            tags: [],
+            sourceDirectory: nil,
+            at: workspaceURL.path
+        )
+
+        XCTAssertNil(project.buildCommand)
+        XCTAssertNil(project.runCommand)
+        XCTAssertNil(project.publishCommand)
+
+        let projectFilePath = workspaceURL
+            .appendingPathComponent(project.slug)
+            .appendingPathComponent("project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+
+        XCTAssertFalse(content.contains("build_command"))
+        XCTAssertFalse(content.contains("run_command"))
+        XCTAssertFalse(content.contains("publish_command"))
+    }
+
+    func testLoadProjectWithCommandFields() throws {
+        try createFixtureWorkspace()
+
+        let projectDir = workspaceURL.appendingPathComponent("with-commands")
+        try fileManager.createDirectory(at: projectDir, withIntermediateDirectories: true)
+
+        let projectContent = """
+        ---
+        id: 12121212-1212-1212-1212-121212121212
+        title: With Commands
+        description: Test
+        tags: []
+        created: 2026-01-01T10:00:00Z
+        updated: 2026-01-01T10:00:00Z
+        build_command: npm run build
+        run_command: npm start
+        publish_command: npm publish
+        ---
+        """
+        try projectContent.write(
+            to: projectDir.appendingPathComponent("project.md"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let projects = try service.loadProjects(from: workspaceURL.path)
+
+        XCTAssertEqual(projects.count, 1)
+        let project = projects[0]
+        XCTAssertEqual(project.buildCommand, "npm run build")
+        XCTAssertEqual(project.runCommand, "npm start")
+        XCTAssertEqual(project.publishCommand, "npm publish")
+    }
+
+    func testUpdateProjectToAddCommandFields() throws {
+        try createFixtureWorkspace()
+        try createProject(
+            slug: "add-commands",
+            id: "23232323-2323-2323-2323-232323232323",
+            title: "Add Commands"
+        )
+
+        let service = WorkspaceService(fileManager: fileManager)
+
+        let updatedProject = Project(
+            id: UUID(uuidString: "23232323-2323-2323-2323-232323232323")!,
+            title: "Add Commands",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "add-commands",
+            sourceDirectory: nil,
+            buildCommand: "make",
+            runCommand: "./run.sh",
+            publishCommand: "make publish"
+        )
+
+        try service.updateProject(updatedProject, at: workspaceURL.path)
+
+        let projectFilePath = workspaceURL
+            .appendingPathComponent("add-commands/project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+        let parsed = try FrontmatterParser.parse(content)
+
+        XCTAssertEqual(parsed.frontmatter["build_command"] as? String, "make")
+        XCTAssertEqual(parsed.frontmatter["run_command"] as? String, "./run.sh")
+        XCTAssertEqual(parsed.frontmatter["publish_command"] as? String, "make publish")
+    }
+
+    func testUpdateProjectToRemoveCommandFields() throws {
+        try createFixtureWorkspace()
+
+        let projectDir = workspaceURL.appendingPathComponent("remove-commands")
+        try fileManager.createDirectory(at: projectDir, withIntermediateDirectories: true)
+
+        let originalContent = """
+        ---
+        id: 34343434-3434-3434-3434-343434343434
+        title: Remove Commands
+        description: Test
+        tags: []
+        created: 2026-01-01T10:00:00Z
+        updated: 2026-01-01T10:00:00Z
+        slug: remove-commands
+        build_command: old build
+        run_command: old run
+        publish_command: old publish
+        ---
+        """
+        try originalContent.write(
+            to: projectDir.appendingPathComponent("project.md"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let service = WorkspaceService(fileManager: fileManager)
+
+        let updatedProject = Project(
+            id: UUID(uuidString: "34343434-3434-3434-3434-343434343434")!,
+            title: "Remove Commands",
+            description: "Test",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "remove-commands",
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
+        )
+
+        try service.updateProject(updatedProject, at: workspaceURL.path)
+
+        let projectFilePath = projectDir.appendingPathComponent("project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+        let parsed = try FrontmatterParser.parse(content)
+
+        XCTAssertNil(parsed.frontmatter["build_command"])
+        XCTAssertNil(parsed.frontmatter["run_command"])
+        XCTAssertNil(parsed.frontmatter["publish_command"])
+    }
+
+    func testUpdateProjectPreservesCommandFieldsWithUnknownFields() throws {
+        try createFixtureWorkspace()
+
+        let projectDir = workspaceURL.appendingPathComponent("preserve-commands")
+        try fileManager.createDirectory(at: projectDir, withIntermediateDirectories: true)
+
+        let originalContent = """
+        ---
+        id: 45454545-4545-4545-4545-454545454545
+        title: Original
+        description: Test
+        tags: []
+        created: 2026-01-01T10:00:00Z
+        updated: 2026-01-01T10:00:00Z
+        slug: preserve-commands
+        build_command: original build
+        run_command: original run
+        custom_field: custom_value
+        ---
+        """
+        try originalContent.write(
+            to: projectDir.appendingPathComponent("project.md"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let service = WorkspaceService(fileManager: fileManager)
+        let updatedProject = Project(
+            id: UUID(uuidString: "45454545-4545-4545-4545-454545454545")!,
+            title: "Updated",
+            description: "Changed",
+            tags: ["new"],
+            created: Date(),
+            updated: Date(),
+            slug: "preserve-commands",
+            sourceDirectory: nil,
+            buildCommand: "updated build",
+            runCommand: nil,
+            publishCommand: "new publish"
+        )
+
+        try service.updateProject(updatedProject, at: workspaceURL.path)
+
+        let projectFilePath = projectDir.appendingPathComponent("project.md")
+        let content = try String(contentsOf: projectFilePath, encoding: .utf8)
+        let parsed = try FrontmatterParser.parse(content)
+
+        XCTAssertEqual(parsed.frontmatter["title"] as? String, "Updated")
+        XCTAssertEqual(parsed.frontmatter["build_command"] as? String, "updated build")
+        XCTAssertNil(parsed.frontmatter["run_command"])
+        XCTAssertEqual(parsed.frontmatter["publish_command"] as? String, "new publish")
         XCTAssertEqual(parsed.frontmatter["custom_field"] as? String, "custom_value")
     }
 
