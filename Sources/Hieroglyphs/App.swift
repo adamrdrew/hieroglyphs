@@ -10,6 +10,7 @@ struct HieroglyphsApp: App {
     private let phaseService: PhaseProviding
     private let planService: PlanProviding
     private let pharaohService: PharaohProviding
+    private let docsService: DocsProviding
     private let promptGenerator: PromptGenerating
 
     init() {
@@ -20,6 +21,7 @@ struct HieroglyphsApp: App {
         let phases = PhaseService()
         let plans = PlanService()
         let pharaoh = PharaohService()
+        let docs = DocsService()
         let generator = PromptGenerator()
         self.workspaceService = service
         self.fileWatcher = watcher
@@ -28,6 +30,7 @@ struct HieroglyphsApp: App {
         self.phaseService = phases
         self.planService = plans
         self.pharaohService = pharaoh
+        self.docsService = docs
         self.promptGenerator = generator
         let vm = HieroglyphsVM(
             workspaceService: service,
@@ -58,6 +61,7 @@ struct HieroglyphsApp: App {
             .environment(\.phaseService, phaseService)
             .environment(\.planService, planService)
             .environment(\.pharaohService, pharaohService)
+            .environment(\.docsService, docsService)
             .environment(\.promptGenerator, promptGenerator)
             .onAppear {
                 viewModel.loadWorkspace()
@@ -100,16 +104,14 @@ struct HieroglyphsApp: App {
             }
         }
 
-        if viewModel.workspacePath != nil {
-            MenuBarExtra {
-                PharaohMenuBar()
-                    .environment(viewModel)
-                    .environment(\.planService, planService)
-                    .environment(\.pharaohService, pharaohService)
-            } label: {
-                Label("Pharaoh", systemImage: "chart.line.uptrend.xyaxis")
-            }
-            .menuBarExtraStyle(.menu)
+        MenuBarExtra {
+            PharaohMenuBar()
+                .environment(viewModel)
+                .environment(\.planService, planService)
+                .environment(\.pharaohService, pharaohService)
+        } label: {
+            Label("Pharaoh", systemImage: "chart.line.uptrend.xyaxis")
         }
+        .menuBarExtraStyle(.menu)
     }
 }

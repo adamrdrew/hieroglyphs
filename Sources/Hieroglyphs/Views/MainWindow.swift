@@ -31,6 +31,8 @@ struct MainWindow: View {
                 PhaseList()
             case .pharaoh(let project):
                 PharaohView(project: project)
+            case .docs(let project):
+                DocsList(project: project)
             case .none:
                 ContentUnavailableView(
                     "Select a Project",
@@ -56,6 +58,8 @@ struct MainWindow: View {
                 PhaseDetail()
             case .pharaoh(let project):
                 PharaohActivityStreamView(project: project)
+            case .docs:
+                DocsDetail()
             case .none:
                 ContentUnavailableView(
                     "Select a Project",

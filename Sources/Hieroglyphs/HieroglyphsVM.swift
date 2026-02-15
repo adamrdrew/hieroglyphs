@@ -4,7 +4,7 @@ import Observation
 /// Represents a selectable section in the sidebar.
 ///
 /// Each section corresponds to a project and a specific view type
-/// (cards, plans, phases, or pharaoh). This enables hierarchical navigation where
+/// (cards, plans, phases, pharaoh, or docs). This enables hierarchical navigation where
 /// selecting a section determines both the project context and which
 /// middle-column view to display.
 enum SidebarSection: Hashable {
@@ -13,6 +13,7 @@ enum SidebarSection: Hashable {
     case plans(Project)
     case phases(Project)
     case pharaoh(Project)
+    case docs(Project)
 }
 
 /// ViewModel coordinating workspace state and UI selection.
@@ -29,7 +30,7 @@ final class HieroglyphsVM {
 
     /// Computed property that extracts the project from any section variant.
     ///
-    /// Returns the associated project for cards, plans, phases, or pharaoh sections.
+    /// Returns the associated project for cards, plans, phases, pharaoh, or docs sections.
     /// Returns nil if no section is selected.
     var selectedProject: Project? {
         switch selectedSection {
@@ -42,6 +43,8 @@ final class HieroglyphsVM {
         case .phases(let project):
             return project
         case .pharaoh(let project):
+            return project
+        case .docs(let project):
             return project
         case .none:
             return nil
@@ -62,6 +65,8 @@ final class HieroglyphsVM {
 
     var plans: [Plan] = []
     var selectedPlan: Plan?
+
+    var selectedDoc: Doc?
 
     var searchText: String = ""
     var filterStatus: Set<CardStatus> = []
@@ -230,6 +235,8 @@ final class HieroglyphsVM {
                     self.selectedSection = .phases(updatedProject)
                 case .pharaoh:
                     self.selectedSection = .pharaoh(updatedProject)
+                case .docs:
+                    self.selectedSection = .docs(updatedProject)
                 }
             }
         } catch {
@@ -273,6 +280,7 @@ final class HieroglyphsVM {
             self.selectedCard = nil
             self.selectedPlan = nil
             self.selectedPhase = nil
+            self.selectedDoc = nil
             return
         }
 
@@ -283,16 +291,25 @@ final class HieroglyphsVM {
             self.selectedCard = nil
             self.selectedPlan = nil
             self.selectedPhase = nil
+            self.selectedDoc = nil
         case .cards:
             self.selectedPlan = nil
             self.selectedPhase = nil
+            self.selectedDoc = nil
         case .plans:
             self.selectedCard = nil
             self.selectedPhase = nil
+            self.selectedDoc = nil
         case .phases:
             self.selectedCard = nil
             self.selectedPlan = nil
+            self.selectedDoc = nil
         case .pharaoh:
+            self.selectedCard = nil
+            self.selectedPlan = nil
+            self.selectedPhase = nil
+            self.selectedDoc = nil
+        case .docs:
             self.selectedCard = nil
             self.selectedPlan = nil
             self.selectedPhase = nil
@@ -300,6 +317,7 @@ final class HieroglyphsVM {
             self.selectedCard = nil
             self.selectedPlan = nil
             self.selectedPhase = nil
+            self.selectedDoc = nil
         }
     }
 

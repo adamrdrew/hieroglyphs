@@ -25,9 +25,10 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 **Responsibility:** Define domain entities as plain Swift types.
 
 **Components:**
-- `Project`: Represents a project with title, description, tags, timestamps, slug, and optional sourceDirectory
+- `Project`: Represents a project with title, description, tags, timestamps, slug, optional sourceDirectory, and optional docsDirectory
 - `Card`: Represents a work item with type, status, priority, tags, and markdown body
 - `Plan`: Represents a development plan with number, title, status, linked cards, and phase prompt
+- `Doc`: Represents a documentation file with title, slug, filename, and markdown content
 - `WorkspaceConfig`: Holds workspace directory path
 - `CardStatus`, `CardType`, `Priority`, `PlanStatus`: Enums defining structured metadata options
 - `CardSortOption`: Enum defining sort criteria for card lists (created, updated, priority, status, title)
@@ -52,6 +53,7 @@ Hieroglyphs follows a clean, layered architecture using the MVVM pattern with pr
 - `PhaseProviding` / `PhaseService`: Read-only Ushabti phase data loading from `.ushabti/phases/`
 - `PlanProviding` / `PlanService`: Plan CRUD operations and card status synchronization
 - `PharaohProviding` / `PharaohService`: Pharaoh server process management and status monitoring
+- `DocsProviding` / `DocsService`: Read-only documentation file loading from `.ushabti/docs/`
 - `PromptGenerating` / `PromptGenerator`: On-device phase prompt generation using FoundationModels
 - Environment keys for each service (SwiftUI dependency injection)
 
@@ -139,6 +141,7 @@ App.swift
   ├─> PhaseService (created)
   ├─> PlanService (created)
   ├─> PharaohService (created)
+  ├─> DocsService (created)
   ├─> PromptGenerator (created)
   ├─> HieroglyphsVM (created with all services injected)
   └─> MainWindow
@@ -151,6 +154,8 @@ App.swift
        ├─> PlanDetail (ViewModel, PharaohService, PromptGenerator)
        ├─> PhaseList (ViewModel)
        ├─> PhaseDetail (ViewModel)
+       ├─> DocsList (ViewModel, DocsService)
+       ├─> DocsDetail (ViewModel)
        └─> PharaohView (PharaohService for process management)
 ```
 

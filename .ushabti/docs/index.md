@@ -21,5 +21,7 @@ A macOS-native markdown-based project management tool built with SwiftUI. Manage
 - [Tag Reconciliation](tag-reconciliation.md) — One-way tag projection from frontmatter to extended attributes
 - [Phases View](phases-view.md) — Read-only Ushabti phase integration showing phase status, intent, steps, and review notes
 - [Plans System](plans-system.md) — Plans group cards via symlinks and generate Ushabti phase prompts
+- [Docs Integration](docs-integration.md) — Read-only documentation browser for .ushabti/docs/ markdown files
+- [Pharaoh Integration](pharaoh-integration.md) — AI-driven phase execution workflow with dispatch queue and activity monitoring
 - [Testing Strategy](testing.md) — Test organization, coverage requirements, and running tests
 - [Filesystem Structure](filesystem-structure.md) — On-disk layout, file formats, and naming conventions

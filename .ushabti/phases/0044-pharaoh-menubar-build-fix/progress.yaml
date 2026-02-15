@@ -1,0 +1,37 @@
+phase:
+  id: 0044
+  slug: pharaoh-menubar-build-fix
+  title: PharaohMenuBar Build Fix
+  status: complete
+
+steps:
+  - id: S001
+    title: Wrap conditional view in Group
+    implemented: true
+    reviewed: true
+    notes: Wrapped conditional view in Group to enable view modifier attachment
+    touched:
+      - Sources/Hieroglyphs/Views/MenuBar/PharaohMenuBar.swift
+
+  - id: S002
+    title: Remove planService from guard-let
+    implemented: true
+    reviewed: true
+    notes: Removed non-Optional planService from guard-let statement
+    touched:
+      - Sources/Hieroglyphs/Views/MenuBar/PharaohMenuBar.swift
+
+  - id: S003
+    title: Verify build succeeds
+    implemented: true
+    reviewed: true
+    notes: "Build verified: ./Scripts/build-app.sh exits 0. Removed conditional MenuBarExtra (if viewModel.workspacePath != nil) as it triggered Swift 6 compiler internal error. MenuBar now always present but PharaohMenuBar handles empty state internally."
+    touched:
+      - Sources/Hieroglyphs/App.swift
+  - id: S004
+    title: Update pharaoh-integration.md to reflect MenuBarExtra visibility
+    implemented: true
+    reviewed: true
+    notes: "Updated pharaoh-integration.md line 215 to reflect that MenuBarExtra is always present, not conditionally shown. PharaohMenuBar handles empty state internally."
+    touched:
+      - .ushabti/docs/pharaoh-integration.md

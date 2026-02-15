@@ -10,7 +10,12 @@ struct Project: Identifiable, Codable, Equatable, Hashable {
     let updated: Date
     let slug: String
     let sourceDirectory: String?
+    let docsDirectory: String?
     let buildCommand: String?
     let runCommand: String?
     let publishCommand: String?
+
+    var hasDocsDirectory: Bool {
+        docsDirectory != nil
+    }
 }

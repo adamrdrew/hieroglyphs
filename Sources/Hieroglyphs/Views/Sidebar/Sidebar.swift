@@ -135,6 +135,11 @@ struct Sidebar: View {
                                 if project.sourceDirectory != nil {
                                     SidebarPharaohItem(project: project)
                                 }
+
+                                if project.hasDocsDirectory {
+                                    Label("Docs", systemImage: "doc.text")
+                                        .tag(SidebarSection.docs(project))
+                                }
                             } label: {
                                 SidebarProjectEntry(
                                     project: project,

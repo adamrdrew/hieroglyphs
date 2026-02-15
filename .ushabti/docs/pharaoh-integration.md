@@ -212,7 +212,7 @@ Pharaoh status monitoring uses a separate FSEventStream watching `.pharaoh/` dir
 Menu bar extra displaying running Pharaoh plans across all projects:
 
 - **Icon:** "chart.line.uptrend.xyaxis" SF Symbol in menu bar
-- **Visibility:** Only shown when workspace is loaded (`viewModel.workspacePath != nil`)
+- **Visibility:** Always present in menu bar — PharaohMenuBar handles empty state internally when no workspace is loaded or no plans are running
 - **Content:**
   - Empty state: "No Devel Jobs Running" (secondary text) when no plans with `inProgress` status
   - Running plans: List of PharaohMenuBarEntry components for each running plan

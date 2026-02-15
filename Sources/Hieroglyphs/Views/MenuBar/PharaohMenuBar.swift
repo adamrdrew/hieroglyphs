@@ -13,17 +13,19 @@ struct PharaohMenuBar: View {
     @State private var runningPlans: [(project: Project, plan: Plan, turns: Int?, cost: Double?)] = []
 
     var body: some View {
-        if runningPlans.isEmpty {
-            Text("No Devel Jobs Running")
-                .foregroundStyle(.secondary)
-        } else {
-            ForEach(runningPlans, id: \.plan.id) { item in
-                PharaohMenuBarEntry(
-                    project: item.project,
-                    plan: item.plan,
-                    turns: item.turns,
-                    cost: item.cost
-                )
+        Group {
+            if runningPlans.isEmpty {
+                Text("No Devel Jobs Running")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(runningPlans, id: \.plan.id) { item in
+                    PharaohMenuBarEntry(
+                        project: item.project,
+                        plan: item.plan,
+                        turns: item.turns,
+                        cost: item.cost
+                    )
+                }
             }
         }
         .onAppear {
@@ -40,7 +42,7 @@ struct PharaohMenuBar: View {
     /// filters to inProgress plans, enriches with Pharaoh stats if available.
     /// Only assigns state when running plan count changes (prevents unnecessary redraws).
     private func loadRunningPlans() {
-        guard let planService, let pharaohService else { return }
+        guard let pharaohService else { return }
 
         var plans: [(project: Project, plan: Plan, turns: Int?, cost: Double?)] = []
 
