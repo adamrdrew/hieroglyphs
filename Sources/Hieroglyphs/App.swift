@@ -99,5 +99,17 @@ struct HieroglyphsApp: App {
                 .keyboardShortcut("f", modifiers: .command)
             }
         }
+
+        if viewModel.workspacePath != nil {
+            MenuBarExtra {
+                PharaohMenuBar()
+                    .environment(viewModel)
+                    .environment(\.planService, planService)
+                    .environment(\.pharaohService, pharaohService)
+            } label: {
+                Label("Pharaoh", systemImage: "chart.line.uptrend.xyaxis")
+            }
+            .menuBarExtraStyle(.menu)
+        }
     }
 }

@@ -42,6 +42,9 @@ Sources/Hieroglyphs/Views/
 │   └── PhaseDetail.swift         # Detail column phase view with intent, steps, review
 │   ├── CardMetadataEditor.swift  # Form for card metadata fields
 │   └── CardBodyEditor.swift      # Click-to-edit markdown preview/editor
+├── MenuBar/                      # Menu bar extra components
+│   ├── PharaohMenuBar.swift      # Menu bar extra displaying running plans
+│   └── PharaohMenuBarEntry.swift # Individual running plan row
 └── Shared/                       # Reusable components
     └── TagChipView.swift         # Pill-shaped tag chip with delete
 ```
@@ -2627,6 +2630,80 @@ Two rendering modes:
 - Summary text limited to single line with tail truncation
 - Icons follow TakeNote SF Symbol patterns
 - Detail content includes: tool name, tool input, turn metrics, full text, result metrics as appropriate for event type
+
+## PharaohMenuBar
+
+**File:** `Sources/Hieroglyphs/Views/MenuBar/PharaohMenuBar.swift`
+
+**Purpose:** Menu bar extra displaying running Pharaoh plans across all projects.
+
+**Structure:**
+
+MenuBarExtra with conditional content:
+
+1. **Empty State:** "No Devel Jobs Running" (secondary text) when no plans with `inProgress` status exist
+2. **Running Plans List:** ForEach over running plans rendering PharaohMenuBarEntry for each
+
+**Running Plan Discovery:**
+- Iterates `viewModel.projects` on each poll cycle
+- For each project with non-nil `sourceDirectory`:
+  - Calls `planService.loadPlans(projectPath:)` to load all plans
+  - Filters to only plans with `status == .inProgress`
+  - Enriches plan with stats via `pharaohService.readStatus(from: sourceDirectory)`
+  - Extracts `turnsElapsed` and `runningCostUsd` from `.busy` status case
+- Skips projects with nil `sourceDirectory` or failed `loadPlans()` calls (error logged, continues to next project)
+
+**Polling Strategy:**
+- Timer publishes every 3 seconds on main thread
+- `loadRunningPlans()` method called on `.onAppear` and on each timer tick
+- **Content comparison:** Only assigns `runningPlans` state when count changes (prevents unnecessary redraws when data unchanged)
+- Polling ensures menu stays current even if file watching misses events
+
+**Integration:**
+- Added to App.swift as MenuBarExtra scene
+- Conditional rendering: only shown when `viewModel.workspacePath != nil`
+- Uses `.menuBarExtraStyle(.menu)` for dropdown appearance
+- Label: "Pharaoh" with "chart.line.uptrend.xyaxis" SF Symbol
+
+**Notes:**
+- Guards against nil `planService` and `pharaohService` (returns early if missing)
+- Tuple type: `[(project: Project, plan: Plan, turns: Int?, cost: Double?)]`
+- Stats are optional (nil when Pharaoh status is not `.busy`)
+
+## PharaohMenuBarEntry
+
+**File:** `Sources/Hieroglyphs/Views/MenuBar/PharaohMenuBarEntry.swift`
+
+**Purpose:** Individual row view for a running plan in menu bar dropdown.
+
+**Structure:**
+
+Button with VStack layout:
+
+1. Plan title (headline font)
+2. Project title (caption font, secondary color)
+3. Stats line (if available): "Turn N • $X.XXXX" (caption2 font, secondary color)
+
+**Navigation Action:**
+- Button action calls `viewModel.selectSection(.pharaoh(project))`
+- Guards against deleted projects — checks if project still exists in `viewModel.projects` before navigating
+- Logs warning if project no longer exists: "Warning: Cannot navigate to deleted project {slug}"
+- Calls `dismiss()` via `@Environment(\.dismiss)` to close menu bar dropdown
+- Navigation opens Pharaoh view for the plan's project (middle column shows PharaohView, detail column shows PharaohActivityStreamView)
+
+**Button Style:**
+- Uses `.buttonStyle(.plain)` to avoid default button appearance
+- VStack has `.frame(maxWidth: .infinity, alignment: .leading)` to fill available width and left-align content
+
+**Stats Display:**
+- Only shown when both `turns` and `cost` are non-nil
+- Turn count formatted as integer, cost formatted as "$0.XXXX" (4 decimal places)
+- Bullet separator ("•") between turn count and cost
+
+**Notes:**
+- Accepts `project`, `plan`, `turns`, `cost` as init parameters
+- Stats enrichment happens in PharaohMenuBar (this view only displays)
+- Menu dismissal is automatic on macOS when button clicked (dismiss() ensures compatibility)
 
 ## Accessibility
 

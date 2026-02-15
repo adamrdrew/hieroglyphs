@@ -207,6 +207,39 @@ Pharaoh status monitoring uses a separate FSEventStream watching `.pharaoh/` dir
 
 ### UI Components
 
+**PharaohMenuBar** (`Views/MenuBar/PharaohMenuBar.swift`)
+
+Menu bar extra displaying running Pharaoh plans across all projects:
+
+- **Icon:** "chart.line.uptrend.xyaxis" SF Symbol in menu bar
+- **Visibility:** Only shown when workspace is loaded (`viewModel.workspacePath != nil`)
+- **Content:**
+  - Empty state: "No Devel Jobs Running" (secondary text) when no plans with `inProgress` status
+  - Running plans: List of PharaohMenuBarEntry components for each running plan
+- **Polling Strategy:** Polls all projects every 3 seconds via `loadRunningPlans()`
+- **Content Comparison:** Compares running plan count before assigning state — only updates when count changes (prevents unnecessary redraws)
+- **Plan Discovery:**
+  - Iterates `viewModel.projects`
+  - For each project with non-nil `sourceDirectory`, calls `planService.loadPlans(projectPath:)`
+  - Filters plans to only `inProgress` status
+  - Enriches with Pharaoh stats via `pharaohService.readStatus(from:)` (turns elapsed, running cost)
+  - Skips projects with nil `sourceDirectory` or failed loadPlans() calls
+- **Error Handling:** Guards against nil services, nil sourceDirectory, and loadPlans() errors — continues to next project on failure
+
+**PharaohMenuBarEntry** (`Views/MenuBar/PharaohMenuBarEntry.swift`)
+
+Individual row view for a running plan in menu bar dropdown:
+
+- **Layout:**
+  - Plan title (headline font)
+  - Project title (caption font, secondary color)
+  - Stats line (if available): "Turn N • $0.XXXX" (caption2 font, secondary color)
+- **Navigation Action:**
+  - Calls `viewModel.selectSection(.pharaoh(project))` on click
+  - Guards against deleted projects — logs warning and dismisses if project no longer exists
+  - Dismisses menu bar dropdown via `@Environment(\.dismiss)`
+- **Button Style:** `.plain` to avoid default button appearance
+
 **SidebarPharaohItem** (`Views/Sidebar/SidebarPharaohItem.swift`)
 
 Displays Pharaoh status indicator in project disclosure groups:
