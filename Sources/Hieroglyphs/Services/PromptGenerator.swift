@@ -9,16 +9,16 @@ import os
 /// requiring explicit field population rather than free-form narrative.
 @Generable
 struct PhasePromptSchema {
-    @Guide("2-3 sentences using only information from the provided cards. Reference card titles.")
+    @Guide(description:"2-3 sentences using only information from the provided cards. Reference card titles.")
     var context: String
 
-    @Guide("Features, fixes, or changes from card bodies only. No invented UI flows or application behavior.")
+    @Guide(description:"Features, fixes, or changes from card bodies only. No invented UI flows or application behavior.")
     var whatToBuild: String
 
-    @Guide("Constraints, acceptance criteria, and success conditions from cards only.")
+    @Guide(description:"Constraints, acceptance criteria, and success conditions from cards only.")
     var requirements: String
 
-    @Guide("List of card titles being addressed. Use exact titles from input.")
+    @Guide(description:"List of card titles being addressed. Use exact titles from input.")
     var cardsAddressed: [String]
 }
 
@@ -112,8 +112,8 @@ final class PromptGenerator: PromptGenerating {
         do {
             response = try await session.respond(
                 to: cardSummary,
-                options: options,
-                generable: PhasePromptSchema.self
+                generating: PhasePromptSchema.self,
+                options: options
             )
 
             if sessionCancelled {

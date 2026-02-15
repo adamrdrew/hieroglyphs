@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// Displays a single project entry with title and icon.
 ///
@@ -22,6 +23,22 @@ struct SidebarProjectEntry: View {
                 .font(.body)
         }
         .contextMenu {
+            Button {
+                openProjectInFinder()
+            } label: {
+                Label("Open in Finder", systemImage: "folder")
+            }
+
+            if project.sourceDirectory != nil {
+                Button {
+                    openSourceInFinder()
+                } label: {
+                    Label("Open Source in Finder", systemImage: "folder.badge.gearshape")
+                }
+            }
+
+            Divider()
+
             Button {
                 showingEditSheet = true
             } label: {
@@ -73,5 +90,39 @@ struct SidebarProjectEntry: View {
             && (try? FileManager.default
                 .contentsOfDirectory(atPath: plansPath))?.isEmpty == false
         hasContent = hasCards || hasPlans
+    }
+
+    private func openProjectInFinder() {
+        let projectPath = "\(workspacePath)/\(project.slug)"
+
+        guard FileManager.default.fileExists(atPath: projectPath) else {
+            print("Error: Project directory does not exist at \(projectPath)")
+            return
+        }
+
+        let url = URL(fileURLWithPath: projectPath)
+        let success = NSWorkspace.shared.open(url)
+
+        if !success {
+            print("Error: Failed to open project directory at \(projectPath)")
+        }
+    }
+
+    private func openSourceInFinder() {
+        guard let sourceDirectory = project.sourceDirectory else {
+            return
+        }
+
+        guard FileManager.default.fileExists(atPath: sourceDirectory) else {
+            print("Error: Source directory does not exist at \(sourceDirectory)")
+            return
+        }
+
+        let url = URL(fileURLWithPath: sourceDirectory)
+        let success = NSWorkspace.shared.open(url)
+
+        if !success {
+            print("Error: Failed to open source directory at \(sourceDirectory)")
+        }
     }
 }

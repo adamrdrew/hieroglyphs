@@ -155,3 +155,11 @@ These laws define the non-negotiable invariants for Hieroglyphs. Every phase, im
 - **Enforcement:** Verify that disabled controls are visually disabled (`.disabled(true)` or hidden). Verify that loading states show progress indication. Verify that success/failure is communicated to the user. Verify that no hardcoded colours exist where system colours would serve. Verify that standard SwiftUI controls are used (Toggle, Picker, Button, TextField) rather than custom implementations of the same affordance. Verify that the app respects dark mode, accent colour, and system font size without special-casing. Verify that custom `.toolbarBackground()` overrides have been removed (let system glass apply). Verify that `.tabItem()` is not used (deprecated — use `Tab` struct). Verify that glass is applied only to navigation-layer elements, never to content.
 - **Scope:** All UI code
 - **Exceptions:** None
+
+### L19 — Build Must Pass
+
+- **Rule:** The application MUST compile successfully via `./Scripts/build-app.sh` before either the Builder or the Overseer may declare their work complete. The Builder MUST run the build after completing implementation and fix any compilation errors before handing off to the Overseer. The Overseer MUST run the build as part of review and MUST NOT mark a phase GREEN if the build fails. Build verification is not optional and cannot be satisfied by inspecting code or checking for the existence of build artefacts.
+- **Rationale:** Two consecutive phases shipped with compilation errors that passed Overseer review because verification was done by reading code, not by compiling it. Exhaustive switch failures, missing function arguments, and Swift 6 concurrency errors are all caught instantly by the compiler. No amount of structural code review substitutes for running the build. This is the single most effective quality gate available.
+- **Enforcement:** Builder runs `./Scripts/build-app.sh` after final implementation step. If the build fails, Builder fixes errors before marking implementation complete. Overseer runs `./Scripts/build-app.sh` during review. If the build fails, the phase is RED — no exceptions. Review must include the line "Build verified: `./Scripts/build-app.sh` exits 0" or equivalent.
+- **Scope:** All phases, Builder and Overseer agents
+- **Exceptions:** None
