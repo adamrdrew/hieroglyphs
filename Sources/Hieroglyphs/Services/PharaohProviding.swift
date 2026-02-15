@@ -59,11 +59,21 @@ protocol PharaohProviding {
     /// - Throws: PharaohError.processAlreadyRunning if a process is already running
     func start(in directory: String, model: String) throws
 
-    /// Stops the currently running Pharaoh server process.
+    /// Stops all currently running Pharaoh server processes.
     ///
-    /// Sends SIGTERM to the entire process group (both npm parent and node child)
-    /// and waits for termination to complete. Has no effect if no process is running.
+    /// Sends SIGTERM to all process groups (both npm parent and node child for each)
+    /// and waits for termination to complete. Used during app shutdown.
+    /// Has no effect if no processes are running.
     func stop()
+
+    /// Stops the Pharaoh server process for a specific project.
+    ///
+    /// Sends SIGTERM to the process group (both npm parent and node child) for the
+    /// specified directory and waits for termination to complete. Has no effect if
+    /// no process is running for the specified directory.
+    ///
+    /// - Parameter directory: Absolute path to the source directory whose Pharaoh process to stop
+    func stop(in directory: String)
 
     /// Reads the current Pharaoh status from the status file.
     ///

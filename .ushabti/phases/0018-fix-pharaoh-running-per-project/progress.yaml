@@ -1,0 +1,85 @@
+phase:
+  id: 0018
+  slug: fix-pharaoh-running-per-project
+  title: Fix Pharaoh Running Per Project
+  status: complete
+
+steps:
+  - id: S001
+    title: Update PharaohProviding protocol
+    implemented: true
+    reviewed: true
+    notes: "Added stop(in:) method to protocol with doc comments. Updated stop() doc comment to clarify all-process behavior."
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohProviding.swift
+
+  - id: S002
+    title: Replace process storage in PharaohService
+    implemented: true
+    reviewed: true
+    notes: Replaced single Process? with per-project dictionary keyed by source directory path.
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S003
+    title: Update start(in:model:) method
+    implemented: true
+    reviewed: true
+    notes: "Updated start method to check per-directory process state, track process in dictionary, and capture directory in termination handler for correct cleanup."
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S004
+    title: Update stop() to stop all processes
+    implemented: true
+    reviewed: true
+    notes: "Updated stop() to iterate all processes, send SIGTERM to each process group, wait for termination, and clear dictionary."
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S005
+    title: Add stop(in:) for per-project stop
+    implemented: true
+    reviewed: true
+    notes: "Added stop(in:) method to terminate specific project's Pharaoh process via SIGTERM and remove from dictionary."
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S006
+    title: Update cleanupStaleProcess(in:) stale check
+    implemented: true
+    reviewed: true
+    notes: "Updated cleanupStaleProcess to compare PID against directory-specific tracked process, fixing stale popup bug."
+    touched:
+      - Sources/Hieroglyphs/Services/PharaohService.swift
+
+  - id: S007
+    title: Update PharaohView to call per-project stop
+    implemented: true
+    reviewed: true
+    notes: "Updated stopPharaoh() to call per-project stop(in:) with current project's source directory."
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+
+  - id: S008
+    title: Add multi-project process tests
+    implemented: true
+    reviewed: true
+    notes: "Added six tests covering multi-project scenarios: starting multiple projects, refusing double-start on same project, per-project stop, stop-all, stale detection for tracked/untracked processes."
+    touched:
+      - Tests/HieroglyphsTests/PharaohServiceTests.swift
+
+  - id: S009
+    title: Update pharaoh-integration.md documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated pharaoh-integration.md to reflect per-project process tracking: added stop(in:) method, changed single-instance guard to per-project, updated process storage description, changed Edge Cases section from 'single process' to 'per-project processes'."
+    touched:
+      - .ushabti/docs/pharaoh-integration.md
+
+  - id: S010
+    title: Verify build and tests
+    implemented: true
+    reviewed: true
+    notes: Build successful. All 283 tests pass including 6 new multi-project tests.
+    touched: []

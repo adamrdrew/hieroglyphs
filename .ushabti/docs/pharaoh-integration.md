@@ -65,7 +65,8 @@ Protocol-based service for Pharaoh process management and status reading.
 
 **Methods:**
 - `start(in directory: String, model: String) throws` — Spawns Pharaoh process via `Foundation.Process` with shell profile sourcing
-- `stop()` — Terminates running process
+- `stop()` — Terminates all running Pharaoh processes (used during app shutdown)
+- `stop(in directory: String)` — Terminates the Pharaoh process for a specific project directory
 - `readStatus(from directory: String) -> PharaohStatus` — Reads and decodes `.pharaoh/pharaoh.json`
 - `readLogs(from directory: String, count: Int) -> [String]` — Returns last N lines from `.pharaoh/pharaoh.log`
 - `readEvents(from directory: String) -> [PharaohEvent]` — Reads and parses `.pharaoh/events.jsonl`
@@ -75,7 +76,8 @@ Protocol-based service for Pharaoh process management and status reading.
 - Uses `Process` with `/bin/zsh -l -c "npx @adamrdrew/pharaoh serve"` to source shell profile (ensures homebrew/nvm paths available)
 - Sets `currentDirectoryURL` to project's `sourceDirectory`
 - Monitors process termination via `terminationHandler`
-- Kills process on `NSApplication.willTerminateNotification`
+- Stores processes in a dictionary keyed by source directory path (`[String: Process]`)
+- Kills all processes on `NSApplication.willTerminateNotification`
 - Marked `@unchecked Sendable` for async compatibility
 
 **Error Handling:**
@@ -346,7 +348,7 @@ enum PlanStatus: String, Codable, CaseIterable {
 
 ## Process Safety
 
-Pharaoh process management uses multiple mechanisms to prevent orphaned processes from accumulating when Hieroglyphs quits or crashes.
+Pharaoh process management uses multiple mechanisms to prevent orphaned processes from accumulating when Hieroglyphs quits or crashes. The service tracks processes per-project in a dictionary keyed by source directory path, enabling multiple projects to run Pharaoh simultaneously.
 
 ### Process Group Management
 
@@ -356,7 +358,8 @@ Pharaoh process management uses multiple mechanisms to prevent orphaned processe
 - The process group can be killed with a single signal using the negative PID
 
 **Process Group Termination:**
-- `stop()` sends `SIGTERM` to the entire process group using `kill(-pgid, SIGTERM)`
+- `stop()` iterates all tracked processes and sends `SIGTERM` to each process group using `kill(-pgid, SIGTERM)`
+- `stop(in:)` sends `SIGTERM` only to the specified directory's process group
 - This kills both npm parent and node child in one operation
 - `waitUntilExit()` is called to ensure termination completes before continuing
 
@@ -364,6 +367,7 @@ Pharaoh process management uses multiple mechanisms to prevent orphaned processe
 
 **Orphan Detection:**
 - `cleanupStaleProcess(in:)` reads `.pharaoh/pharaoh.json` to extract the PID of any previously running process
+- Compares the PID against the directory-specific tracked process in the dictionary
 - Tests if the process still exists using `kill(pid, 0)` (test signal that doesn't actually kill)
 - Returns one of three results:
   - `.noStaleProcess` — No stale process found, safe to start
@@ -375,12 +379,13 @@ Pharaoh process management uses multiple mechanisms to prevent orphaned processe
 - If a stale process is detected and killed, the cleanup is logged to console
 - Only proceeds with starting new process if cleanup succeeds
 
-### Single-Instance Guard
+### Per-Project Instance Guard
 
 **Double-Start Prevention:**
-- `start(in:model:)` checks if `process?.isRunning == true` before attempting to start
-- Throws `PharaohError.processAlreadyRunning` if a process is already running in the current session
+- `start(in:model:)` checks if `processes[directory]?.isRunning == true` before attempting to start
+- Throws `PharaohError.processAlreadyRunning` if a process is already running for that specific directory
 - Combined with stale process cleanup, ensures only one Pharaoh process per project at a time
+- Multiple projects can each run their own Pharaoh instance simultaneously
 
 ### Multi-Hook Cleanup
 
@@ -553,9 +558,9 @@ Tests cover all public methods:
 
 ### Process Management
 
-**Single Process:** Only one Pharaoh process runs at a time (tied to PharaohService singleton, not per-project)
+**Per-Project Processes:** Each project can run its own Pharaoh instance independently. The service tracks processes in a dictionary keyed by source directory path.
 
-**Project Switching:** Process continues running when user switches projects (process tied to filesystem, not UI selection)
+**Project Switching:** Processes continue running when user switches projects (process tied to filesystem, not UI selection)
 
 **Termination Detection:** `terminationHandler` enables UI state sync when process exits unexpectedly
 

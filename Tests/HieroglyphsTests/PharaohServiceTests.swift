@@ -544,4 +544,86 @@ final class PharaohServiceTests: XCTestCase {
             }
         }
     }
+
+    func testCanStartMultipleProjects() throws {
+        let projectA = tempDirectory.appendingPathComponent("projectA")
+        let projectB = tempDirectory.appendingPathComponent("projectB")
+
+        try FileManager.default.createDirectory(at: projectA, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: projectB, withIntermediateDirectories: true)
+
+        XCTAssertNoThrow(try service.start(in: projectA.path, model: "opus"))
+        XCTAssertNoThrow(try service.start(in: projectB.path, model: "opus"))
+    }
+
+    func testCannotStartTwiceOnSameProject() throws {
+        try service.start(in: tempDirectory.path, model: "opus")
+
+        XCTAssertThrowsError(try service.start(in: tempDirectory.path, model: "opus")) { error in
+            guard case PharaohError.processAlreadyRunning = error else {
+                XCTFail("Expected processAlreadyRunning error")
+                return
+            }
+        }
+    }
+
+    func testPerProjectStop() throws {
+        let projectA = tempDirectory.appendingPathComponent("projectA")
+        let projectB = tempDirectory.appendingPathComponent("projectB")
+
+        try FileManager.default.createDirectory(at: projectA, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: projectB, withIntermediateDirectories: true)
+
+        try service.start(in: projectA.path, model: "opus")
+        try service.start(in: projectB.path, model: "opus")
+
+        service.stop(in: projectA.path)
+
+        XCTAssertNoThrow(try service.start(in: projectA.path, model: "opus"))
+
+        XCTAssertThrowsError(try service.start(in: projectB.path, model: "opus")) { error in
+            guard case PharaohError.processAlreadyRunning = error else {
+                XCTFail("Expected processAlreadyRunning error for still-running projectB")
+                return
+            }
+        }
+    }
+
+    func testStopAll() throws {
+        let projectA = tempDirectory.appendingPathComponent("projectA")
+        let projectB = tempDirectory.appendingPathComponent("projectB")
+
+        try FileManager.default.createDirectory(at: projectA, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: projectB, withIntermediateDirectories: true)
+
+        try service.start(in: projectA.path, model: "opus")
+        try service.start(in: projectB.path, model: "opus")
+
+        service.stop()
+
+        XCTAssertNoThrow(try service.start(in: projectA.path, model: "opus"))
+        service.stop()
+        XCTAssertNoThrow(try service.start(in: projectB.path, model: "opus"))
+    }
+
+    func testStaleDetectionDoesNotTriggerForTrackedProcess() throws {
+        try service.start(in: tempDirectory.path, model: "opus")
+
+        let result = service.cleanupStaleProcess(in: tempDirectory.path)
+        XCTAssertEqual(result, .noStaleProcess)
+    }
+
+    func testStaleDetectionTriggersForUntrackedProcess() throws {
+        let pharaohDir = tempDirectory.appendingPathComponent(".pharaoh")
+        try FileManager.default.createDirectory(at: pharaohDir, withIntermediateDirectories: true)
+
+        let statusFile = pharaohDir.appendingPathComponent("pharaoh.json")
+        let json = """
+        {"status": "idle", "pid": 999999}
+        """
+        try json.write(to: statusFile, atomically: true, encoding: .utf8)
+
+        let result = service.cleanupStaleProcess(in: tempDirectory.path)
+        XCTAssertEqual(result, .staleFileOnly)
+    }
 }

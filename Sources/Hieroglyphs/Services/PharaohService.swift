@@ -3,7 +3,7 @@ import AppKit
 
 /// Service responsible for managing the Pharaoh server process lifecycle.
 final class PharaohService: PharaohProviding, @unchecked Sendable {
-    private var process: Process?
+    private var processes: [String: Process] = [:]
 
     init() {
         NotificationCenter.default.addObserver(
@@ -20,7 +20,7 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
     }
 
     func start(in directory: String, model: String) throws {
-        guard process?.isRunning != true else {
+        guard processes[directory]?.isRunning != true else {
             throw PharaohError.processAlreadyRunning
         }
 
@@ -41,7 +41,7 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
 
         process.terminationHandler = { [weak self] _ in
             Task { @MainActor in
-                self?.process = nil
+                self?.processes[directory] = nil
             }
         }
 
@@ -49,18 +49,27 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
             try process.run()
             let pid = process.processIdentifier
             setpgid(pid, pid)
-            self.process = process
+            self.processes[directory] = process
         } catch {
             throw PharaohError.processStartFailed(error.localizedDescription)
         }
     }
 
     func stop() {
-        guard let process = process else { return }
+        for (_, process) in processes {
+            let pgid = process.processIdentifier
+            kill(-pgid, SIGTERM)
+            process.waitUntilExit()
+        }
+        processes.removeAll()
+    }
+
+    func stop(in directory: String) {
+        guard let process = processes[directory] else { return }
         let pgid = process.processIdentifier
         kill(-pgid, SIGTERM)
         process.waitUntilExit()
-        self.process = nil
+        processes[directory] = nil
     }
 
     func readStatus(from directory: String) -> PharaohStatus {
@@ -201,7 +210,7 @@ final class PharaohService: PharaohProviding, @unchecked Sendable {
             return .noStaleProcess
         }
 
-        if let currentProcess = process, currentProcess.processIdentifier == Int32(pid) {
+        if let currentProcess = processes[directory], currentProcess.processIdentifier == Int32(pid) {
             return .noStaleProcess
         }
 

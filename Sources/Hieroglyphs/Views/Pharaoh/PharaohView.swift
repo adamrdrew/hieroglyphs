@@ -276,7 +276,8 @@ struct PharaohView: View {
     }
 
     private func stopPharaoh() {
-        pharaohService?.stop()
+        guard let sourceDirectory = project.sourceDirectory else { return }
+        pharaohService?.stop(in: sourceDirectory)
         status = .notRunning
     }
 
