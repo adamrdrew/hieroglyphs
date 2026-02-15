@@ -12,6 +12,8 @@
 	<string>0.1.0</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>26.0</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 </dict>

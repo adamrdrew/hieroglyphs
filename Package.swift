@@ -25,7 +25,8 @@ let package = Package(
                 "Resources/Info.plist"
             ],
             resources: [
-                .copy("Resources/AppIcon.icns")
+                .copy("Resources/AppIcon.icns"),
+                .copy("Resources/Assets.car")
             ]
         ),
         .testTarget(
