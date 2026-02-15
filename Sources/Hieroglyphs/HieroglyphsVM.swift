@@ -73,6 +73,8 @@ final class HieroglyphsVM {
 
     var showingNewProjectSheet: Bool = false
     var showingNewCardSheet: Bool = false
+    var showingNewPlanSheetFromCard: Bool = false
+    var sourceCardForNewPlan: Card?
     var focusSearch: Bool = false
 
     var pharaohModel: String = "opus"
@@ -165,7 +167,7 @@ final class HieroglyphsVM {
         }
 
         do {
-            _ = try workspaceService.createProject(
+            let createdProject = try workspaceService.createProject(
                 title: title,
                 description: description,
                 tags: tags,
@@ -177,6 +179,11 @@ final class HieroglyphsVM {
                 from: workspacePath
             )
             self.projects = reloadedProjects
+
+            // Auto-select the newly created project's Cards section
+            if let newProject = projects.first(where: { $0.slug == createdProject.slug }) {
+                self.selectedSection = .cards(newProject)
+            }
         } catch {
             print("Failed to create project: \(error)")
         }
@@ -409,7 +416,7 @@ final class HieroglyphsVM {
         }
     }
 
-    func createPlan(title: String) {
+    func createPlan(title: String, sourceCard: Card? = nil) {
         guard let selectedProject else {
             print("Cannot create plan: no project selected")
             return
@@ -429,12 +436,27 @@ final class HieroglyphsVM {
 
         do {
             let number = try planService.findNextPlanNumber(projectPath: projectPath)
-            _ = try planService.createPlan(
+            let plan = try planService.createPlan(
                 title: title,
                 number: number,
                 projectPath: projectPath
             )
+
+            // Link source card if provided
+            if let sourceCard = sourceCard {
+                try planService.addCardToPlan(
+                    cardSlug: sourceCard.slug,
+                    planSlug: plan.slug,
+                    projectPath: projectPath
+                )
+            }
+
             loadPlans()
+
+            // Auto-select the newly created plan
+            if let newPlan = plans.first(where: { $0.slug == plan.slug }) {
+                self.selectedPlan = newPlan
+            }
         } catch {
             print("Failed to create plan: \(error)")
         }
@@ -789,7 +811,7 @@ final class HieroglyphsVM {
 
         do {
             let projectPath = "\(workspacePath)/\(selectedProject.slug)"
-            _ = try workspaceService.createCard(
+            let createdCard = try workspaceService.createCard(
                 title: title,
                 type: type,
                 status: status,
@@ -800,6 +822,11 @@ final class HieroglyphsVM {
             )
 
             loadCards()
+
+            // Auto-select the newly created card
+            if let newCard = cards.first(where: { $0.slug == createdCard.slug }) {
+                self.selectedCard = newCard
+            }
         } catch {
             print("Failed to create card: \(error)")
         }
@@ -1122,6 +1149,17 @@ final class HieroglyphsVM {
     /// Shows the New Card sheet.
     func showNewCardSheet() {
         self.showingNewCardSheet = true
+    }
+
+    /// Shows the New Plan sheet with a source card pre-linked.
+    ///
+    /// Sets the sourceCardForNewPlan and showingNewPlanSheetFromCard state
+    /// properties to trigger NewPlanSheet presentation with card pre-population.
+    ///
+    /// - Parameter card: The card to pre-link to the new plan
+    func showNewPlanSheetFromCard(_ card: Card) {
+        self.sourceCardForNewPlan = card
+        self.showingNewPlanSheetFromCard = true
     }
 
     /// Deletes the currently selected item (card or project).

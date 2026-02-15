@@ -67,6 +67,14 @@ final class HieroglyphsVMTests: XCTestCase {
         XCTAssertTrue(
             viewModel.projects.contains { $0.title == "New Project" }
         )
+
+        // Verify auto-selection: selectedSection should be set to Cards for new project
+        XCTAssertNotNil(viewModel.selectedSection)
+        if case .cards(let project) = viewModel.selectedSection {
+            XCTAssertEqual(project.title, "New Project")
+        } else {
+            XCTFail("Expected selectedSection to be .cards with new project")
+        }
     }
 
     @MainActor
@@ -418,6 +426,10 @@ final class HieroglyphsVMTests: XCTestCase {
         XCTAssertTrue(
             viewModel.cards.contains { $0.title == "New Card" }
         )
+
+        // Verify auto-selection: selectedCard should be set to new card
+        XCTAssertNotNil(viewModel.selectedCard)
+        XCTAssertEqual(viewModel.selectedCard?.title, "New Card")
     }
 
     @MainActor
@@ -1218,6 +1230,33 @@ final class HieroglyphsVMTests: XCTestCase {
         viewModel.showNewCardSheet()
 
         XCTAssertTrue(viewModel.showingNewCardSheet)
+    }
+
+    @MainActor
+    func testShowNewPlanSheetFromCard() {
+        let mockService = MockWorkspaceService()
+        let viewModel = HieroglyphsVM(workspaceService: mockService)
+
+        XCTAssertFalse(viewModel.showingNewPlanSheetFromCard)
+        XCTAssertNil(viewModel.sourceCardForNewPlan)
+
+        let testCard = Card(
+            id: UUID(),
+            title: "Test Card",
+            type: .task,
+            status: .todo,
+            priority: .medium,
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-card",
+            body: ""
+        )
+
+        viewModel.showNewPlanSheetFromCard(testCard)
+
+        XCTAssertTrue(viewModel.showingNewPlanSheetFromCard)
+        XCTAssertEqual(viewModel.sourceCardForNewPlan?.slug, "test-card")
     }
 
     // MARK: - deleteSelectedItem() Tests

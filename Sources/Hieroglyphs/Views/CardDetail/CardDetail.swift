@@ -40,7 +40,7 @@ struct CardDetail: View {
                 ToolbarItem(placement: .automatic) {
                     Button {
                         if let card = viewModel.selectedCard {
-                            viewModel.createPlanFromCard(card)
+                            viewModel.showNewPlanSheetFromCard(card)
                         }
                     } label: {
                         Label("Create Plan", systemImage: "flowchart")

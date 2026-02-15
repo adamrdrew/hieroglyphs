@@ -624,8 +624,9 @@ Plan status changes map to card status updates:
 **Methods:**
 
 - `loadPlans()` — Load plans for selected project
-- `createPlan(title:number:)` — Create new plan
-- `createPlanFromCard(_:)` — Create new plan from card with auto-incremented number, title derived from card, and card symlinked
+- `createPlan(title:sourceCard:)` — Create new plan, optionally with source card pre-linked
+- `showNewPlanSheetFromCard(_:)` — Show NewPlanSheet modal with source card pre-linked
+- `createPlanFromCard(_:)` — Create new plan from card with auto-incremented number, title derived from card, and card symlinked (legacy, not called from UI)
 - `updatePlan(_:)` — Update plan metadata
 - `addCardToPlan(cardSlug:planSlug:)` — Add card symlink
 - `removeCardFromPlan(cardSlug:planSlug:)` — Remove card symlink
@@ -639,7 +640,8 @@ Plan status changes map to card status updates:
 - Methods reload plans after mutations to reflect changes in UI
 - `updatePlanStatus()` reloads both plans and cards to reflect cascaded status changes
 - `deletePlan()` clears `selectedPlan` if deleted plan was selected, then reloads plans
-- `createPlanFromCard()` provides quick plan creation from card context (context menu or toolbar button)
+- `createPlan()` auto-selects newly created plan in PlanList
+- `showNewPlanSheetFromCard()` provides modal-based plan creation from card context (context menu or toolbar button)
 - `showDonePlans` controls plan list filtering (matches CardList's `showDoneAndArchived` pattern)
 
 ## Views
@@ -817,7 +819,7 @@ Plans can be created directly from a card via two UI entry points:
 
 ### CardListEntry Context Menu
 
-Right-click a card in the card list to show a context menu with "Create Plan" option (flowchart icon). Clicking the menu item calls `viewModel.createPlanFromCard(card)`.
+Right-click a card in the card list to show a context menu with "Create Plan" option (flowchart icon). Clicking the menu item calls `viewModel.showNewPlanSheetFromCard(card)`.
 
 ### CardDetail Toolbar Button
 
@@ -825,29 +827,38 @@ When a card is selected in CardDetail, a toolbar button appears with flowchart i
 - Disabled when no card is selected (`viewModel.selectedCard == nil`)
 - Hidden when no project is selected (`viewModel.selectedProject == nil`)
 
-Clicking the button calls `viewModel.createPlanFromCard(card)`.
+Clicking the button calls `viewModel.showNewPlanSheetFromCard(card)`.
 
 ### Creation Behavior
 
-When `createPlanFromCard(card)` is called:
-1. Next plan number is automatically determined via `planService.findNextPlanNumber()`
-2. Plan title is generated from card title: `"Implement {card.title}"` (e.g., "Implement Add dark mode")
-3. Plan is created with:
-   - Auto-incremented number
-   - Generated title
-   - `planning` status
-   - Empty phase prompt
-4. Card is immediately symlinked to the new plan via `addCardToPlan()`
-5. Plan list is reloaded to show the new plan
+When `showNewPlanSheetFromCard(card)` is called:
+1. Sets `sourceCardForNewPlan` to the provided card
+2. Sets `showingNewPlanSheetFromCard` to true
+3. NewPlanSheet modal opens with card pre-linked
+4. User can edit plan title before saving (defaults to empty)
+5. On save:
+   - Next plan number is automatically determined via `planService.findNextPlanNumber()`
+   - Plan is created with user-provided title
+   - Plan is created in `planning` status with empty phase prompt
+   - Card is automatically symlinked to the new plan
+6. Plan list is reloaded and newly created plan is auto-selected
 
-**No modal or sheet is shown** — plan creation is immediate and silent (success indicated by new plan appearing in plan list).
+**Modal workflow** — plan creation requires user input (title) and confirmation before creating plan.
 
 **Example workflow:**
 1. User creates card "Add dark mode" in card list
 2. User right-clicks card → "Create Plan"
-3. New plan "0001-implement-add-dark-mode" is created instantly
-4. Plan appears in plan list with "Add dark mode" card linked
-5. User can navigate to plan to edit phase prompt and add more cards
+3. NewPlanSheet modal opens
+4. User enters title "Dark Mode Implementation"
+5. User clicks Save
+6. New plan "0001-dark-mode-implementation" is created
+7. Plan appears in plan list with "Add dark mode" card linked
+8. Plan is automatically selected in PlanList and displayed in PlanDetail
+9. User can edit phase prompt and add more cards
+
+**Legacy Method:**
+
+The `createPlanFromCard(card)` method is retained for backward compatibility but is no longer called from UI. It creates a plan immediately with auto-generated title `"Implement {card.title}"` without showing a modal.
 
 ## File Watching
 

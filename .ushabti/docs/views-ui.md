@@ -1132,7 +1132,7 @@ struct CardListEntry: View {
         .padding(.vertical, 4)
         .contextMenu {
             Button {
-                viewModel.createPlanFromCard(card)
+                viewModel.showNewPlanSheetFromCard(card)
             } label: {
                 Label("Create Plan", systemImage: "flowchart")
             }
@@ -1143,7 +1143,7 @@ struct CardListEntry: View {
 
 **Context Menu Actions:**
 
-- **Create Plan:** Creates a new plan from the selected card with auto-incremented number, title derived from card title (e.g., "Implement {card.title}"), card symlinked to plan, plan created in `planning` status
+- **Create Plan:** Opens NewPlanSheet modal with source card pre-linked. User can edit plan title before saving. Plan is created with card already linked when user confirms.
 
 **Visual Elements:**
 
@@ -1489,7 +1489,7 @@ struct CardDetail: View {
 4. **Dual Save Paths:** Debounced saves for continuous typing (title, body), immediate saves for discrete actions (pickers, tags)
 5. **Flush on Deselection:** Pending writes flushed before loading new card
 6. **Navigation Title:** Shows card title in detail column navigation bar
-7. **Create Plan Toolbar Button:** Flowchart icon button (disabled when no card selected, hidden when no project selected) calls `viewModel.createPlanFromCard(card)` to create plan with auto-incremented number and card linked
+7. **Create Plan Toolbar Button:** Flowchart icon button (disabled when no card selected, hidden when no project selected) calls `viewModel.showNewPlanSheetFromCard(card)` to open NewPlanSheet modal with card pre-linked
 
 **Behavior:**
 
@@ -1845,7 +1845,7 @@ struct PlanList: View {
 
 **File:** `Sources/Hieroglyphs/Views/PlanList/NewPlanSheet.swift`
 
-**Purpose:** Modal sheet for creating a new plan.
+**Purpose:** Modal sheet for creating a new plan, optionally with a source card pre-linked.
 
 **Design (macOS 26 compliant):**
 - Simple single-field modal following macOS 26 design standards
@@ -1860,6 +1860,8 @@ struct PlanList: View {
 struct NewPlanSheet: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @Environment(\.dismiss) private var dismiss
+
+    @Binding var sourceCard: Card?
 
     @State private var title = ""
 
@@ -1898,11 +1900,12 @@ struct NewPlanSheet: View {
 **Key Features:**
 
 1. **Single Field:** Plan title is the only required field
-2. **Constrained Frame:** Fixed 400x200 dimensions for compact modal
-3. **Semantic Typography:** Section header uses `.headline` font
-4. **Grouped Form Style:** `.formStyle(.grouped)` for macOS-native appearance
-5. **Disabled State:** Save button disabled when title is empty
-6. **Standard Toolbar:** Cancel and Save buttons with standard placements
+2. **Optional Source Card:** Accepts `sourceCard` binding for pre-linking card
+3. **Constrained Frame:** Fixed 400x200 dimensions for compact modal
+4. **Semantic Typography:** Section header uses `.headline` font
+5. **Grouped Form Style:** `.formStyle(.grouped)` for macOS-native appearance
+6. **Disabled State:** Save button disabled when title is empty
+7. **Standard Toolbar:** Cancel and Save buttons with standard placements
 
 **Visual Design:**
 - Section header uses `.headline` font for clear hierarchy
@@ -1910,9 +1913,28 @@ struct NewPlanSheet: View {
 - Standard button styles and toolbar placements
 
 **Save Logic:**
-- Calls `viewModel.createPlan(title:)` with entered title
+- Calls `viewModel.createPlan(title:sourceCard:)` with entered title and optional sourceCard
+- When sourceCard is provided, plan is created with card already linked
 - Dismisses sheet after successful creation
 - ViewModel handles plan creation and list refresh
+
+**Usage:**
+
+Two presentation modes:
+
+1. **Standard plan creation** (from PlanList toolbar button):
+```swift
+.sheet(isPresented: $showingNewPlanSheet) {
+    NewPlanSheet(sourceCard: .constant(nil))
+}
+```
+
+2. **Plan creation from card** (from CardDetail toolbar or CardListEntry context menu):
+```swift
+.sheet(isPresented: $viewModel.showingNewPlanSheetFromCard) {
+    NewPlanSheet(sourceCard: $viewModel.sourceCardForNewPlan)
+}
+```
 
 **Notes:**
 - Follows L17 (UI State Correctness): Constrained modal dimensions
@@ -1921,6 +1943,7 @@ struct NewPlanSheet: View {
 - Validates required field (disables Save if empty)
 - Follows NewCardSheet and NewProjectSheet patterns for consistency
 - Automatic Liquid Glass treatment on toolbar (no custom overrides)
+- Pre-linking behavior transparent to user (card is linked after plan creation)
 
 ## PlanDetail
 

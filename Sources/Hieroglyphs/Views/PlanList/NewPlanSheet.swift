@@ -7,9 +7,13 @@ import SwiftUI
 /// - Semantic typography throughout
 /// - Standard spacing and visual hierarchy
 /// - Automatic Liquid Glass treatment on toolbar
+///
+/// When sourceCard is provided, the plan is created with that card already linked.
 struct NewPlanSheet: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @Environment(\.dismiss) private var dismiss
+
+    @Binding var sourceCard: Card?
 
     @State private var title = ""
 
@@ -44,7 +48,7 @@ struct NewPlanSheet: View {
     }
 
     private func savePlan() {
-        viewModel.createPlan(title: title)
+        viewModel.createPlan(title: title, sourceCard: sourceCard)
         dismiss()
     }
 }

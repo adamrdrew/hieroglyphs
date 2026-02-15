@@ -1,0 +1,62 @@
+phase:
+  id: 0038
+  slug: ui-bug-fix-sprint
+  title: UI Bug Fix Sprint
+  status: complete
+
+steps:
+  - id: S001
+    title: Change "Create Plan from Card" to open modal
+    implemented: true
+    reviewed: true
+    notes: Changed Create Plan from Card to open NewPlanSheet modal instead of immediate creation. Added showingNewPlanSheetFromCard and sourceCardForNewPlan state to HieroglyphsVM. Added showNewPlanSheetFromCard() method. Updated CardDetail toolbar and CardListEntry context menu to call new method. Modified NewPlanSheet to accept sourceCard binding and link card after plan creation. Updated createPlan() to accept optional sourceCard parameter.
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+      - Sources/Hieroglyphs/Views/CardDetail/CardDetail.swift
+      - Sources/Hieroglyphs/Views/CardList/CardListEntry.swift
+      - Sources/Hieroglyphs/Views/PlanList/NewPlanSheet.swift
+      - Sources/Hieroglyphs/Views/PlanList/PlanList.swift
+  - id: S002
+    title: Auto-select newly created card
+    implemented: true
+    reviewed: true
+    notes: Updated createCard() to auto-select newly created card. Captures returned Card from createCard service call and finds matching card in reloaded cards array to set as selectedCard.
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S003
+    title: Auto-select newly created plan
+    implemented: true
+    reviewed: true
+    notes: Updated createPlan() to auto-select newly created plan. Finds matching plan in reloaded plans array by slug and sets as selectedPlan.
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S004
+    title: Auto-select newly created project
+    implemented: true
+    reviewed: true
+    notes: "Updated createProject() to auto-select newly created project. Captures returned Project from createProject service call, finds matching project in reloaded projects array, and sets selectedSection to .cards(newProject) to display Cards section with sidebar disclosure expanded."
+    touched:
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+  - id: S005
+    title: Fix Pharaoh view initial status flicker
+    implemented: true
+    reviewed: true
+    notes: "Added synchronous updateStatus() call in onAppear before task starts polling. This reads initial Pharaoh status immediately on view appear, preventing flash of notRunning state when navigating to already-running Pharaoh process."
+    touched:
+      - Sources/Hieroglyphs/Views/Pharaoh/PharaohView.swift
+  - id: S006
+    title: Update tests for new behavior
+    implemented: true
+    reviewed: true
+    notes: "Added test coverage for auto-selection behavior: testCreateProject verifies selectedSection is set to .cards(newProject), testCreateCardSuccess verifies selectedCard is set to new card, testShowNewPlanSheetFromCard verifies showingNewPlanSheetFromCard and sourceCardForNewPlan state properties are set correctly."
+    touched:
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+  - id: S007
+    title: Update documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated documentation across three files: viewmodel.md (added showNewPlanSheetFromCard method, updated createCard/createPlan/createProject to mention auto-selection, added new state properties), views-ui.md (updated NewPlanSheet to document sourceCard parameter and dual presentation modes, updated CardDetail and CardListEntry to reflect modal workflow), plans-system.md (updated Plan Creation from Card section to describe modal workflow, updated ViewModel methods list, added legacy note for createPlanFromCard)."
+    touched:
+      - .ushabti/docs/viewmodel.md
+      - .ushabti/docs/views-ui.md
+      - .ushabti/docs/plans-system.md

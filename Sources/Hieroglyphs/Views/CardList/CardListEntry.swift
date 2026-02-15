@@ -40,7 +40,7 @@ struct CardListEntry: View {
         .padding(.vertical, 4)
         .contextMenu {
             Button {
-                viewModel.createPlanFromCard(card)
+                viewModel.showNewPlanSheetFromCard(card)
             } label: {
                 Label("Create Plan", systemImage: "flowchart")
             }

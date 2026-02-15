@@ -46,6 +46,8 @@ enum SidebarSection: Hashable {
 - `showDonePlans: Bool` — Toggle for showing/hiding done plans (default: false, state is ephemeral)
 - `showingNewProjectSheet: Bool` — Controls New Project sheet presentation (false = hidden)
 - `showingNewCardSheet: Bool` — Controls New Card sheet presentation (false = hidden)
+- `showingNewPlanSheetFromCard: Bool` — Controls New Plan sheet presentation from card (false = hidden)
+- `sourceCardForNewPlan: Card?` — Card to pre-link when creating plan from card (nil = no pre-link)
 - `focusSearch: Bool` — Triggers search field focus when set to true (resets to false after use)
 
 **Service Dependencies:**
@@ -169,7 +171,8 @@ Called once in `App.swift` via `.onAppear` on `MainWindow`:
 2. Call `workspaceService.createProject(title:description:tags:at:)` with workspace path
 3. Call `workspaceService.loadProjects(from:)` to reload project list (includes newly created project)
 4. Update `self.projects` with reloaded list
-5. If any step throws, catch error and log to console
+5. Auto-select newly created project: Set `selectedSection` to `.cards(newProject)`
+6. If any step throws, catch error and log to console
 
 **Error Handling:**
 
@@ -197,6 +200,7 @@ viewModel.createProject(
 - Does NOT check for slug collisions (future enhancement)
 - Reloads entire project list after creation (inefficient but simple; future optimization may add new project to list directly)
 - If workspace path is nil, operation fails silently (logs error)
+- Auto-selects newly created project's Cards section in sidebar (L17: UI State Correctness)
 
 ### selectSection(_:)
 
@@ -441,7 +445,8 @@ private func handlePhaseFileChange(url: URL) {
 3. Construct project path from workspace path and selected project slug
 4. Call `workspaceService.createCard(...)` to write card to disk
 5. Call `loadCards()` to reload card list (includes newly created card)
-6. If any step throws, catch error and log to console
+6. Auto-select newly created card: Find card in reloaded array by slug and set as `selectedCard`
+7. If any step throws, catch error and log to console
 
 **Error Handling:**
 
@@ -473,6 +478,7 @@ viewModel.createCard(
 - Does NOT check for slug collisions (future enhancement)
 - Reloads entire card list after creation (inefficient but simple; future optimization may add new card to list directly)
 - If workspace path or selected project is nil, operation fails silently (logs error)
+- Auto-selects newly created card in CardList and displays in CardDetail (L17: UI State Correctness)
 
 ### updateCard(_:)
 
@@ -1107,28 +1113,7 @@ Failed to create plan from card: planNotFound
 
 **Usage:**
 
-Called from CardListEntry context menu and CardDetail toolbar button:
-
-```swift
-// Context menu in CardListEntry
-.contextMenu {
-    Button {
-        viewModel.createPlanFromCard(card)
-    } label: {
-        Label("Create Plan", systemImage: "flowchart")
-    }
-}
-
-// Toolbar button in CardDetail
-Button {
-    if let card = viewModel.selectedCard {
-        viewModel.createPlanFromCard(card)
-    }
-} label: {
-    Label("Create Plan", systemImage: "flowchart")
-}
-.disabled(viewModel.selectedCard == nil)
-```
+**Deprecated:** This method is retained for backward compatibility but is no longer called from UI. Use `showNewPlanSheetFromCard(_:)` instead, which opens NewPlanSheet modal for user input.
 
 **Notes:**
 - Auto-increments plan number (no manual number entry required)
@@ -1137,6 +1122,53 @@ Button {
 - Links card immediately after plan creation
 - No modal or sheet shown (immediate creation)
 - Reloads plan list to reflect new plan
+
+### showNewPlanSheetFromCard(_:)
+
+**Signature:** `func showNewPlanSheetFromCard(_ card: Card)`
+
+**Purpose:** Show the New Plan sheet with a source card pre-linked for user input before plan creation.
+
+**Parameters:**
+- `card` — The card to pre-link to the new plan
+
+**Behavior:**
+
+1. Set `sourceCardForNewPlan` to the provided card
+2. Set `showingNewPlanSheetFromCard` to true
+3. Triggers NewPlanSheet presentation with card pre-population
+
+**Usage:**
+
+Called from CardListEntry context menu and CardDetail toolbar button:
+
+```swift
+// Context menu in CardListEntry
+.contextMenu {
+    Button {
+        viewModel.showNewPlanSheetFromCard(card)
+    } label: {
+        Label("Create Plan", systemImage: "flowchart")
+    }
+}
+
+// Toolbar button in CardDetail
+Button {
+    if let card = viewModel.selectedCard {
+        viewModel.showNewPlanSheetFromCard(card)
+    }
+} label: {
+    Label("Create Plan", systemImage: "flowchart")
+}
+.disabled(viewModel.selectedCard == nil)
+```
+
+**Notes:**
+- Opens NewPlanSheet modal instead of immediate plan creation
+- User can edit plan title before saving
+- Card is automatically linked after plan is created
+- Modal workflow follows NewCardSheet and NewProjectSheet patterns
+- Provides better UX by allowing title editing before creation
 
 ### refreshSelectedPlan()
 

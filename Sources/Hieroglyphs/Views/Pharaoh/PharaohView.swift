@@ -34,6 +34,8 @@ struct PharaohView: View {
                 checkForStaleProcess()
                 hasCheckedForStale = true
             }
+            // Read initial status synchronously to avoid flicker
+            updateStatus()
         }
         .task {
             await monitorStatus()
