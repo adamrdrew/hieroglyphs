@@ -51,7 +51,8 @@ jobs:
           cp Sources/Hieroglyphs/Resources/AppIcon.icns "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
 
       - name: Sign app bundle
-        run: codesign --force --deep --sign "Developer ID Application: Adam Drew (P8645Z2MB8)" .build/Hieroglyphs.app
+        run: |
+          codesign --force --deep --sign "Developer ID Application: Adam Drew (P8645Z2MB8)" .build/Hieroglyphs.app
 
       - name: Create DMG
         run: |
