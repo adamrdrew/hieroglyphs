@@ -148,4 +148,4 @@ Tests cover all public APIs across models, utilities, services, and ViewModel. S
 
 ## License
 
-All rights reserved.
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
