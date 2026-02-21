@@ -12,12 +12,41 @@ A macOS-native markdown-based project management tool built with SwiftUI. Hierog
 - **Spotlight search** -- NSMetadataQuery backend searches file content, titles, and tags across the workspace.
 - **AI-first workflows** -- External changes are first-class, not edge cases. Unknown frontmatter fields are preserved on read/write. Workspace includes `CLAUDE.md` and `AGENT.md` for AI assistant context.
 
+## Installation
+
+### Homebrew (recommended)
+
+```bash
+brew tap adamrdrew/hieroglyphs
+brew install --cask hieroglyphs
+```
+
+### Manual
+
+Download the latest `.dmg` from [Releases](https://github.com/adamrdrew/hieroglyphs/releases), open it, and drag Hieroglyphs to your Applications folder.
+
+### First launch — macOS security prompt
+
+Hieroglyphs is signed with a Developer ID certificate but is not notarised through Apple's review process. On first launch, macOS will display a warning:
+
+> **"Hieroglyphs" can't be opened because Apple cannot check it for malicious software.**
+
+To open it:
+
+1. **Open System Settings** (Apple menu → System Settings)
+2. Go to **Privacy & Security**
+3. Scroll down — you'll see a message like *"Hieroglyphs was blocked from use because it is not from an identified developer"* with an **Open Anyway** button
+4. Click **Open Anyway** and authenticate with Touch ID or your password
+5. macOS will ask one more time — click **Open**
+
+This only happens once. After that, Hieroglyphs launches normally.
+
 ## Requirements
 
 - macOS 26 (Tahoe) or later
-- Swift 6.2+
+- Swift 6.2+ (for building from source)
 
-## Building
+## Building from Source
 
 Hieroglyphs is a Swift Package Manager project. No Xcode project files are used.
 
