@@ -182,4 +182,147 @@ final class DocsServiceTests: XCTestCase {
         XCTAssertEqual(docs.count, 1)
         XCTAssertEqual(docs[0].slug, "doc")
     }
+
+    func testHasDocsDirectoryWithExistingDocsAndMarkdown() throws {
+        let sourceDir = fixtureRoot.appendingPathComponent("project")
+        let ushabtiDocsDir = sourceDir.appendingPathComponent(".ushabti/docs")
+        try fileManager.createDirectory(at: ushabtiDocsDir, withIntermediateDirectories: true)
+
+        try "# Test".write(
+            to: ushabtiDocsDir.appendingPathComponent("test.md"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let result = service.hasDocsDirectory(sourceDirectory: sourceDir.path)
+
+        XCTAssertTrue(result)
+    }
+
+    func testHasDocsDirectoryWithNoMarkdownFiles() throws {
+        let sourceDir = fixtureRoot.appendingPathComponent("project")
+        let ushabtiDocsDir = sourceDir.appendingPathComponent(".ushabti/docs")
+        try fileManager.createDirectory(at: ushabtiDocsDir, withIntermediateDirectories: true)
+
+        try "Text content".write(
+            to: ushabtiDocsDir.appendingPathComponent("file.txt"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let result = service.hasDocsDirectory(sourceDirectory: sourceDir.path)
+
+        XCTAssertFalse(result)
+    }
+
+    func testHasDocsDirectoryWithMissingDirectory() {
+        let sourceDir = fixtureRoot.appendingPathComponent("nonexistent")
+
+        let result = service.hasDocsDirectory(sourceDirectory: sourceDir.path)
+
+        XCTAssertFalse(result)
+    }
+
+    func testHasDocsDirectoryWithNilSourceDirectory() {
+        let result = service.hasDocsDirectory(sourceDirectory: "")
+
+        XCTAssertFalse(result)
+    }
+
+    func testExtractedHeadingWithH1Present() {
+        let content = """
+        # Main Heading
+
+        This is the first paragraph.
+        """
+        let doc = Doc(
+            id: UUID(),
+            title: "test",
+            slug: "test",
+            filename: "test.md",
+            content: content
+        )
+
+        XCTAssertEqual(doc.extractedHeading, "Main Heading")
+    }
+
+    func testExtractedHeadingWithNoH1() {
+        let content = """
+        This is just some text without a heading.
+
+        More text here.
+        """
+        let doc = Doc(
+            id: UUID(),
+            title: "test",
+            slug: "test-document",
+            filename: "test-document.md",
+            content: content
+        )
+
+        XCTAssertEqual(doc.extractedHeading, "Test Document")
+    }
+
+    func testExcerptStripsMarkdown() {
+        let content = """
+        # Heading
+
+        This is **bold** and *italic* and [link](http://example.com) and `code`.
+        """
+        let doc = Doc(
+            id: UUID(),
+            title: "test",
+            slug: "test",
+            filename: "test.md",
+            content: content
+        )
+
+        let excerpt = doc.excerpt
+        XCTAssertFalse(excerpt.contains("**"))
+        XCTAssertFalse(excerpt.contains("*"))
+        XCTAssertFalse(excerpt.contains("["))
+        XCTAssertFalse(excerpt.contains("]"))
+        XCTAssertFalse(excerpt.contains("("))
+        XCTAssertFalse(excerpt.contains(")"))
+        XCTAssertFalse(excerpt.contains("`"))
+        XCTAssertTrue(excerpt.contains("bold"))
+        XCTAssertTrue(excerpt.contains("italic"))
+        XCTAssertTrue(excerpt.contains("link"))
+        XCTAssertTrue(excerpt.contains("code"))
+    }
+
+    func testExcerptTruncatesLongParagraphs() {
+        let longText = String(repeating: "word ", count: 100)
+        let content = """
+        # Heading
+
+        \(longText)
+        """
+        let doc = Doc(
+            id: UUID(),
+            title: "test",
+            slug: "test",
+            filename: "test.md",
+            content: content
+        )
+
+        let excerpt = doc.excerpt
+        XCTAssertLessThanOrEqual(excerpt.count, 153)
+        XCTAssertTrue(excerpt.hasSuffix("..."))
+    }
+
+    func testExcerptHandlesEmptyContent() {
+        let content = """
+        # Heading
+        """
+        let doc = Doc(
+            id: UUID(),
+            title: "test",
+            slug: "test",
+            filename: "test.md",
+            content: content
+        )
+
+        XCTAssertEqual(doc.excerpt, "")
+    }
 }

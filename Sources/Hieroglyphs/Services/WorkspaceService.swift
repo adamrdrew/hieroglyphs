@@ -150,7 +150,6 @@ final class WorkspaceService: WorkspaceProviding {
         }
 
         let sourceDirectory = frontmatter["source_directory"] as? String
-        let docsDirectory = frontmatter["docs_directory"] as? String
         let buildCommand = frontmatter["build_command"] as? String
         let runCommand = frontmatter["run_command"] as? String
         let publishCommand = frontmatter["publish_command"] as? String
@@ -164,7 +163,6 @@ final class WorkspaceService: WorkspaceProviding {
             updated: updated,
             slug: slug,
             sourceDirectory: sourceDirectory,
-            docsDirectory: docsDirectory,
             buildCommand: buildCommand,
             runCommand: runCommand,
             publishCommand: publishCommand
@@ -392,7 +390,6 @@ When working with this workspace:
         description: String,
         tags: [String],
         sourceDirectory: String?,
-        docsDirectory: String? = nil,
         buildCommand: String? = nil,
         runCommand: String? = nil,
         publishCommand: String? = nil,
@@ -431,10 +428,6 @@ When working with this workspace:
             frontmatter["source_directory"] = sourceDirectory
         }
 
-        if let docsDirectory = docsDirectory {
-            frontmatter["docs_directory"] = docsDirectory
-        }
-
         if let buildCommand = buildCommand {
             frontmatter["build_command"] = buildCommand
         }
@@ -469,7 +462,6 @@ When working with this workspace:
             updated: updated,
             slug: slug,
             sourceDirectory: sourceDirectory,
-            docsDirectory: docsDirectory,
             buildCommand: buildCommand,
             runCommand: runCommand,
             publishCommand: publishCommand
@@ -582,12 +574,6 @@ When working with this workspace:
             frontmatter["source_directory"] = sourceDirectory
         } else {
             frontmatter.removeValue(forKey: "source_directory")
-        }
-
-        if let docsDirectory = project.docsDirectory {
-            frontmatter["docs_directory"] = docsDirectory
-        } else {
-            frontmatter.removeValue(forKey: "docs_directory")
         }
 
         if let buildCommand = project.buildCommand {

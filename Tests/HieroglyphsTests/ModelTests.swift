@@ -122,7 +122,6 @@ final class ModelTests: XCTestCase {
             updated: updated,
             slug: "test-project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -151,7 +150,6 @@ final class ModelTests: XCTestCase {
             updated: updated,
             slug: "test",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -166,7 +164,6 @@ final class ModelTests: XCTestCase {
             updated: updated,
             slug: "test",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -189,7 +186,6 @@ final class ModelTests: XCTestCase {
             updated: updated,
             slug: "test-project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -216,7 +212,6 @@ final class ModelTests: XCTestCase {
             updated: Date(),
             slug: "test",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil

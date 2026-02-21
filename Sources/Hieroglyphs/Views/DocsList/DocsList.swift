@@ -17,14 +17,28 @@ struct DocsList: View {
             } else {
                 List(selection: $bindableViewModel.selectedDoc) {
                     ForEach(docs) { doc in
-                        HStack {
-                            Image(systemName: "doc.text")
-                                .foregroundStyle(.secondary)
-                                .symbolRenderingMode(.hierarchical)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(doc.extractedHeading)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
 
-                            Text(doc.displayTitle)
-                                .font(.body)
+                            HStack(spacing: 4) {
+                                Image(systemName: "doc.text")
+                                    .font(.caption)
+                                    .symbolRenderingMode(.hierarchical)
+                                Text(doc.filename)
+                                    .font(.caption)
+                            }
+                            .foregroundStyle(.secondary)
+
+                            if !doc.excerpt.isEmpty {
+                                Text(doc.excerpt)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.tertiary)
+                                    .lineLimit(2)
+                            }
                         }
+                        .padding(.vertical, 4)
                         .tag(doc)
                     }
                 }
@@ -46,11 +60,12 @@ struct DocsList: View {
     }
 
     private func loadDocs() {
-        guard let docsDirectory = project.docsDirectory else {
+        guard let sourceDirectory = project.sourceDirectory else {
             docs = []
             return
         }
 
-        docs = docsService.loadDocs(from: docsDirectory)
+        let docsPath = (sourceDirectory as NSString).appendingPathComponent(".ushabti/docs")
+        docs = docsService.loadDocs(from: docsPath)
     }
 }

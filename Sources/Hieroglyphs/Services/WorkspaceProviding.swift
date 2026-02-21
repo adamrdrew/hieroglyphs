@@ -69,7 +69,6 @@ protocol WorkspaceProviding {
     ///   - description: Project description
     ///   - tags: Project tags
     ///   - sourceDirectory: Optional path to source directory
-    ///   - docsDirectory: Optional path to documentation directory
     ///   - buildCommand: Optional build command
     ///   - runCommand: Optional run command
     ///   - publishCommand: Optional publish command
@@ -81,7 +80,6 @@ protocol WorkspaceProviding {
         description: String,
         tags: [String],
         sourceDirectory: String?,
-        docsDirectory: String?,
         buildCommand: String?,
         runCommand: String?,
         publishCommand: String?,

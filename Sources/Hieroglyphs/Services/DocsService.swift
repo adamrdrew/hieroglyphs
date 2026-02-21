@@ -9,6 +9,35 @@ final class DocsService: DocsProviding, @unchecked Sendable {
         self.fileManager = fileManager
     }
 
+    func hasDocsDirectory(sourceDirectory: String) -> Bool {
+        guard !sourceDirectory.isEmpty else {
+            return false
+        }
+
+        let docsPath = (sourceDirectory as NSString).appendingPathComponent(".ushabti/docs")
+
+        guard fileManager.fileExists(atPath: docsPath) else {
+            return false
+        }
+
+        do {
+            let docsURL = URL(fileURLWithPath: docsPath)
+            let contents = try fileManager.contentsOfDirectory(
+                at: docsURL,
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles]
+            )
+
+            let hasMarkdown = contents.contains { url in
+                url.pathExtension == "md" && !url.lastPathComponent.hasPrefix(".")
+            }
+
+            return hasMarkdown
+        } catch {
+            return false
+        }
+    }
+
     func loadDocs(from docsDirectory: String) -> [Doc] {
         let docsURL = URL(fileURLWithPath: docsDirectory)
 

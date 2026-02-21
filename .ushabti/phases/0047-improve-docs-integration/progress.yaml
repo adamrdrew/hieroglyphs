@@ -1,0 +1,111 @@
+phase:
+  id: 0047
+  slug: improve-docs-integration
+  title: Improve Docs Integration
+  status: complete
+
+steps:
+  - id: S001
+    title: Remove docsDirectory from Project model
+    implemented: true
+    reviewed: true
+    notes: Removed docsDirectory field from Project model and updated test fixtures
+    touched:
+      - Sources/Hieroglyphs/Models/Project.swift
+      - Tests/HieroglyphsTests/WorkspaceServiceTests.swift
+
+  - id: S002
+    title: Remove docs_directory frontmatter handling
+    implemented: true
+    reviewed: true
+    notes: Removed docs_directory frontmatter handling from WorkspaceService and all UI components
+    touched:
+      - Sources/Hieroglyphs/Services/WorkspaceService.swift
+      - Sources/Hieroglyphs/Services/WorkspaceProviding.swift
+      - Sources/Hieroglyphs/HieroglyphsVM.swift
+      - Sources/Hieroglyphs/Views/Sidebar/EditProjectSheet.swift
+      - Sources/Hieroglyphs/Views/ProjectOverview/ProjectOverview.swift
+      - Tests/HieroglyphsTests/HieroglyphsVMTests.swift
+      - Tests/HieroglyphsTests/ModelTests.swift
+
+  - id: S003
+    title: Add automatic docs detection to DocsService
+    implemented: true
+    reviewed: true
+    notes: Added hasDocsDirectory method to DocsProviding protocol and DocsService implementation
+    touched:
+      - Sources/Hieroglyphs/Services/DocsProviding.swift
+      - Sources/Hieroglyphs/Services/DocsService.swift
+
+  - id: S004
+    title: Update Project model with filesystem-based check
+    implemented: true
+    reviewed: true
+    notes: Added hasDocsDirectory method to Project model that uses DocsService for filesystem-based check
+    touched:
+      - Sources/Hieroglyphs/Models/Project.swift
+
+  - id: S005
+    title: Update Sidebar to use new detection method
+    implemented: true
+    reviewed: true
+    notes: Updated Sidebar and DocsList to use new filesystem-based hasDocsDirectory check via DocsService
+    touched:
+      - Sources/Hieroglyphs/Views/Sidebar/Sidebar.swift
+      - Sources/Hieroglyphs/Views/DocsList/DocsList.swift
+
+  - id: S006
+    title: Add H1 extraction to Doc model
+    implemented: true
+    reviewed: true
+    notes: Added extractedHeading computed property to Doc model that extracts first H1 or falls back to displayTitle
+    touched:
+      - Sources/Hieroglyphs/Models/Doc.swift
+
+  - id: S007
+    title: Add excerpt extraction to Doc model
+    implemented: true
+    reviewed: true
+    notes: "Added excerpt computed property to Doc model that extracts first paragraph, strips markdown, and truncates to 150 chars"
+    touched:
+      - Sources/Hieroglyphs/Models/Doc.swift
+
+  - id: S008
+    title: Modernize DocsList UI
+    implemented: true
+    reviewed: true
+    notes: "Modernized DocsList UI with three-line layout: H1 heading, filename with icon, and excerpt. Uses system semantic colors and proper typography hierarchy"
+    touched:
+      - Sources/Hieroglyphs/Views/DocsList/DocsList.swift
+
+  - id: S009
+    title: Update DocsService tests
+    implemented: true
+    reviewed: true
+    notes: "Added test coverage for hasDocsDirectory method: tests for existing docs with markdown, no markdown files, missing directory, and empty string"
+    touched:
+      - Tests/HieroglyphsTests/DocsServiceTests.swift
+
+  - id: S010
+    title: Update Doc model tests
+    implemented: true
+    reviewed: true
+    notes: "Added test coverage for extractedHeading and excerpt: H1 extraction, fallback to displayTitle, markdown stripping, truncation, and empty content handling"
+    touched:
+      - Tests/HieroglyphsTests/DocsServiceTests.swift
+
+  - id: S011
+    title: Update docs integration documentation
+    implemented: true
+    reviewed: true
+    notes: "Updated docs-integration.md to reflect automatic detection, removed docsDirectory references, documented new UI layout and computed properties"
+    touched:
+      - .ushabti/docs/docs-integration.md
+
+  - id: S012
+    title: Verify build and final integration
+    implemented: true
+    reviewed: true
+    notes: "Build passes via ./Scripts/build-app.sh, all tests pass via swift test. Fixed empty string handling in hasDocsDirectory"
+    touched:
+      - Sources/Hieroglyphs/Services/DocsService.swift

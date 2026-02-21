@@ -2,6 +2,12 @@ import Foundation
 
 /// Protocol for loading documentation files from the filesystem.
 protocol DocsProviding: Sendable {
+    /// Checks if a project has a valid docs directory with markdown files.
+    ///
+    /// - Parameter sourceDirectory: Path to the project source directory
+    /// - Returns: True if .ushabti/docs/ exists within sourceDirectory and contains at least one .md file
+    func hasDocsDirectory(sourceDirectory: String) -> Bool
+
     /// Loads all documentation files from the specified directory.
     ///
     /// - Parameter docsDirectory: Path to the docs directory

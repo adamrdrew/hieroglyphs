@@ -321,7 +321,6 @@ final class HieroglyphsVMTests: XCTestCase {
             updated: Date(),
             slug: "project",
             sourceDirectory: "/source",
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -353,7 +352,6 @@ final class HieroglyphsVMTests: XCTestCase {
             updated: Date(),
             slug: "project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -386,7 +384,6 @@ final class HieroglyphsVMTests: XCTestCase {
             updated: Date(),
             slug: "project",
             sourceDirectory: "/source",
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -839,7 +836,6 @@ final class HieroglyphsVMTests: XCTestCase {
             updated: Date(),
             slug: "project",
             sourceDirectory: tempDir.path,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -929,7 +925,6 @@ final class HieroglyphsVMTests: XCTestCase {
             updated: Date(),
             slug: "project",
             sourceDirectory: tempDir.path,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -1466,6 +1461,141 @@ final class HieroglyphsVMTests: XCTestCase {
 
         XCTAssertTrue(viewModel.focusSearch)
     }
+
+    // MARK: - createPlan() Navigation Tests
+
+    @MainActor
+    func testCreatePlanSwitchesToPlansView() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+        mockWorkspace.shouldThrowOnLoadProjects = false
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
+        )
+
+        mockWorkspace.mockProjects = [testProject]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.cards(testProject))
+
+        let testCard = Card(
+            id: UUID(),
+            title: "Test Card",
+            type: .task,
+            status: .todo,
+            priority: .medium,
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-card",
+            body: ""
+        )
+
+        viewModel.createPlan(title: "Test Plan", sourceCard: testCard)
+
+        // Verify navigation to plan view
+        guard case .plans(let project) = viewModel.selectedSection else {
+            XCTFail("Expected selectedSection to be .plans, got \(String(describing: viewModel.selectedSection))")
+            return
+        }
+        XCTAssertEqual(project.id, testProject.id)
+    }
+
+    @MainActor
+    func testCreatePlanWithoutSourceCardSwitchesToPlansView() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+        mockWorkspace.shouldThrowOnLoadProjects = false
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
+        )
+
+        mockWorkspace.mockProjects = [testProject]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.cards(testProject))
+
+        viewModel.createPlan(title: "Test Plan")
+
+        // Verify navigation to plan view
+        guard case .plans(let project) = viewModel.selectedSection else {
+            XCTFail("Expected selectedSection to be .plans, got \(String(describing: viewModel.selectedSection))")
+            return
+        }
+        XCTAssertEqual(project.id, testProject.id)
+    }
+
+    @MainActor
+    func testCreatePlanAutoSelectsNewPlan() {
+        let mockWorkspace = MockWorkspaceService()
+        let mockPlan = MockPlanService()
+        mockWorkspace.shouldThrowOnLoadConfig = false
+        mockWorkspace.shouldThrowOnLoadProjects = false
+
+        let testProject = Project(
+            id: UUID(),
+            title: "Test Project",
+            description: "",
+            tags: [],
+            created: Date(),
+            updated: Date(),
+            slug: "test-project",
+            sourceDirectory: nil,
+            buildCommand: nil,
+            runCommand: nil,
+            publishCommand: nil
+        )
+
+        mockWorkspace.mockProjects = [testProject]
+
+        let viewModel = HieroglyphsVM(
+            workspaceService: mockWorkspace,
+            planService: mockPlan
+        )
+        viewModel.loadWorkspace()
+        viewModel.selectSection(.cards(testProject))
+        viewModel.loadPlans()
+
+        XCTAssertNil(viewModel.selectedPlan)
+
+        viewModel.createPlan(title: "Test Plan")
+
+        // Verify plan was auto-selected
+        XCTAssertNotNil(viewModel.selectedPlan)
+        XCTAssertEqual(viewModel.selectedPlan?.title, "Test Plan")
+    }
 }
 
 // MARK: - Mock Workspace Service
@@ -1528,7 +1658,6 @@ final class MockWorkspaceService: WorkspaceProviding {
                 updated: Date(),
                 slug: "mock-project-1",
                 sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -1542,7 +1671,6 @@ final class MockWorkspaceService: WorkspaceProviding {
                 updated: Date(),
                 slug: "mock-project-2",
                 sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -1604,7 +1732,6 @@ final class MockWorkspaceService: WorkspaceProviding {
         description: String,
         tags: [String],
         sourceDirectory: String?,
-        docsDirectory: String?,
         buildCommand: String?,
         runCommand: String?,
         publishCommand: String?,
@@ -1623,7 +1750,6 @@ final class MockWorkspaceService: WorkspaceProviding {
             updated: Date(),
             slug: title.lowercased().replacingOccurrences(of: " ", with: "-"),
             sourceDirectory: sourceDirectory,
-            docsDirectory: docsDirectory,
             buildCommand: buildCommand,
             runCommand: runCommand,
             publishCommand: publishCommand
@@ -1945,7 +2071,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: "/test/source",
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -1991,7 +2116,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2039,7 +2163,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: "/test/source",
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2074,7 +2197,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: "/test/source",
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2141,7 +2263,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: "/test/source",
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2209,7 +2330,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: "/test/source",
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2295,7 +2415,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2365,7 +2484,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2419,7 +2537,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2488,7 +2605,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2557,7 +2673,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2610,7 +2725,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2665,7 +2779,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2717,7 +2830,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2787,7 +2899,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil
@@ -2834,7 +2945,6 @@ extension HieroglyphsVMTests {
             updated: Date(),
             slug: "test-project",
             sourceDirectory: nil,
-            docsDirectory: nil,
             buildCommand: nil,
             runCommand: nil,
             publishCommand: nil

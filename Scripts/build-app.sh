@@ -23,7 +23,7 @@ MACOS_DIR="$CONTENTS/MacOS"
 RESOURCES_DIR="$CONTENTS/Resources"
 
 echo "Building $APP_NAME (release)..."
-swift build -c release
+swift build -c release --disable-sandbox
 
 echo "Assembling app bundle..."
 

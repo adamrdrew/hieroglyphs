@@ -186,7 +186,6 @@ final class HieroglyphsVM {
                 description: description,
                 tags: tags,
                 sourceDirectory: sourceDirectory,
-                docsDirectory: nil,
                 buildCommand: buildCommand,
                 runCommand: runCommand,
                 publishCommand: publishCommand,
@@ -489,6 +488,9 @@ final class HieroglyphsVM {
             }
 
             loadPlans()
+
+            // Switch to plan view so user sees the modal and the new plan
+            self.selectedSection = .plans(selectedProject)
 
             // Auto-select the newly created plan
             if let newPlan = plans.first(where: { $0.slug == plan.slug }) {

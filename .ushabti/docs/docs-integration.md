@@ -4,6 +4,8 @@
 
 The Docs integration enables users to browse and view read-only documentation files from `.ushabti/docs/` directly within Hieroglyphs. This completes the development workflow loop by providing in-app access to project documentation maintained by Ushabti agents.
 
+Documentation is automatically detected when a project has a `sourceDirectory` containing a `.ushabti/docs/` folder with at least one markdown file. No explicit configuration is required.
+
 ## Architecture
 
 ### Models
@@ -29,12 +31,14 @@ struct Doc: Identifiable, Equatable {
 }
 ```
 
-- `id`: Stable UUID generated from filename via namespace hashing
+- `id`: UUID generated at load time
 - `title`: Raw slug (filename without .md extension)
 - `slug`: Lowercase filename without extension (used for sorting)
 - `filename`: Full filename with .md extension
 - `content`: Markdown file content as string
 - `displayTitle`: Formatted title (hyphens replaced with spaces, capitalized words)
+- `extractedHeading`: First H1 heading from markdown, or `displayTitle` if no H1 found
+- `excerpt`: First paragraph after H1 with markdown stripped, truncated to ~150 characters
 
 ### Services
 
@@ -44,10 +48,13 @@ Defines the contract for loading documentation files:
 
 ```swift
 protocol DocsProviding {
+    func hasDocsDirectory(sourceDirectory: String) -> Bool
     func loadDocs(from docsDirectory: String) -> [Doc]
     func loadDocContent(path: String) -> String?
 }
 ```
+
+- `hasDocsDirectory(sourceDirectory:)` — Checks if `.ushabti/docs/` exists within the source directory and contains at least one markdown file
 
 **DocsService** (`Sources/Hieroglyphs/Services/DocsService.swift`)
 
@@ -97,13 +104,15 @@ enum SidebarSection: Hashable {
 
 **DocsList** (`Sources/Hieroglyphs/Views/DocsList/DocsList.swift`)
 
-Middle column view displaying documentation files:
+Middle column view displaying documentation files with modern three-line layout:
 
-- List of docs with `doc.text` SF Symbol (hierarchical rendering)
-- Uses `displayTitle` for readable names
+- **Primary line**: `extractedHeading` in `.headline` font with `.primary` color
+- **Secondary line**: Icon + `filename` in `.caption` font with `.secondary` color
+- **Tertiary line**: `excerpt` in `.subheadline` font with `.tertiary` color (line limit 2)
 - Empty state: "No Documentation"
 - Loads docs on appear and when project changes
 - Uses `.id(project.id)` to reset state on project change (L17 compliance)
+- Uses system semantic colors and typography hierarchy (L18 compliance)
 
 **DocsDetail** (`Sources/Hieroglyphs/Views/DocsDetail/DocsDetail.swift`)
 
@@ -117,49 +126,50 @@ Detail column view rendering markdown:
 
 **Sidebar Integration**
 
-Docs item shown in project disclosure group when `project.hasDocsDirectory == true`:
+Docs item shown in project disclosure group when docs directory is detected:
 
 ```swift
-if project.hasDocsDirectory {
+if project.hasDocsDirectory(docsService: docsService) {
     Label("Docs", systemImage: "doc.text")
         .tag(SidebarSection.docs(project))
 }
 ```
 
-Positioned after Pharaoh item in sidebar hierarchy.
+Detection is filesystem-based via `DocsService.hasDocsDirectory(sourceDirectory:)`. Positioned after Pharaoh item in sidebar hierarchy.
 
 ### Project Model Extension
 
-**docsDirectory Field**
+**hasDocsDirectory Method**
 
-Added optional `docsDirectory: String?` to Project model:
+Projects now detect docs directories dynamically:
 
 ```swift
 struct Project: Identifiable, Codable, Equatable, Hashable {
     // ...
-    let docsDirectory: String?
+    let sourceDirectory: String?
     // ...
 
-    var hasDocsDirectory: Bool {
-        docsDirectory != nil
+    func hasDocsDirectory(docsService: DocsProviding) -> Bool {
+        guard let sourceDirectory = sourceDirectory else {
+            return false
+        }
+        return docsService.hasDocsDirectory(sourceDirectory: sourceDirectory)
     }
 }
 ```
 
-**WorkspaceService Integration**
+**No Frontmatter Field**
 
-- Reads `docs_directory` frontmatter field in `loadProjects(from:)`
-- Writes `docs_directory` in `createProject(...)` and `updateProject(_:at:)` only when non-nil
-- Preserves unknown frontmatter fields (L02 compliance)
+Unlike the previous implementation, there is no `docsDirectory` or `docs_directory` field. Detection is automatic based on the presence of `.ushabti/docs/` within the project's `sourceDirectory`.
 
 ## Navigation Flow
 
-1. User selects project with `docsDirectory` set
-2. "Docs" item appears in sidebar
+1. User selects project with `sourceDirectory` containing `.ushabti/docs/`
+2. Sidebar checks `project.hasDocsDirectory(docsService:)` — if true, "Docs" item appears
 3. User clicks "Docs"
 4. `selectedSection` becomes `.docs(project)`
 5. MainWindow shows `DocsList(project:)` in middle column
-6. `DocsList` loads docs from `docsDirectory` via `docsService`
+6. `DocsList` constructs docs path as `{sourceDirectory}/.ushabti/docs/` and loads via `docsService`
 7. User selects a doc
 8. `selectedDoc` updates in HieroglyphsVM
 9. `DocsDetail` renders markdown content
@@ -183,13 +193,14 @@ Unlike cards and projects, docs are treated as plain markdown:
 - Entire file content rendered as-is
 - Simplifies model and reduces complexity
 
-### Directory Path Derivation
+### Automatic Detection
 
-The `docsDirectory` path is typically derived as `{sourceDirectory}/.ushabti/docs/`:
+The docs directory is automatically detected at `{sourceDirectory}/.ushabti/docs/`:
 
-- Not configurable separately in UI
-- Automatically set when project has `sourceDirectory`
-- Checked for existence before showing Docs item
+- No explicit configuration required in project frontmatter
+- Detection happens at render time via `DocsService.hasDocsDirectory(sourceDirectory:)`
+- Docs item appears in sidebar only when directory exists and contains at least one `.md` file
+- External changes (docs added/removed by Ushabti) are reflected immediately on next navigation
 
 ### Top-Level Files Only
 
@@ -211,7 +222,7 @@ Docs are always sorted alphabetically by slug:
 
 **DocsServiceTests** (`Tests/HieroglyphsTests/DocsServiceTests.swift`)
 
-Full test coverage:
+Full test coverage for service methods:
 
 - `testLoadDocsFromExistingDirectory` — Multiple docs loaded correctly
 - `testLoadDocsFromEmptyDirectory` — Empty array returned
@@ -222,6 +233,18 @@ Full test coverage:
 - `testDisplayTitleFormatsSlugCorrectly` — Hyphens replaced, capitalized
 - `testLoadDocsIgnoresHiddenFiles` — `.hidden.md` filtered out
 - `testLoadDocsIgnoresNonMarkdownFiles` — `.txt`, `.yaml` filtered out
+- `testHasDocsDirectoryWithExistingDocsAndMarkdown` — Returns true when valid
+- `testHasDocsDirectoryWithNoMarkdownFiles` — Returns false when only non-markdown
+- `testHasDocsDirectoryWithMissingDirectory` — Returns false when directory missing
+- `testHasDocsDirectoryWithNilSourceDirectory` — Returns false for empty string
+
+Full test coverage for Doc model computed properties:
+
+- `testExtractedHeadingWithH1Present` — Returns H1 text when present
+- `testExtractedHeadingWithNoH1` — Falls back to displayTitle
+- `testExcerptStripsMarkdown` — Bold, italic, links, code backticks removed
+- `testExcerptTruncatesLongParagraphs` — Limited to ~150 chars with ellipsis
+- `testExcerptHandlesEmptyContent` — Returns empty string when no paragraph
 
 All tests use temporary directories for isolation.
 

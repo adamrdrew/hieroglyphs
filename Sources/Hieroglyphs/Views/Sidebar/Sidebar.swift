@@ -99,6 +99,7 @@ struct SidebarCardsItem: View {
 struct Sidebar: View {
     @Environment(HieroglyphsVM.self) private var viewModel
     @Environment(\.workspaceService) private var workspaceService
+    @Environment(\.docsService) private var docsService
     @State private var projectPendingDeletion: Project?
 
     var body: some View {
@@ -136,7 +137,7 @@ struct Sidebar: View {
                                     SidebarPharaohItem(project: project)
                                 }
 
-                                if project.hasDocsDirectory {
+                                if project.hasDocsDirectory(docsService: docsService) {
                                     Label("Docs", systemImage: "doc.text")
                                         .tag(SidebarSection.docs(project))
                                 }
