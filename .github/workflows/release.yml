@@ -15,6 +15,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Import signing certificate
+        env:
+          CERT_BASE64: ${{ secrets.DEVELOPER_CERT_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_CERT_PASSWORD }}
+        run: |
+          echo "$CERT_BASE64" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p "" build.keychain
+          security import /tmp/cert.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "" build.keychain
+          security list-keychains -d user -s build.keychain
+          rm /tmp/cert.p12
+
       - name: Extract version from tag
         id: tag
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
@@ -37,6 +49,9 @@ jobs:
           cp Sources/Hieroglyphs/Resources/Info.plist "$APP_BUNDLE/Contents/Info.plist"
           cp Sources/Hieroglyphs/Resources/Assets.car "$APP_BUNDLE/Contents/Resources/Assets.car"
           cp Sources/Hieroglyphs/Resources/AppIcon.icns "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
+
+      - name: Sign app bundle
+        run: codesign --force --deep --sign "Developer ID Application: Adam Drew (P8645Z2MB8)" .build/Hieroglyphs.app
 
       - name: Create DMG
         run: |
