@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update Info.plist version
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.tag.outputs.VERSION }}" Sources/Hieroglyphs/Resources/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.tag.outputs.VERSION }}" Sources/Hieroglyphs/Resources/Info.plist
+
+      - name: Build release binary
+        run: swift build -c release --disable-sandbox
+
+      - name: Assemble app bundle
+        run: |
+          APP_BUNDLE=".build/Hieroglyphs.app"
+          rm -rf "$APP_BUNDLE"
+          mkdir -p "$APP_BUNDLE/Contents/MacOS"
+          mkdir -p "$APP_BUNDLE/Contents/Resources"
+          cp .build/arm64-apple-macosx/release/Hieroglyphs "$APP_BUNDLE/Contents/MacOS/Hieroglyphs"
+          cp Sources/Hieroglyphs/Resources/Info.plist "$APP_BUNDLE/Contents/Info.plist"
+          cp Sources/Hieroglyphs/Resources/Assets.car "$APP_BUNDLE/Contents/Resources/Assets.car"
+          cp Sources/Hieroglyphs/Resources/AppIcon.icns "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
+
+      - name: Create DMG
+        run: |
+          DMG_STAGING=".build/dmg-staging"
+          rm -rf "$DMG_STAGING"
+          mkdir -p "$DMG_STAGING"
+          cp -R .build/Hieroglyphs.app "$DMG_STAGING/"
+          ln -s /Applications "$DMG_STAGING/Applications"
+          hdiutil create \
+            -volname "Hieroglyphs" \
+            -srcfolder "$DMG_STAGING" \
+            -ov \
+            -format UDZO \
+            ".build/Hieroglyphs-${{ steps.tag.outputs.VERSION }}.dmg"
+          rm -rf "$DMG_STAGING"
+
+      - name: Compute SHA256
+        id: sha
+        run: echo "SHA256=$(shasum -a 256 .build/Hieroglyphs-${{ steps.tag.outputs.VERSION }}.dmg | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v${{ steps.tag.outputs.VERSION }} \
+            --title "Hieroglyphs v${{ steps.tag.outputs.VERSION }}" \
+            --notes "## Installation
+
+          ### Homebrew (recommended)
+          \`\`\`bash
+          brew tap adamrdrew/hieroglyphs
+          brew install --cask hieroglyphs
+          \`\`\`
+
+          ### Manual
+          Download the DMG, open it, drag Hieroglyphs to Applications.
+
+          > **Note:** On first launch, macOS may warn about an unidentified developer. Right-click the app → Open to bypass this.
+
+          SHA256: \`${{ steps.sha.outputs.SHA256 }}\`" \
+            .build/Hieroglyphs-${{ steps.tag.outputs.VERSION }}.dmg
+
+      - name: Clone tap repository
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_HIEROGLYPHS_PAT }}
+        run: git clone https://x-access-token:${TAP_TOKEN}@github.com/adamrdrew/homebrew-hieroglyphs.git tap-repo
+
+      - name: Update cask
+        run: |
+          cd tap-repo
+          sed -i '' "s|version \".*\"|version \"${{ steps.tag.outputs.VERSION }}\"|" Casks/hieroglyphs.rb
+          sed -i '' "s|sha256 \".*\"|sha256 \"${{ steps.sha.outputs.SHA256 }}\"|" Casks/hieroglyphs.rb
+          sed -i '' "s|url \".*\"|url \"https://github.com/adamrdrew/hieroglyphs/releases/download/v${{ steps.tag.outputs.VERSION }}/Hieroglyphs-${{ steps.tag.outputs.VERSION }}.dmg\"|" Casks/hieroglyphs.rb
+
+      - name: Commit and push cask update
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_HIEROGLYPHS_PAT }}
+        run: |
+          cd tap-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/hieroglyphs.rb
+          git commit -m "Update hieroglyphs to v${{ steps.tag.outputs.VERSION }}"
+          git push https://x-access-token:${TAP_TOKEN}@github.com/adamrdrew/homebrew-hieroglyphs.git
