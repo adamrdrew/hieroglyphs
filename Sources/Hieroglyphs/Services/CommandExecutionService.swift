@@ -42,8 +42,8 @@ final class CommandExecutionService: CommandExecutionProviding, @unchecked Senda
         workingDirectory: String
     ) async throws -> CommandResult {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", command]
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.arguments = ["-l", "-c", command]
         process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory)
 
         let outputPipe = Pipe()
