@@ -5,6 +5,8 @@ struct MainWindow: View {
     @State private var preferredCompactColumn: NavigationSplitViewColumn = .sidebar
 
     var body: some View {
+        @Bindable var bindableViewModel = viewModel
+
         NavigationSplitView(preferredCompactColumn: $preferredCompactColumn) {
             Sidebar()
         } content: {
@@ -14,6 +16,9 @@ struct MainWindow: View {
         }
         .onChange(of: viewModel.selectedProject) { _, _ in
             viewModel.restartPhasesWatching()
+        }
+        .sheet(isPresented: $bindableViewModel.showingNewPlanSheetFromCard) {
+            NewPlanSheet(sourceCard: $bindableViewModel.sourceCardForNewPlan)
         }
     }
 

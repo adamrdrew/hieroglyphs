@@ -76,8 +76,14 @@ struct PharaohMenuBar: View {
             }
         }
 
-        // Only assign if count changed (polling pattern)
-        if plans.count != runningPlans.count {
+        // Assign if content changed (count, plan IDs, turns, or cost)
+        let changed = plans.count != runningPlans.count
+            || zip(plans, runningPlans).contains { new, old in
+                new.plan.id != old.plan.id
+                    || new.turns != old.turns
+                    || new.cost != old.cost
+            }
+        if changed {
             runningPlans = plans
         }
     }

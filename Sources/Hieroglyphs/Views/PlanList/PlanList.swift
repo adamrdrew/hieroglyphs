@@ -53,9 +53,6 @@ struct PlanList: View {
         .sheet(isPresented: $showingNewPlanSheet) {
             NewPlanSheet(sourceCard: .constant(nil))
         }
-        .sheet(isPresented: $bindableViewModel.showingNewPlanSheetFromCard) {
-            NewPlanSheet(sourceCard: $bindableViewModel.sourceCardForNewPlan)
-        }
     }
 
     private var noProjectState: some View {

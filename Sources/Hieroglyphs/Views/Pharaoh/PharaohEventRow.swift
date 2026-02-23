@@ -16,7 +16,7 @@ struct PharaohEventRow: View {
     private var eventRow: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Text(event.timestamp, style: .relative)
+                Text(event.timestamp, format: .dateTime.hour().minute().second())
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.tertiary)
                     .frame(width: 60, alignment: .trailing)

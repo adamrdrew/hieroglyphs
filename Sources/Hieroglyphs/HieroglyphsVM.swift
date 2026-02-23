@@ -99,6 +99,12 @@ final class HieroglyphsVM {
     private var pendingCardUpdate: Card?
     private var lastDebouncedWritePath: String?
 
+    // External file change debouncers — coalesce bursts of FSEvents into single reloads
+    private let externalCardDebouncer = Debouncer(delay: 0.3)
+    private let externalPlanDebouncer = Debouncer(delay: 0.3)
+    private let externalProjectDebouncer = Debouncer(delay: 0.3)
+    private let externalPhaseDebouncer = Debouncer(delay: 0.3)
+
     init(
         workspaceService: WorkspaceProviding,
         fileWatcher: FileWatching? = nil,
@@ -996,24 +1002,31 @@ final class HieroglyphsVM {
         let path = url.path
 
         if path.contains("/project.md") {
-            loadProjects()
+            externalProjectDebouncer.schedule { [weak self] in
+                self?.loadProjects()
+            }
             reconcileProjectTags(at: path)
         } else if path.contains("/cards/") || path.contains("/card.md") {
             if let selectedProject,
                path.contains("/\(selectedProject.slug)/") {
+                // Skip reload for self-writes — tag reconciliation still runs
                 if let lastWritePath = lastDebouncedWritePath,
                    path == lastWritePath {
                     lastDebouncedWritePath = nil
                     reconcileCardTags(at: path)
                     return
                 }
-                loadCards()
+                externalCardDebouncer.schedule { [weak self] in
+                    self?.loadCards()
+                }
             }
             reconcileCardTags(at: path)
         } else if path.contains("/plans/") && (path.contains("/plan.yaml") || path.contains("/PHASE_PROMPT.md")) {
             if let selectedProject,
                path.contains("/\(selectedProject.slug)/") {
-                loadPlans()
+                externalPlanDebouncer.schedule { [weak self] in
+                    self?.loadPlans()
+                }
             }
         }
     }
@@ -1023,7 +1036,9 @@ final class HieroglyphsVM {
 
         // Check if path contains phases directory and phase files
         if path.contains("/.ushabti/phases/") && (path.contains(".yaml") || path.contains(".md")) {
-            loadPhases()
+            externalPhaseDebouncer.schedule { [weak self] in
+                self?.loadPhases()
+            }
         }
     }
 
@@ -1063,16 +1078,8 @@ final class HieroglyphsVM {
     }
 
     private func extractProjectFromPath(_ path: String) throws -> Project {
-        guard let workspacePath else {
-            throw NSError(
-                domain: "HieroglyphsVM",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Workspace path is nil"]
-            )
-        }
-
-        let allProjects = try workspaceService.loadProjects(from: workspacePath)
-        guard let project = allProjects.first(where: { path.contains("/\($0.slug)/") }) else {
+        // Use cached projects array — avoids full disk scan per event
+        guard let project = projects.first(where: { path.contains("/\($0.slug)/") }) else {
             throw NSError(
                 domain: "HieroglyphsVM",
                 code: 2,
@@ -1093,8 +1100,15 @@ final class HieroglyphsVM {
         }
 
         let project = try extractProjectFromPath(path)
-        let projectPath = "\(workspacePath)/\(project.slug)"
-        let allCards = try workspaceService.loadCards(from: projectPath, for: project)
+
+        // Use cached cards for selected project; fall back to disk for others
+        let allCards: [Card]
+        if project.id == selectedProject?.id {
+            allCards = cards
+        } else {
+            let projectPath = "\(workspacePath)/\(project.slug)"
+            allCards = try workspaceService.loadCards(from: projectPath, for: project)
+        }
 
         guard let card = allCards.first(where: { path.contains("/\($0.slug)/") }) else {
             throw NSError(

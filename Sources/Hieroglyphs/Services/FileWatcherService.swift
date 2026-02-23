@@ -24,8 +24,7 @@ final class FileWatcherService: FileWatching {
 
         self.onChange = onChange
 
-        let context = createContext()
-        guard let streamRef = createStream(path: path, context: context) else {
+        guard let streamRef = createStream(path: path) else {
             return
         }
 
@@ -48,8 +47,7 @@ final class FileWatcherService: FileWatching {
 
         self.onPhasesChange = onChange
 
-        let context = createContext()
-        guard let streamRef = createStream(path: path, context: context) else {
+        guard let streamRef = createStream(path: path) else {
             return
         }
 
@@ -72,8 +70,7 @@ final class FileWatcherService: FileWatching {
 
         self.onPharaohChange = onChange
 
-        let context = createContext()
-        guard let streamRef = createStream(path: path, context: context) else {
+        guard let streamRef = createStream(path: path) else {
             return
         }
 
@@ -91,13 +88,15 @@ final class FileWatcherService: FileWatching {
         onPharaohChange = nil
     }
 
-    private func createContext() -> UnsafeMutablePointer<FSEventStreamContext> {
-        let contextPointer = UnsafeMutablePointer<FSEventStreamContext>.allocate(
-            capacity: 1
-        )
-        let selfPointer = Unmanaged.passUnretained(self).toOpaque()
+    private func createStream(path: String) -> FSEventStreamRef? {
+        let pathsToWatch = [path] as CFArray
+        let latency: CFTimeInterval = 0.5
 
-        contextPointer.pointee = FSEventStreamContext(
+        let flags = UInt32(kFSEventStreamCreateFlagFileEvents)
+            | UInt32(kFSEventStreamCreateFlagUseCFTypes)
+
+        let selfPointer = Unmanaged.passUnretained(self).toOpaque()
+        var context = FSEventStreamContext(
             version: 0,
             info: selfPointer,
             retain: nil,
@@ -105,28 +104,17 @@ final class FileWatcherService: FileWatching {
             copyDescription: nil
         )
 
-        return contextPointer
-    }
-
-    private func createStream(
-        path: String,
-        context: UnsafeMutablePointer<FSEventStreamContext>
-    ) -> FSEventStreamRef? {
-        let pathsToWatch = [path] as CFArray
-        let latency: CFTimeInterval = 0.5
-
-        let flags = UInt32(kFSEventStreamCreateFlagFileEvents)
-            | UInt32(kFSEventStreamCreateFlagUseCFTypes)
-
-        return FSEventStreamCreate(
-            kCFAllocatorDefault,
-            eventCallback,
-            context,
-            pathsToWatch,
-            FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
-            latency,
-            flags
-        )
+        return withUnsafeMutablePointer(to: &context) { contextPointer in
+            FSEventStreamCreate(
+                kCFAllocatorDefault,
+                eventCallback,
+                contextPointer,
+                pathsToWatch,
+                FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
+                latency,
+                flags
+            )
+        }
     }
 
     private func cleanupStream() {

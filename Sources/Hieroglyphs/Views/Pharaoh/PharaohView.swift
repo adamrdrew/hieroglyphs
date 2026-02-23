@@ -124,9 +124,9 @@ struct PharaohView: View {
 
                 if let phaseStarted = phaseStarted {
                     HStack {
-                        Text("Elapsed:")
+                        Text("Started:")
                             .foregroundStyle(.secondary)
-                        Text(phaseStarted, style: .relative)
+                        Text(staticDateString(phaseStarted))
                             .fontWeight(.medium)
                     }
                 }
@@ -235,7 +235,7 @@ struct PharaohView: View {
             )
             phaseInfoRow(
                 label: "Started",
-                value: relativeDateString(info.started)
+                value: staticDateString(info.started)
             )
             phaseInfoRow(
                 label: "Phases Completed",
@@ -255,10 +255,11 @@ struct PharaohView: View {
         return path
     }
 
-    private func relativeDateString(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
-        return formatter.localizedString(for: date, relativeTo: Date())
+    private func staticDateString(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 
     private func startPharaoh() {
