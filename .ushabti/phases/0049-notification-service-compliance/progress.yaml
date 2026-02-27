@@ -1,0 +1,95 @@
+phase:
+  id: "0049"
+  slug: notification-service-compliance
+  title: Notification Service Compliance
+  status: complete
+
+steps:
+  - id: S001
+    title: Define NotificationDispatching protocol
+    implemented: true
+    reviewed: true
+    notes: "Protocol with setUp(), notifyPhaseCompleted(), notifyPhaseFailed(). @MainActor protocol with nonisolated on notify methods to match Swift 6 concurrency requirements (setUp needs main actor isolation for UNUserNotificationCenter delegate setup)."
+    touched:
+      - Sources/Hieroglyphs/Services/NotificationDispatching.swift
+
+  - id: S002
+    title: Conform NotificationService to NotificationDispatching
+    implemented: true
+    reviewed: true
+    notes: "Added NotificationDispatching conformance. Removed static let shared and override private init(). Replaced deprecated activate(ignoringOtherApps: true) with activate(). Build fails only on downstream .shared references (App.swift, PharaohMenuBar) to be fixed in S004/S005."
+    touched:
+      - Sources/Hieroglyphs/Services/NotificationService.swift
+
+  - id: S003
+    title: Create EnvironmentKey for notification service
+    implemented: true
+    reviewed: true
+    notes: "EnvironmentKey with (any NotificationDispatching)? defaultValue nil. Uses existential any wrapper because protocol is @MainActor. Follows PharaohServiceEnvironmentKey pattern."
+    touched:
+      - Sources/Hieroglyphs/Services/NotificationServiceEnvironmentKey.swift
+
+  - id: S004
+    title: Inject notification service in App.swift
+    implemented: true
+    reviewed: true
+    notes: "Created NotificationService instance, stored as (any NotificationDispatching), called setUp() in init, injected into both Window and MenuBarExtra environments."
+    touched:
+      - Sources/Hieroglyphs/App.swift
+
+  - id: S005
+    title: Update PharaohMenuBar to use injected service
+    implemented: true
+    reviewed: true
+    notes: "Added @Environment(\\.notificationService) property. Replaced NotificationService.shared calls with injected service. Guards against nil notificationService."
+    touched:
+      - Sources/Hieroglyphs/Views/MenuBar/PharaohMenuBar.swift
+
+  - id: S006
+    title: Extract transition detection for testability
+    implemented: true
+    reviewed: true
+    notes: "Extracted to free function detectPharaohTransition(from:to:projectName:notifier:) in Utilities/PharaohTransitionDetector.swift. PharaohMenuBar.checkForTransition delegates to it. Function is internal, testable with mock NotificationDispatching."
+    touched:
+      - Sources/Hieroglyphs/Utilities/PharaohTransitionDetector.swift
+      - Sources/Hieroglyphs/Views/MenuBar/PharaohMenuBar.swift
+
+  - id: S007
+    title: Add previousStatuses pruning
+    implemented: true
+    reviewed: true
+    notes: "Added visitedDirectories set, populated during project iteration. After loop, removes previousStatuses entries not in visited set. Prevents unbounded growth when projects are removed."
+    touched:
+      - Sources/Hieroglyphs/Views/MenuBar/PharaohMenuBar.swift
+
+  - id: S008
+    title: Write tests for NotificationDispatching
+    implemented: true
+    reviewed: true
+    notes: "11 tests: 3 protocol method recording tests (setUp, notifyPhaseCompleted, notifyPhaseFailed), 8 transition detection tests (busy->done, busy->blocked, busy->idle, idle->busy, nil->busy, busy->busy, busy->notRunning, done->busy). All pass. setUp() nonisolated context warning matches pre-existing pattern in PromptGeneratorTests."
+    touched:
+      - Tests/HieroglyphsTests/NotificationServiceTests.swift
+
+  - id: S009
+    title: Verify no dead code
+    implemented: true
+    reviewed: true
+    notes: "Verified: no NotificationService.shared references in source code, no static let shared, no override private init, no commented-out code. Removed unused Foundation imports from NotificationDispatching.swift and PharaohTransitionDetector.swift."
+    touched:
+      - Sources/Hieroglyphs/Services/NotificationDispatching.swift
+      - Sources/Hieroglyphs/Utilities/PharaohTransitionDetector.swift
+
+  - id: S010
+    title: Build and test verification
+    implemented: true
+    reviewed: true
+    notes: "./Scripts/build-app.sh exits 0. swift test: 340 tests, 0 failures. All passing."
+    touched: []
+
+  - id: S011
+    title: Update documentation
+    implemented: true
+    reviewed: true
+    notes: "Added Notification Service section to pharaoh-integration.md covering: protocol, concrete implementation, environment injection, transition detection utility, previousStatuses pruning, and testing. Updated PharaohMenuBar section to document notification dispatch and pruning. Updated Environment Injection section to include NotificationService."
+    touched:
+      - .ushabti/docs/pharaoh-integration.md
