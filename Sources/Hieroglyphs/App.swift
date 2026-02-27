@@ -12,6 +12,7 @@ struct HieroglyphsApp: App {
     private let pharaohService: PharaohProviding
     private let docsService: DocsProviding
     private let promptGenerator: PromptGenerating
+    private let notificationService: any NotificationDispatching
 
     init() {
         let service = WorkspaceService()
@@ -23,6 +24,7 @@ struct HieroglyphsApp: App {
         let pharaoh = PharaohService()
         let docs = DocsService()
         let generator = PromptGenerator()
+        let notifications = NotificationService()
         self.workspaceService = service
         self.fileWatcher = watcher
         self.tagReconciler = reconciler
@@ -32,6 +34,7 @@ struct HieroglyphsApp: App {
         self.pharaohService = pharaoh
         self.docsService = docs
         self.promptGenerator = generator
+        self.notificationService = notifications
         let vm = HieroglyphsVM(
             workspaceService: service,
             fileWatcher: watcher,
@@ -42,6 +45,8 @@ struct HieroglyphsApp: App {
             pharaohService: pharaoh
         )
         _viewModel = State(initialValue: vm)
+
+        notifications.setUp()
     }
 
     var body: some Scene {
@@ -63,6 +68,7 @@ struct HieroglyphsApp: App {
             .environment(\.pharaohService, pharaohService)
             .environment(\.docsService, docsService)
             .environment(\.promptGenerator, promptGenerator)
+            .environment(\.notificationService, notificationService)
             .onAppear {
                 viewModel.loadWorkspace()
             }
@@ -109,6 +115,7 @@ struct HieroglyphsApp: App {
                 .environment(viewModel)
                 .environment(\.planService, planService)
                 .environment(\.pharaohService, pharaohService)
+                .environment(\.notificationService, notificationService)
         } label: {
             Label("Pharaoh", systemImage: "chart.line.uptrend.xyaxis")
         }

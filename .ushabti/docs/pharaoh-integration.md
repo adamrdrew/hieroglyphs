@@ -85,6 +85,65 @@ Protocol-based service for Pharaoh process management and status reading.
 - Gracefully handles malformed JSON (returns `.notRunning`)
 - Returns empty array if log file missing
 
+### Notification Service
+
+**NotificationDispatching / NotificationService** (`Sources/Hieroglyphs/Services/`)
+
+Protocol-based service for dispatching macOS push notifications on Pharaoh lifecycle events. Follows the standard service pattern: protocol defines the public interface, concrete class implements it, environment key enables SwiftUI injection.
+
+**Protocol:** `NotificationDispatching` (`NotificationDispatching.swift`)
+
+`@MainActor` protocol with three methods:
+- `setUp()` — Registers as `UNUserNotificationCenter` delegate and requests notification permission
+- `nonisolated notifyPhaseCompleted(projectName:phaseName:turns:costUsd:)` — Dispatches a phase completion banner
+- `nonisolated notifyPhaseFailed(projectName:phaseName:error:turns:costUsd:)` — Dispatches a phase failure banner
+
+The notify methods are `nonisolated` so they can be called from any context (including the transition detector utility).
+
+**Concrete Implementation:** `NotificationService` (`NotificationService.swift`)
+
+- `@MainActor final class` conforming to `NotificationDispatching` and `UNUserNotificationCenterDelegate`
+- Requests notification permission with `.alert` and `.sound` options on first `setUp()` call
+- Presents notifications in foreground via `willPresent` delegate method (banner + sound)
+- Handles notification click via `didReceive` delegate method — brings app to front with `NSApplication.shared.activate()`
+- Notification content uses `PHARAOH_COMPLETE` and `PHARAOH_FAILED` category identifiers
+- Error messages in failure notifications are truncated to 120 characters
+
+**Environment Injection:** `NotificationServiceEnvironmentKey` (`NotificationServiceEnvironmentKey.swift`)
+
+- `EnvironmentKey` with `defaultValue: (any NotificationDispatching)? = nil`
+- `EnvironmentValues.notificationService` computed property for access
+- Injected in `App.swift` into both the main Window and MenuBarExtra environment chains
+
+**Transition Detection:** `detectPharaohTransition()` (`Utilities/PharaohTransitionDetector.swift`)
+
+Free function that encapsulates the transition logic for testability:
+
+```swift
+func detectPharaohTransition(
+    from previous: PharaohStatus?,
+    to current: PharaohStatus,
+    projectName: String,
+    notifier: any NotificationDispatching
+)
+```
+
+- **busy -> done:** Calls `notifyPhaseCompleted` with phase name, turns, and cost from the `done` status
+- **busy -> blocked:** Calls `notifyPhaseFailed` with phase name, error, turns, and cost from the `blocked` status
+- **All other transitions:** No notification (idle->busy, nil->busy, busy->busy, busy->idle, busy->notRunning, done->busy, etc.)
+
+Called by `PharaohMenuBar.checkForTransition()` which passes the injected `notificationService` as the notifier.
+
+**previousStatuses Pruning:**
+
+`PharaohMenuBar.loadRunningPlans()` tracks visited source directories during each poll cycle. After iterating all projects, entries in `previousStatuses` whose keys are not in the visited set are removed. This prevents unbounded dictionary growth when projects are removed from the workspace.
+
+**Testing:**
+
+`NotificationServiceTests` (`Tests/HieroglyphsTests/NotificationServiceTests.swift`) uses a `MockNotificationService` that records all calls without touching `UNUserNotificationCenter`. Tests cover:
+- Protocol method recording (setUp, notifyPhaseCompleted, notifyPhaseFailed)
+- All transition detection cases via `detectPharaohTransition()` (busy->done, busy->blocked, busy->idle, idle->busy, nil->busy, busy->busy, busy->notRunning, done->busy)
+
 ### Event Stream Architecture
 
 **PharaohEvent** (`Sources/Hieroglyphs/Models/PharaohEvent.swift`)
@@ -224,6 +283,8 @@ Menu bar extra displaying running Pharaoh plans across all projects:
   - Filters plans to only `inProgress` status
   - Enriches with Pharaoh stats via `pharaohService.readStatus(from:)` (turns elapsed, running cost)
   - Skips projects with nil `sourceDirectory` or failed loadPlans() calls
+- **Notification Dispatch:** Uses injected `NotificationDispatching` (via `@Environment(\.notificationService)`) to send macOS notifications on busy->done and busy->blocked transitions. Delegates to `detectPharaohTransition()` utility function.
+- **Status Pruning:** Tracks visited source directories per poll cycle and removes `previousStatuses` entries for projects no longer in the workspace.
 - **Error Handling:** Guards against nil services, nil sourceDirectory, and loadPlans() errors — continues to next project on failure
 
 **PharaohMenuBarEntry** (`Views/MenuBar/PharaohMenuBarEntry.swift`)
@@ -556,13 +617,13 @@ enum SidebarSection: Hashable {
 ### Environment Injection
 
 **App.swift:**
-- Creates `PharaohService` instance
-- Injects via `.environment(\.pharaohService, pharaohService)`
-- Passes to `HieroglyphsVM` in initializer
+- Creates `PharaohService` instance, injects via `.environment(\.pharaohService, pharaohService)`, passes to `HieroglyphsVM` in initializer
+- Creates `NotificationService` instance, calls `setUp()` in init, injects via `.environment(\.notificationService, notificationService)` into both Window and MenuBarExtra
 
 **Service Access:**
-- Views access via `@Environment(\.pharaohService)`
-- ViewModel stores as `private let pharaohService: PharaohProviding?`
+- Views access Pharaoh via `@Environment(\.pharaohService)`
+- Views access notifications via `@Environment(\.notificationService)`
+- ViewModel stores Pharaoh as `private let pharaohService: PharaohProviding?`
 
 ### Testing
 
